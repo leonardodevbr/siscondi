@@ -14,3 +14,4 @@ require __DIR__.'/api/stock.php';
 require __DIR__.'/api/dashboard.php';
 require __DIR__.'/api/cash-register.php';
 require __DIR__.'/api/reports.php';
+require __DIR__.'/api/pix.php';

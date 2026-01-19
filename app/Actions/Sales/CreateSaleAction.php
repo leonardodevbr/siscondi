@@ -7,6 +7,7 @@ namespace App\Actions\Sales;
 use App\Enums\CashRegisterStatus;
 use App\Enums\CashRegisterTransactionType;
 use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Exceptions\NoOpenCashRegisterException;
@@ -53,20 +54,29 @@ class CreateSaleAction
             $totalAmount = $this->calculateTotalAmount($items, $products);
             $finalAmount = $totalAmount - $discountAmount;
 
+            $hasPixPayment = collect($payments)->contains(fn (array $payment) => 
+                PaymentMethod::from($payment['method']) === PaymentMethod::PIX
+            );
+
+            $saleStatus = $hasPixPayment ? SaleStatus::PENDING_PAYMENT : SaleStatus::COMPLETED;
+
             $sale = Sale::create([
                 'user_id' => $user->id,
                 'customer_id' => $customerId,
                 'total_amount' => $totalAmount,
                 'discount_amount' => $discountAmount,
                 'final_amount' => $finalAmount,
-                'status' => SaleStatus::COMPLETED,
+                'status' => $saleStatus,
                 'note' => $note,
             ]);
 
             $this->createSaleItems($sale, $items, $products);
-            $this->createPayments($sale, $payments);
+            $this->createPayments($sale, $payments, $hasPixPayment);
             $this->decrementStock($sale, $items, $products, $user);
-            $this->createCashRegisterTransaction($cashRegister, $sale, $payments);
+            
+            if (! $hasPixPayment) {
+                $this->createCashRegisterTransaction($cashRegister, $sale, $payments);
+            }
 
             $sale->load(['items.product', 'payments', 'customer', 'user']);
 
@@ -144,13 +154,17 @@ class CreateSaleAction
     /**
      * @param array<int, array<string, mixed>> $payments
      */
-    private function createPayments(Sale $sale, array $payments): void
+    private function createPayments(Sale $sale, array $payments, bool $hasPixPayment): void
     {
         foreach ($payments as $payment) {
+            $paymentMethod = PaymentMethod::from($payment['method']);
+            $isPix = $paymentMethod === PaymentMethod::PIX;
+
             $sale->payments()->create([
                 'method' => $payment['method'],
                 'amount' => $payment['amount'],
                 'installments' => $payment['installments'] ?? 1,
+                'status' => $isPix ? PaymentStatus::PENDING : PaymentStatus::PAID,
             ]);
         }
     }

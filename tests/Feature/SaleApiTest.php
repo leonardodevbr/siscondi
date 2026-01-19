@@ -87,7 +87,7 @@ class SaleApiTest extends TestCase
                 ],
                 'payments' => [
                     [
-                        'method' => PaymentMethod::PIX->value,
+                        'method' => PaymentMethod::CREDIT_CARD->value,
                         'amount' => 100.00,
                         'installments' => 1,
                     ],
@@ -124,7 +124,7 @@ class SaleApiTest extends TestCase
 
         $this->assertDatabaseHas('payments', [
             'sale_id' => $sale->id,
-            'method' => PaymentMethod::PIX->value,
+            'method' => PaymentMethod::CREDIT_CARD->value,
             'amount' => 100.00,
             'installments' => 1,
         ]);
