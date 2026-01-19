@@ -39,7 +39,6 @@ class CreateSaleAction
             $items = $data['items'];
             $payments = $data['payments'];
             $customerId = $data['customer_id'] ?? null;
-            $discountAmount = $data['discount_amount'] ?? 0;
             $note = $data['note'] ?? null;
 
             $productIds = array_column($items, 'product_id');
@@ -52,6 +51,7 @@ class CreateSaleAction
             $this->validateStock($items, $products);
 
             $totalAmount = $this->calculateTotalAmount($items, $products);
+            $discountAmount = $this->calculateDiscount($totalAmount, $data);
             $finalAmount = $totalAmount - $discountAmount;
 
             $hasPixPayment = collect($payments)->contains(fn (array $payment) => 
@@ -82,6 +82,26 @@ class CreateSaleAction
 
             return $sale;
         });
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function calculateDiscount(float $totalAmount, array $data): float
+    {
+        $discountType = $data['discount_type'] ?? null;
+        $discountValue = (float) ($data['discount_value'] ?? 0);
+        $discountAmount = (float) ($data['discount_amount'] ?? 0);
+
+        if ($discountType === 'percentage') {
+            return $totalAmount * ($discountValue / 100);
+        }
+
+        if ($discountType === 'fixed') {
+            return $discountValue;
+        }
+
+        return $discountAmount;
     }
 
     /**
@@ -121,7 +141,7 @@ class CreateSaleAction
             $quantity = $item['quantity'];
 
             $product = $products->get($productId);
-            $unitPrice = $product->sell_price;
+            $unitPrice = $product->getEffectivePrice();
             $total += $unitPrice * $quantity;
         }
 
@@ -139,7 +159,7 @@ class CreateSaleAction
             $quantity = $item['quantity'];
 
             $product = $products->get($productId);
-            $unitPrice = $product->sell_price;
+            $unitPrice = $product->getEffectivePrice();
             $totalPrice = $unitPrice * $quantity;
 
             $sale->items()->create([
@@ -159,12 +179,14 @@ class CreateSaleAction
         foreach ($payments as $payment) {
             $paymentMethod = PaymentMethod::from($payment['method']);
             $isPix = $paymentMethod === PaymentMethod::PIX;
+            $isCard = in_array($paymentMethod, [PaymentMethod::CREDIT_CARD, PaymentMethod::DEBIT_CARD], true);
 
             $sale->payments()->create([
                 'method' => $payment['method'],
                 'amount' => $payment['amount'],
                 'installments' => $payment['installments'] ?? 1,
                 'status' => $isPix ? PaymentStatus::PENDING : PaymentStatus::PAID,
+                'card_authorization_code' => $isCard ? ($payment['card_authorization_code'] ?? null) : null,
             ]);
         }
     }

@@ -36,6 +36,9 @@ class StoreSaleRequest extends FormRequest
             'payments.*.method' => ['required', Rule::enum(PaymentMethod::class)],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.installments' => ['nullable', 'integer', 'min:1'],
+            'payments.*.card_authorization_code' => ['nullable', 'string', 'max:255'],
+            'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];
@@ -53,7 +56,6 @@ class StoreSaleRequest extends FormRequest
 
             $items = $this->input('items', []);
             $payments = $this->input('payments', []);
-            $discountAmount = (float) ($this->input('discount_amount', 0));
 
             $productIds = array_column($items, 'product_id');
             $products = Product::query()
@@ -65,8 +67,18 @@ class StoreSaleRequest extends FormRequest
             foreach ($items as $item) {
                 $product = $products->get($item['product_id']);
                 if ($product) {
-                    $totalAmount += $product->sell_price * $item['quantity'];
+                    $totalAmount += $product->getEffectivePrice() * $item['quantity'];
                 }
+            }
+
+            $discountType = $this->input('discount_type');
+            $discountValue = (float) ($this->input('discount_value', 0));
+            $discountAmount = (float) ($this->input('discount_amount', 0));
+
+            if ($discountType === 'percentage') {
+                $discountAmount = $totalAmount * ($discountValue / 100);
+            } elseif ($discountType === 'fixed') {
+                $discountAmount = $discountValue;
             }
 
             $finalAmount = $totalAmount - $discountAmount;

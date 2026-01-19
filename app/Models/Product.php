@@ -27,6 +27,8 @@ class Product extends Model
         'barcode',
         'cost_price',
         'sell_price',
+        'promotional_price',
+        'promotional_expires_at',
         'stock_quantity',
         'min_stock_quantity',
     ];
@@ -37,6 +39,8 @@ class Product extends Model
     protected $casts = [
         'cost_price' => 'decimal:2',
         'sell_price' => 'decimal:2',
+        'promotional_price' => 'decimal:2',
+        'promotional_expires_at' => 'datetime',
         'stock_quantity' => 'integer',
         'min_stock_quantity' => 'integer',
     ];
@@ -63,6 +67,24 @@ class Product extends Model
     public function stockMovements(): HasMany
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    public function getEffectivePrice(): float
+    {
+        if ($this->promotional_price !== null && $this->promotional_expires_at !== null) {
+            if (now()->isBefore($this->promotional_expires_at)) {
+                return (float) $this->promotional_price;
+            }
+        }
+
+        return (float) $this->sell_price;
+    }
+
+    public function hasActivePromotion(): bool
+    {
+        return $this->promotional_price !== null
+            && $this->promotional_expires_at !== null
+            && now()->isBefore($this->promotional_expires_at);
     }
 }
 

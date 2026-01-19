@@ -8,8 +8,8 @@ use Exception;
 
 class NoOpenCashRegisterException extends Exception
 {
-    public function __construct()
+    public function __construct(string $message = 'Não é possível realizar vendas sem um caixa aberto.')
     {
-        parent::__construct('Não é possível realizar vendas sem um caixa aberto.');
+        parent::__construct($message);
     }
 }

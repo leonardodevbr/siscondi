@@ -33,6 +33,8 @@ class StoreProductRequest extends FormRequest
             'barcode' => ['nullable', 'string', 'max:13', 'unique:products,barcode'],
             'cost_price' => ['required', 'numeric', 'min:0'],
             'sell_price' => ['required', 'numeric', 'min:0'],
+            'promotional_price' => ['nullable', 'numeric', 'min:0'],
+            'promotional_expires_at' => ['nullable', 'date'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
             'min_stock_quantity' => ['required', 'integer', 'min:0'],
         ];

@@ -70,6 +70,8 @@ class ProductController extends Controller
             'barcode' => ['nullable', 'string', 'max:13', 'unique:products,barcode,' . $product->id],
             'cost_price' => ['sometimes', 'required', 'numeric', 'min:0'],
             'sell_price' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'promotional_price' => ['nullable', 'numeric', 'min:0'],
+            'promotional_expires_at' => ['nullable', 'date'],
             'stock_quantity' => ['sometimes', 'required', 'integer', 'min:0'],
             'min_stock_quantity' => ['sometimes', 'required', 'integer', 'min:0'],
         ]);

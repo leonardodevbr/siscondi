@@ -15,3 +15,4 @@ require __DIR__.'/api/dashboard.php';
 require __DIR__.'/api/cash-register.php';
 require __DIR__.'/api/reports.php';
 require __DIR__.'/api/pix.php';
+require __DIR__.'/api/expenses.php';

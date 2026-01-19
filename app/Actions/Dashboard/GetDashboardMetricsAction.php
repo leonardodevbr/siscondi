@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Dashboard;
 
 use App\Enums\SaleStatus;
+use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -73,11 +74,13 @@ class GetDashboardMetricsAction
                 });
 
             $profitMonth = $this->calculateProfitMonth($startOfMonth);
+            $netProfitMonth = $this->calculateNetProfitMonth($startOfMonth, $profitMonth);
 
             return [
                 'sales_today' => (float) $salesToday,
                 'sales_month' => (float) $salesMonth,
                 'profit_month' => $profitMonth,
+                'net_profit_month' => $netProfitMonth,
                 'total_sales_count_today' => $totalSalesCountToday,
                 'low_stock_products' => $lowStockProducts->values()->all(),
                 'top_selling_products' => $topSellingProducts->values()->all(),
@@ -100,5 +103,15 @@ class GetDashboardMetricsAction
         $totalCost = $salesItems->sum(fn ($item) => ($item->cost_price ?? 0) * $item->quantity);
 
         return (float) ($totalRevenue - $totalCost);
+    }
+
+    private function calculateNetProfitMonth(Carbon $startOfMonth, float $profitMonth): float
+    {
+        $expensesPaid = Expense::query()
+            ->whereNotNull('paid_at')
+            ->where('paid_at', '>=', $startOfMonth)
+            ->sum('amount');
+
+        return (float) ($profitMonth - $expensesPaid);
     }
 }

@@ -50,6 +50,7 @@ class SaleResource extends JsonResource
                     'method' => $payment->method->value,
                     'amount' => $payment->amount,
                     'installments' => $payment->installments,
+                    'card_authorization_code' => $payment->card_authorization_code,
                 ];
             }),
             'created_at' => $this->created_at,

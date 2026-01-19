@@ -24,6 +24,7 @@ class Payment extends Model
         'installments',
         'transaction_id',
         'status',
+        'card_authorization_code',
     ];
 
     /**
