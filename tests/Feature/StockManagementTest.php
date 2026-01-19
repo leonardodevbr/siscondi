@@ -116,6 +116,12 @@ class StockManagementTest extends TestCase
         $sellerRole->givePermissionTo('pos.access');
         $seller->assignRole('seller');
 
+        \App\Models\CashRegister::factory()->create([
+            'user_id' => $seller->id,
+            'status' => \App\Enums\CashRegisterStatus::OPEN,
+            'initial_balance' => 100.00,
+        ]);
+
         $token = $seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")

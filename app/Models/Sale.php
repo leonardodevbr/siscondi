@@ -68,4 +68,12 @@ class Sale extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    /**
+     * @return HasMany<CashRegisterTransaction>
+     */
+    public function cashRegisterTransactions(): HasMany
+    {
+        return $this->hasMany(CashRegisterTransaction::class);
+    }
 }

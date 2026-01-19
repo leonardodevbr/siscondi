@@ -735,6 +735,145 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Cash Register",
+			"item": [
+				{
+					"name": "Status do Caixa",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cash-register/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["cash-register", "status"]
+						}
+					}
+				},
+				{
+					"name": "Abrir Caixa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"initial_balance\": 100.00\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cash-register/open",
+							"host": ["{{baseUrl}}"],
+							"path": ["cash-register", "open"]
+						}
+					}
+				},
+				{
+					"name": "Fechar Caixa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"final_balance\": 150.00\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cash-register/:cashRegisterId/close",
+							"host": ["{{baseUrl}}"],
+							"path": ["cash-register", ":cashRegisterId", "close"],
+							"variable": [
+								{
+									"key": "cashRegisterId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Suprimento de Caixa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"supply\",\n    \"amount\": 50.00,\n    \"description\": \"Suprimento de caixa\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cash-register/:cashRegisterId/movement",
+							"host": ["{{baseUrl}}"],
+							"path": ["cash-register", ":cashRegisterId", "movement"],
+							"variable": [
+								{
+									"key": "cashRegisterId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Sangria de Caixa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"bleed\",\n    \"amount\": 30.00,\n    \"description\": \"Sangria de caixa\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cash-register/:cashRegisterId/movement",
+							"host": ["{{baseUrl}}"],
+							"path": ["cash-register", ":cashRegisterId", "movement"],
+							"variable": [
+								{
+									"key": "cashRegisterId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
 		}
 	],
 	"auth": {

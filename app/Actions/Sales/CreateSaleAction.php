@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Sales;
 
+use App\Enums\CashRegisterStatus;
+use App\Enums\CashRegisterTransactionType;
+use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
+use App\Exceptions\NoOpenCashRegisterException;
+use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockMovement;
@@ -21,7 +26,15 @@ class CreateSaleAction
      */
     public function execute(array $data, User $user): Sale
     {
-        return DB::transaction(function () use ($data, $user): Sale {
+        $cashRegister = CashRegister::where('user_id', $user->id)
+            ->where('status', CashRegisterStatus::OPEN)
+            ->first();
+
+        if (! $cashRegister) {
+            throw new NoOpenCashRegisterException();
+        }
+
+        return DB::transaction(function () use ($data, $user, $cashRegister): Sale {
             $items = $data['items'];
             $payments = $data['payments'];
             $customerId = $data['customer_id'] ?? null;
@@ -53,6 +66,7 @@ class CreateSaleAction
             $this->createSaleItems($sale, $items, $products);
             $this->createPayments($sale, $payments);
             $this->decrementStock($sale, $items, $products, $user);
+            $this->createCashRegisterTransaction($cashRegister, $sale, $payments);
 
             $sale->load(['items.product', 'payments', 'customer', 'user']);
 
@@ -160,6 +174,29 @@ class CreateSaleAction
                 'type' => StockMovementType::SALE,
                 'quantity' => $quantity,
                 'reason' => "Sale #{$sale->id}",
+            ]);
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $payments
+     */
+    private function createCashRegisterTransaction(CashRegister $cashRegister, Sale $sale, array $payments): void
+    {
+        $cashAmount = 0;
+
+        foreach ($payments as $payment) {
+            if ($payment['method'] === PaymentMethod::MONEY->value) {
+                $cashAmount += (float) $payment['amount'];
+            }
+        }
+
+        if ($cashAmount > 0) {
+            $cashRegister->transactions()->create([
+                'type' => CashRegisterTransactionType::SALE,
+                'amount' => $cashAmount,
+                'description' => "Venda #{$sale->id}",
+                'sale_id' => $sale->id,
             ]);
         }
     }

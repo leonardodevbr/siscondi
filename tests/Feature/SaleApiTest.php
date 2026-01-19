@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\CashRegisterStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Category;
+use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
@@ -52,8 +54,19 @@ class SaleApiTest extends TestCase
         $sellerRole->syncPermissions($permissions);
     }
 
+    private function openCashRegister(User $user): CashRegister
+    {
+        return CashRegister::factory()->create([
+            'user_id' => $user->id,
+            'status' => CashRegisterStatus::OPEN,
+            'initial_balance' => 100.00,
+        ]);
+    }
+
     public function test_successful_sale_creates_all_records_and_decrements_stock(): void
     {
+        $this->openCashRegister($this->seller);
+
         $product = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto Teste',
@@ -122,6 +135,8 @@ class SaleApiTest extends TestCase
 
     public function test_insufficient_stock_prevents_sale_and_rolls_back(): void
     {
+        $this->openCashRegister($this->seller);
+
         $product = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto Teste',
@@ -163,6 +178,8 @@ class SaleApiTest extends TestCase
 
     public function test_payment_validation_fails_when_amount_does_not_match_total(): void
     {
+        $this->openCashRegister($this->seller);
+
         $product = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto Teste',
@@ -198,6 +215,8 @@ class SaleApiTest extends TestCase
 
     public function test_sale_with_discount_calculates_correctly(): void
     {
+        $this->openCashRegister($this->seller);
+
         $product = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto Teste',
@@ -240,6 +259,8 @@ class SaleApiTest extends TestCase
 
     public function test_sale_with_multiple_items_and_payments(): void
     {
+        $this->openCashRegister($this->seller);
+
         $product1 = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto 1',

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Sales\CreateSaleAction;
 use App\Enums\SaleStatus;
+use App\Exceptions\NoOpenCashRegisterException;
 use App\Http\Requests\StoreSaleRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\Sale;
@@ -57,6 +58,10 @@ class SaleController extends Controller
             );
 
             return response()->json(new SaleResource($sale), 201);
+        } catch (NoOpenCashRegisterException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 403);
         } catch (\InvalidArgumentException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
