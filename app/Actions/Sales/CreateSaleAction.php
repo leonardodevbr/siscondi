@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Sales;
 
 use App\Enums\SaleStatus;
+use App\Enums\StockMovementType;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +52,7 @@ class CreateSaleAction
 
             $this->createSaleItems($sale, $items, $products);
             $this->createPayments($sale, $payments);
-            $this->decrementStock($items, $products);
+            $this->decrementStock($sale, $items, $products, $user);
 
             $sale->load(['items.product', 'payments', 'customer', 'user']);
 
@@ -143,7 +145,7 @@ class CreateSaleAction
      * @param array<int, array<string, mixed>> $items
      * @param Collection<int, Product> $products
      */
-    private function decrementStock(array $items, Collection $products): void
+    private function decrementStock(Sale $sale, array $items, Collection $products, User $user): void
     {
         foreach ($items as $item) {
             $productId = $item['product_id'];
@@ -151,6 +153,14 @@ class CreateSaleAction
 
             $product = $products->get($productId);
             $product->decrement('stock_quantity', $quantity);
+
+            StockMovement::create([
+                'product_id' => $productId,
+                'user_id' => $user->id,
+                'type' => StockMovementType::SALE,
+                'quantity' => $quantity,
+                'reason' => "Sale #{$sale->id}",
+            ]);
         }
     }
 }

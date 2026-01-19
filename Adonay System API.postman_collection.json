@@ -669,6 +669,72 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Stock Management",
+			"item": [
+				{
+					"name": "Entrada de Estoque",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"supplier_id\": 1,\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 50,\n            \"cost_price\": 15.00\n        },\n        {\n            \"product_id\": 2,\n            \"quantity\": 30,\n            \"cost_price\": 20.00\n        }\n    ],\n    \"reason\": \"Nota Fiscal 123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/stock/entries",
+							"host": ["{{baseUrl}}"],
+							"path": ["stock", "entries"]
+						}
+					}
+				},
+				{
+					"name": "Histórico de Movimentações do Produto",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/:productId/movements",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", ":productId", "movements"],
+							"variable": [
+								{
+									"key": "productId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Métricas do Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["dashboard"]
+						}
+					}
+				}
+			]
 		}
 	],
 	"auth": {
