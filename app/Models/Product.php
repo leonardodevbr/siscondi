@@ -32,6 +32,16 @@ class Product extends Model
     ];
 
     /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'cost_price' => 'decimal:2',
+        'sell_price' => 'decimal:2',
+        'stock_quantity' => 'integer',
+        'min_stock_quantity' => 'integer',
+    ];
+
+    /**
      * @return BelongsTo<Category, Product>
      */
     public function category(): BelongsTo
