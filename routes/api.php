@@ -1,17 +1,12 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\SaleController;
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login']);
-
-Route::middleware('auth:sanctum')->group(function (): void {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
-
-    Route::apiResource('products', ProductController::class);
-
-    Route::post('/sales', [SaleController::class, 'store']);
-});
+require __DIR__.'/api/auth.php';
+require __DIR__.'/api/categories.php';
+require __DIR__.'/api/products.php';
+require __DIR__.'/api/customers.php';
+require __DIR__.'/api/suppliers.php';
+require __DIR__.'/api/sales.php';
