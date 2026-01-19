@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\ImportBatchStatus;
 use App\Exports\TestProductsExport;
 use App\Models\Category;
+use App\Models\ImportBatch;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
@@ -99,8 +101,17 @@ class ProductImportTest extends TestCase
             ]);
 
         $response->assertStatus(200);
-        $response->assertJson([
-            'message' => 'Products imported successfully',
+        $response->assertJsonStructure([
+            'message',
+            'batch' => [
+                'id',
+                'user_id',
+                'filename',
+                'status',
+                'total_rows',
+                'success_count',
+                'error_count',
+            ],
         ]);
 
         $this->assertDatabaseHas('products', [
@@ -115,6 +126,15 @@ class ProductImportTest extends TestCase
         $this->assertDatabaseHas('suppliers', [
             'name' => 'Novo Fornecedor',
         ]);
+
+        $batch = ImportBatch::latest()->first();
+        $this->assertNotNull($batch);
+        $this->assertEquals($this->manager->id, $batch->user_id);
+        $this->assertEquals('test_import.xlsx', $batch->filename);
+        $this->assertEquals(ImportBatchStatus::COMPLETED, $batch->status);
+        $this->assertEquals(1, $batch->total_rows);
+        $this->assertEquals(1, $batch->success_count);
+        $this->assertEquals(0, $batch->error_count);
 
         $product = Product::where('sku', 'SKU-IMP-001')->first();
         $this->assertNotNull($product);

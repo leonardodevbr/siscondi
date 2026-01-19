@@ -5,15 +5,24 @@ declare(strict_types=1);
 namespace App\Imports;
 
 use App\Models\Category;
+use App\Models\ImportBatch;
 use App\Models\Product;
 use App\Models\Supplier;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Validators\Failure;
 
-class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows
+class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows, SkipsOnFailure
 {
+    private ImportBatch $batch;
+
+    public function __construct(ImportBatch $batch)
+    {
+        $this->batch = $batch;
+    }
     /**
      * @param array<string, mixed> $row
      */
@@ -71,7 +80,7 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEm
         $stockQuantity = is_numeric($stockQuantityValue) ? (int) $stockQuantityValue : 0;
         $minStockQuantity = is_numeric($minStockQuantityValue) ? (int) $minStockQuantityValue : 0;
 
-        return Product::updateOrCreate(
+        $product = Product::updateOrCreate(
             ['sku' => $sku],
             [
                 'category_id' => $category->id,
@@ -83,6 +92,32 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEm
                 'min_stock_quantity' => $minStockQuantity,
             ]
         );
+
+        $this->batch->increment('success_count');
+
+        return $product;
+    }
+
+    /**
+     * @param Failure ...$failures
+     */
+    public function onFailure(Failure ...$failures): void
+    {
+        $this->batch->refresh();
+        
+        foreach ($failures as $failure) {
+            $this->batch->increment('error_count');
+            
+            $errors = $this->batch->errors ?? [];
+            $errors[] = [
+                'row' => $failure->row(),
+                'attribute' => $failure->attribute(),
+                'errors' => $failure->errors(),
+                'values' => $failure->values(),
+            ];
+            
+            $this->batch->update(['errors' => $errors]);
+        }
     }
 
     /**
