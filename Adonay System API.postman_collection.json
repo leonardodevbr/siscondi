@@ -303,6 +303,41 @@
 							]
 						}
 					}
+				},
+				{
+					"name": "Baixar Template de Importação",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/import/template",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "import", "template"]
+						}
+					}
+				},
+				{
+					"name": "Importar Produtos (Excel)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Arquivo Excel (.xlsx, .xls, .csv) com os produtos"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/import",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "import"]
+						}
+					}
 				}
 			]
 		},
@@ -992,6 +1027,60 @@
 								}
 							]
 						}
+					}
+				}
+			]
+		},
+		{
+			"name": "PIX",
+			"item": [
+				{
+					"name": "Gerar QR Code PIX",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pix/sales/:saleId/generate",
+							"host": ["{{baseUrl}}"],
+							"path": ["pix", "sales", ":saleId", "generate"],
+							"variable": [
+								{
+									"key": "saleId",
+									"value": "1",
+									"description": "ID da venda com status pending_payment"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Webhook PIX (Banco)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"transaction_id\": \"DEV_1234567890\",\n    \"status\": \"paid\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pix/webhook",
+							"host": ["{{baseUrl}}"],
+							"path": ["pix", "webhook"]
+						},
+						"description": "Endpoint público para receber webhooks do gateway de pagamento. Status pode ser 'paid' ou 'failed'."
 					}
 				}
 			]
