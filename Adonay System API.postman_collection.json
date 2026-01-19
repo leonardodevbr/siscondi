@@ -874,6 +874,127 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Relatório de Vendas (JSON)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/sales?start_date=2025-01-01&end_date=2025-01-31&user_id=&payment_method=",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "sales"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Data inicial (YYYY-MM-DD)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-01-31",
+									"description": "Data final (YYYY-MM-DD)"
+								},
+								{
+									"key": "user_id",
+									"value": "",
+									"description": "Filtrar por vendedor (opcional)"
+								},
+								{
+									"key": "payment_method",
+									"value": "",
+									"description": "Filtrar por forma de pagamento: money, pix, credit_card, debit_card, store_credit (opcional)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Exportar Relatório de Vendas (Excel)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/sales/export?start_date=2025-01-01&end_date=2025-01-31&user_id=&payment_method=",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "sales", "export"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Data inicial (YYYY-MM-DD)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-01-31",
+									"description": "Data final (YYYY-MM-DD)"
+								},
+								{
+									"key": "user_id",
+									"value": "",
+									"description": "Filtrar por vendedor (opcional)"
+								},
+								{
+									"key": "payment_method",
+									"value": "",
+									"description": "Filtrar por forma de pagamento (opcional)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Relatório de Estoque (JSON)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/stock?category_id=&status=all",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "stock"],
+							"query": [
+								{
+									"key": "category_id",
+									"value": "",
+									"description": "Filtrar por categoria (opcional)"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Filtrar por status: all, low_stock, out_of_stock (opcional)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Exportar Relatório de Estoque (Excel)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/stock/export?category_id=&status=all",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "stock", "export"],
+							"query": [
+								{
+									"key": "category_id",
+									"value": "",
+									"description": "Filtrar por categoria (opcional)"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Filtrar por status: all, low_stock, out_of_stock (opcional)"
+								}
+							]
+						}
+					}
+				}
+			]
 		}
 	],
 	"auth": {
