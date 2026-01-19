@@ -28,6 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'pos.discount',
             'financial.view',
             'financial.manage',
+            'reports.view',
         ];
 
         foreach ($permissions as $permission) {
@@ -62,6 +63,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'pos.discount',
             'financial.view',
             'financial.manage',
+            'reports.view',
             'users.view',
             'users.create',
         ]);
