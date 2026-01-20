@@ -18,8 +18,8 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-6">
-      <div class="card">
-        <div class="border-b border-slate-200 mb-4">
+      <div class="card p-6">
+        <div class="border-b border-slate-200 mb-6 pb-4">
           <nav class="flex space-x-4">
             <button
               type="button"

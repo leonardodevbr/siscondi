@@ -44,7 +44,7 @@
           <MenuButton class="p-2 rounded border border-slate-300 hover:bg-slate-50 transition-colors">
             <EllipsisVerticalIcon class="h-5 w-5 text-slate-600" />
           </MenuButton>
-          <MenuItems class="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-lg z-50">
+          <MenuItems class="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-sm z-50">
             <div class="py-1">
               <MenuItem v-slot="{ active }">
                 <router-link

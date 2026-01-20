@@ -24,8 +24,7 @@ class CustomerFactory extends Factory
             'phone' => fake()->optional()->phoneNumber(),
             'birth_date' => fake()->boolean(80)
                 ? fake()->dateTimeBetween('-70 years', '-18 years')->format('Y-m-d')
-                : null,
-            'address' => fake()->optional()->address(),
+                : null
         ];
     }
 }
