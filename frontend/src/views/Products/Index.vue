@@ -88,7 +88,7 @@
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Variações
               </th>
-              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">
                 Ações
               </th>
             </tr>
@@ -96,19 +96,12 @@
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="product in productStore.products" :key="product.id">
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                <div
-                  class="h-10 w-10 sm:h-12 sm:w-12 rounded overflow-hidden bg-slate-100 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform"
-                  @click="showImagePreview(getProductImage(product))"
-                  :title="product.name"
-                >
-                  <img
-                    v-if="getProductImage(product)"
-                    :src="getProductImage(product)"
-                    :alt="product.name"
-                    class="h-full w-full object-cover"
-                  />
-                  <PhotoIcon v-else class="h-6 w-6 text-slate-400" />
-                </div>
+                <ProductThumb
+                  :src="getProductImage(product)"
+                  :alt="product.name"
+                  size-class="h-10 w-10 sm:h-12 sm:w-12"
+                  @click="showImagePreview"
+                />
               </td>
               <td class="px-4 sm:px-6 py-4">
                 <div class="text-sm font-medium text-slate-900 truncate max-w-xs">
@@ -138,7 +131,7 @@
                   {{ product.variants?.length || 0 }}
                 </div>
               </td>
-              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click="editProduct(product.id)"
@@ -200,8 +193,9 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
-import { PencilSquareIcon, TrashIcon, PhotoIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { useAlert } from '@/composables/useAlert';
+import ProductThumb from '@/components/Common/ProductThumb.vue';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -211,7 +205,7 @@ export default {
   components: {
     PencilSquareIcon,
     TrashIcon,
-    PhotoIcon,
+    ProductThumb,
   },
   setup() {
     const router = useRouter();

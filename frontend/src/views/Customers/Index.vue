@@ -50,7 +50,7 @@
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Telefone
               </th>
-              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">
                 Ações
               </th>
             </tr>
@@ -77,7 +77,7 @@
                   {{ formatPhone(customer.phone) || '-' }}
                 </div>
               </td>
-              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click="editCustomer(customer)"

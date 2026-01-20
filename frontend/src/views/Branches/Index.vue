@@ -91,7 +91,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="closeModal"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+      <div class="bg-white rounded-lg border border-slate-200 w-full max-w-md p-6">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">
           {{ editingBranch ? 'Editar Filial' : 'Nova Filial' }}
         </h3>
