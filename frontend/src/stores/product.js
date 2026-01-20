@@ -59,7 +59,16 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
-        const response = await api.post('/products', productData);
+        const isFormData = productData instanceof FormData;
+        const config = isFormData
+          ? {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          : {};
+
+        const response = await api.post('/products', productData, config);
         const newProduct = response.data;
         this.products.unshift(newProduct);
         return newProduct;
@@ -75,7 +84,16 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
-        const response = await api.put(`/products/${id}`, productData);
+        const isFormData = productData instanceof FormData;
+        const config = isFormData
+          ? {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          : {};
+
+        const response = await api.put(`/products/${id}`, productData, config);
         const updatedProduct = response.data;
         const index = this.products.findIndex((p) => p.id === id);
         if (index !== -1) {

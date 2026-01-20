@@ -63,38 +63,46 @@
 
         <!-- Tab 1: Dados Gerais -->
         <div v-show="activeTab === 'general'" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-start gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">
-                Nome do Produto *
+                Foto de Capa
               </label>
-              <input
-                v-model="form.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: Camiseta Básica"
-              />
+              <ImageUpload v-model="form.cover_image" size="md" />
             </div>
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Nome do Produto *
+                </label>
+                <input
+                  v-model="form.name"
+                  type="text"
+                  required
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Camiseta Básica"
+                />
+              </div>
 
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">
-                Categoria *
-              </label>
-              <select
-                v-model="form.category_id"
-                required
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione uma categoria</option>
-                <option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :value="category.id"
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Categoria *
+                </label>
+                <select
+                  v-model="form.category_id"
+                  required
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {{ category.name }}
-                </option>
-              </select>
+                  <option value="">Selecione uma categoria</option>
+                  <option
+                    v-for="category in categories"
+                    :key="category.id"
+                    :value="category.id"
+                  >
+                    {{ category.name }}
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -200,6 +208,7 @@
             <div
               v-for="(variant, index) in form.variants"
               :key="index"
+              :ref="(el) => setVariantRef(el, index)"
               class="border border-slate-200 rounded-lg p-4 space-y-4"
             >
               <div class="flex justify-between items-center mb-2">
@@ -215,7 +224,14 @@
                 </button>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                  <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Imagem
+                  </label>
+                  <ImageUpload v-model="variant.image" size="sm" />
+                </div>
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-1">
                     SKU *
@@ -241,6 +257,7 @@
                     class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="7891234567890"
                   />
+                </div>
                 </div>
               </div>
 
@@ -284,18 +301,6 @@
                     min="0"
                     class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Deixe vazio para usar preço base"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">
-                    Imagem (URL)
-                  </label>
-                  <input
-                    v-model="variant.image"
-                    type="text"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://exemplo.com/imagem.jpg"
                   />
                 </div>
               </div>
@@ -361,14 +366,18 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
+import ImageUpload from '@/components/Common/ImageUpload.vue';
 import api from '@/services/api';
 
 export default {
   name: 'ProductForm',
+  components: {
+    ImageUpload,
+  },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -391,8 +400,17 @@ export default {
       sell_price: '',
       promotional_price: null,
       promotional_expires_at: null,
+      cover_image: null,
       variants: [],
     });
+
+    const variantRefs = ref([]);
+
+    const setVariantRef = (el, index) => {
+      if (el) {
+        variantRefs.value[index] = el;
+      }
+    };
 
     const loadCategories = async () => {
       try {
@@ -426,12 +444,13 @@ export default {
           sell_price: product.sell_price || '',
           promotional_price: product.promotional_price || null,
           promotional_expires_at: product.promotional_expires_at || null,
+          cover_image: product.cover_image || null,
           variants: (product.variants || []).map((v) => ({
             id: v.id,
             sku: v.sku || '',
             barcode: v.barcode || '',
             price: v.price || null,
-            image: v.image || '',
+            image: v.image || null,
             attributes: v.attributes || {},
           })),
         };
@@ -441,18 +460,23 @@ export default {
       }
     };
 
-    const addVariant = () => {
-      form.value.variants.push({
+    const addVariant = async () => {
+      form.value.variants.unshift({
         sku: '',
         barcode: '',
         price: null,
-        image: '',
+        image: null,
         attributes: {
           cor: '',
           tamanho: '',
         },
       });
-      initialStock.value.push(0);
+      initialStock.value.unshift(0);
+
+      await nextTick();
+      if (variantRefs.value[0]) {
+        variantRefs.value[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     };
 
     const removeVariant = (index) => {
@@ -490,30 +514,87 @@ export default {
       return parts.length > 0 ? parts.join(' / ') : 'Variação sem atributos';
     };
 
-    const handleSubmit = async () => {
-      if (form.value.variants.length === 0) {
-        toast.error('Adicione pelo menos uma variação ao produto');
-        activeTab.value = 'variants';
-        return;
-      }
+    const hasFiles = () => {
+      if (form.value.cover_image instanceof File) return true;
+      return form.value.variants.some((v) => v.image instanceof File);
+    };
 
+    const handleSubmit = async () => {
       saving.value = true;
 
       try {
-        const payload = { ...form.value };
+        const hasImages = hasFiles();
+        
+        if (hasImages) {
+          const formData = new FormData();
+          
+          formData.append('name', form.value.name);
+          formData.append('description', form.value.description || '');
+          formData.append('category_id', form.value.category_id);
+          if (form.value.supplier_id) formData.append('supplier_id', form.value.supplier_id);
+          if (form.value.cost_price) formData.append('cost_price', form.value.cost_price);
+          formData.append('sell_price', form.value.sell_price);
+          if (form.value.promotional_price) formData.append('promotional_price', form.value.promotional_price);
+          if (form.value.promotional_expires_at) formData.append('promotional_expires_at', form.value.promotional_expires_at);
+          
+          if (form.value.cover_image instanceof File) {
+            formData.append('cover_image', form.value.cover_image);
+          }
 
-        if (!isEdit.value && initialStock.value.length > 0) {
-          payload.initial_stock = form.value.variants.map((variant, index) => ({
-            quantity: initialStock.value[index] || 0,
-          }));
-        }
+          if (form.value.variants.length > 0) {
+            form.value.variants.forEach((variant, index) => {
+              formData.append(`variants[${index}][sku]`, variant.sku);
+              if (variant.barcode) formData.append(`variants[${index}][barcode]`, variant.barcode);
+              if (variant.price) formData.append(`variants[${index}][price]`, variant.price);
+              if (variant.image instanceof File) {
+                formData.append(`variants[${index}][image]`, variant.image);
+              } else if (variant.image) {
+                formData.append(`variants[${index}][image]`, variant.image);
+              }
+              formData.append(`variants[${index}][attributes]`, JSON.stringify(variant.attributes));
+              if (variant.id) formData.append(`variants[${index}][id]`, variant.id);
+            });
+          }
 
-        if (isEdit.value) {
-          await productStore.update(route.params.id, payload);
-          toast.success('Produto atualizado com sucesso!');
+          if (!isEdit.value && initialStock.value.length > 0 && form.value.variants.length > 0) {
+            form.value.variants.forEach((variant, index) => {
+              formData.append(`initial_stock[${index}][quantity]`, initialStock.value[index] || 0);
+            });
+          }
+
+          if (isEdit.value) {
+            await productStore.update(route.params.id, formData);
+            toast.success('Produto atualizado com sucesso!');
+          } else {
+            await productStore.create(formData);
+            toast.success('Produto criado com sucesso!');
+          }
         } else {
-          await productStore.create(payload);
-          toast.success('Produto criado com sucesso!');
+          const payload = { ...form.value };
+          delete payload.cover_image;
+          
+          if (form.value.variants.length > 0) {
+            payload.variants = form.value.variants.map((v) => ({
+              ...v,
+              image: v.image instanceof File ? null : v.image,
+            }));
+
+            if (!isEdit.value && initialStock.value.length > 0) {
+              payload.initial_stock = form.value.variants.map((variant, index) => ({
+                quantity: initialStock.value[index] || 0,
+              }));
+            }
+          } else {
+            payload.variants = [];
+          }
+
+          if (isEdit.value) {
+            await productStore.update(route.params.id, payload);
+            toast.success('Produto atualizado com sucesso!');
+          } else {
+            await productStore.create(payload);
+            toast.success('Produto criado com sucesso!');
+          }
         }
 
         router.push({ name: 'products.index' });
@@ -545,6 +626,7 @@ export default {
       updateVariantAttributes,
       getVariantDescription,
       handleSubmit,
+      setVariantRef,
     };
   },
 };

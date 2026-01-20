@@ -10,6 +10,9 @@ use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -37,36 +40,46 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request): JsonResponse
     {
-        $data = $request->validated();
-        $variants = $data['variants'] ?? [];
-        $initialStock = $data['initial_stock'] ?? [];
-        unset($data['variants'], $data['initial_stock']);
+        return DB::transaction(function () use ($request): JsonResponse {
+            $data = $request->validated();
+            $variants = $data['variants'] ?? [];
+            $initialStock = $data['initial_stock'] ?? [];
+            unset($data['variants'], $data['initial_stock']);
 
-        $product = Product::create($data);
+            if ($request->hasFile('cover_image')) {
+                $image = $request->file('cover_image');
+                $path = $image->store('products', 'public');
+                $data['image'] = $path;
+            }
 
-        if (! empty($variants)) {
+            $product = Product::create($data);
             $mainBranch = \App\Models\Branch::where('is_main', true)->first();
-            
-            foreach ($variants as $index => $variantData) {
-                $variant = $product->variants()->create($variantData);
 
-                if (! empty($initialStock)) {
-                    $stockQuantity = $initialStock[$index]['quantity'] ?? 0;
-                    if ($stockQuantity > 0 && $mainBranch) {
-                        \App\Models\Inventory::create([
-                            'branch_id' => $mainBranch->id,
-                            'product_variant_id' => $variant->id,
-                            'quantity' => $stockQuantity,
-                            'min_quantity' => 0,
-                        ]);
+            if (empty($variants)) {
+                $this->createDefaultVariant($product, $request);
+            } else {
+                foreach ($variants as $index => $variantData) {
+                    $variantData = $this->handleVariantImage($request, $variantData, $index);
+                    $variant = $product->variants()->create($variantData);
+
+                    if (! empty($initialStock)) {
+                        $stockQuantity = $initialStock[$index]['quantity'] ?? 0;
+                        if ($stockQuantity > 0 && $mainBranch) {
+                            \App\Models\Inventory::create([
+                                'branch_id' => $mainBranch->id,
+                                'product_variant_id' => $variant->id,
+                                'quantity' => $stockQuantity,
+                                'min_quantity' => 0,
+                            ]);
+                        }
                     }
                 }
             }
-        }
 
-        $product->load(['category', 'supplier', 'variants.inventories']);
+            $product->load(['category', 'supplier', 'variants.inventories']);
 
-        return response()->json(new ProductResource($product), 201);
+            return response()->json(new ProductResource($product), 201);
+        });
     }
 
     /**
@@ -86,36 +99,60 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        $data = $request->validated();
-        $variants = $data['variants'] ?? [];
-        unset($data['variants']);
+        return DB::transaction(function () use ($request, $product): JsonResponse {
+            $data = $request->validated();
+            $variants = $data['variants'] ?? [];
+            unset($data['variants']);
 
-        $product->update($data);
+            if ($request->hasFile('cover_image')) {
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $image = $request->file('cover_image');
+                $path = $image->store('products', 'public');
+                $data['image'] = $path;
+            }
 
-        if (isset($variants)) {
-            $existingVariantIds = $product->variants()->pluck('id')->toArray();
-            $submittedVariantIds = [];
+            $product->update($data);
 
-            foreach ($variants as $variantData) {
-                if (isset($variantData['id']) && in_array($variantData['id'], $existingVariantIds)) {
-                    $variant = $product->variants()->find($variantData['id']);
-                    $variant->update($variantData);
-                    $submittedVariantIds[] = $variantData['id'];
-                } else {
-                    $newVariant = $product->variants()->create($variantData);
-                    $submittedVariantIds[] = $newVariant->id;
+            if (isset($variants)) {
+                $existingVariantIds = $product->variants()->pluck('id')->toArray();
+                $submittedVariantIds = [];
+
+                foreach ($variants as $index => $variantData) {
+                    $variantData = $this->handleVariantImage($request, $variantData, $index, $product->id);
+
+                    if (isset($variantData['id']) && in_array($variantData['id'], $existingVariantIds)) {
+                        $variant = $product->variants()->find($variantData['id']);
+                        
+                        if (isset($variantData['image']) && $variant->image && $variantData['image'] !== $variant->image) {
+                            Storage::disk('public')->delete($variant->image);
+                        }
+                        
+                        $variant->update($variantData);
+                        $submittedVariantIds[] = $variantData['id'];
+                    } else {
+                        $newVariant = $product->variants()->create($variantData);
+                        $submittedVariantIds[] = $newVariant->id;
+                    }
+                }
+
+                $variantsToDelete = array_diff($existingVariantIds, $submittedVariantIds);
+                if (! empty($variantsToDelete)) {
+                    $variantsToDeleteModels = $product->variants()->whereIn('id', $variantsToDelete)->get();
+                    foreach ($variantsToDeleteModels as $variantToDelete) {
+                        if ($variantToDelete->image) {
+                            Storage::disk('public')->delete($variantToDelete->image);
+                        }
+                    }
+                    $product->variants()->whereIn('id', $variantsToDelete)->delete();
                 }
             }
 
-            $variantsToDelete = array_diff($existingVariantIds, $submittedVariantIds);
-            if (! empty($variantsToDelete)) {
-                $product->variants()->whereIn('id', $variantsToDelete)->delete();
-            }
-        }
+            $product->load(['category', 'supplier', 'variants.inventories']);
 
-        $product->load(['category', 'supplier', 'variants.inventories']);
-
-        return response()->json(new ProductResource($product));
+            return response()->json(new ProductResource($product));
+        });
     }
 
     /**
@@ -128,5 +165,63 @@ class ProductController extends Controller
         $product->delete();
 
         return response()->json(['message' => 'Product deleted successfully']);
+    }
+
+    /**
+     * Create a default variant for simple products.
+     */
+    private function createDefaultVariant(Product $product, Request $request): void
+    {
+        $baseName = Str::upper(Str::substr(Str::slug($product->name), 0, 8));
+        $sku = $baseName . '-' . Str::upper(Str::random(4));
+
+        $variantData = [
+            'sku' => $sku,
+            'barcode' => null,
+            'price' => null,
+            'image' => $product->image,
+            'attributes' => ['tipo' => 'único'],
+        ];
+
+        $variant = $product->variants()->create($variantData);
+
+        $mainBranch = \App\Models\Branch::where('is_main', true)->first();
+        if ($mainBranch) {
+            \App\Models\Inventory::create([
+                'branch_id' => $mainBranch->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 0,
+                'min_quantity' => 0,
+            ]);
+        }
+    }
+
+    /**
+     * Handle image upload for variant.
+     *
+     * @param array<string, mixed> $variantData
+     * @return array<string, mixed>
+     */
+    private function handleVariantImage(Request $request, array $variantData, int $index, ?int $productId = null): array
+    {
+        $key = "variants.{$index}.image";
+        
+        if ($request->hasFile($key)) {
+            $image = $request->file($key);
+            $path = $image->store('product-variants', 'public');
+            $variantData['image'] = $path;
+        } elseif (isset($variantData['image']) && is_string($variantData['image']) && ! empty($variantData['image'])) {
+            if (! str_starts_with($variantData['image'], 'product-variants/') && ! str_starts_with($variantData['image'], 'products/')) {
+                $variantData['image'] = null;
+            }
+        } else {
+            $variantData['image'] = null;
+        }
+
+        if (isset($variantData['attributes']) && is_string($variantData['attributes'])) {
+            $variantData['attributes'] = json_decode($variantData['attributes'], true) ?? [];
+        }
+
+        return $variantData;
     }
 }

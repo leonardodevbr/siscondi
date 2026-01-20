@@ -23,6 +23,7 @@ class Product extends Model
         'supplier_id',
         'name',
         'description',
+        'image',
         'cost_price',
         'sell_price',
         'promotional_price',
