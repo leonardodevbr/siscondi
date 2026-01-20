@@ -25,6 +25,15 @@ class ProductVariantResource extends JsonResource
             'attributes' => $this->attributes ?? [],
             'description_full' => $this->description_full,
             'effective_price' => $this->getEffectivePrice(),
+            'inventories' => $this->whenLoaded('inventories', fn () => $this->inventories->map(function ($inventory) {
+                return [
+                    'id' => $inventory->id,
+                    'branch_id' => $inventory->branch_id,
+                    'branch_name' => $inventory->branch->name ?? null,
+                    'quantity' => $inventory->quantity,
+                    'min_quantity' => $inventory->min_quantity,
+                ];
+            })),
         ];
     }
 }

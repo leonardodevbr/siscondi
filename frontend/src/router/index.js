@@ -5,6 +5,7 @@ import HomeView from '@/views/Dashboard/Home.vue';
 import LoginView from '@/views/Auth/Login.vue';
 import PosView from '@/views/POS/Pos.vue';
 import ProductsIndex from '@/views/Products/Index.vue';
+import ProductForm from '@/views/Products/Form.vue';
 import LabelGenerator from '@/views/Products/LabelGenerator.vue';
 import SalesIndex from '@/views/Sales/Index.vue';
 import CustomersIndex from '@/views/Customers/Index.vue';
@@ -52,6 +53,16 @@ const routes = [
         path: 'products',
         name: 'products.index',
         component: ProductsIndex,
+      },
+      {
+        path: 'products/new',
+        name: 'products.form',
+        component: ProductForm,
+      },
+      {
+        path: 'products/:id/edit',
+        name: 'products.form',
+        component: ProductForm,
       },
       {
         path: 'products/labels',

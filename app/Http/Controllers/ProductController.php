@@ -20,7 +20,7 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $query = Product::query()->with(['category', 'supplier', 'variants']);
+        $query = Product::query()->with(['category', 'supplier', 'variants.inventories']);
 
         if ($request->has('search')) {
             $search = $request->string('search');
@@ -37,8 +37,34 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request): JsonResponse
     {
-        $product = Product::create($request->validated());
-        $product->load(['category', 'supplier', 'variants']);
+        $data = $request->validated();
+        $variants = $data['variants'] ?? [];
+        $initialStock = $data['initial_stock'] ?? [];
+        unset($data['variants'], $data['initial_stock']);
+
+        $product = Product::create($data);
+
+        if (! empty($variants)) {
+            $mainBranch = \App\Models\Branch::where('is_main', true)->first();
+            
+            foreach ($variants as $index => $variantData) {
+                $variant = $product->variants()->create($variantData);
+
+                if (! empty($initialStock)) {
+                    $stockQuantity = $initialStock[$index]['quantity'] ?? 0;
+                    if ($stockQuantity > 0 && $mainBranch) {
+                        \App\Models\Inventory::create([
+                            'branch_id' => $mainBranch->id,
+                            'product_variant_id' => $variant->id,
+                            'quantity' => $stockQuantity,
+                            'min_quantity' => 0,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $product->load(['category', 'supplier', 'variants.inventories']);
 
         return response()->json(new ProductResource($product), 201);
     }
@@ -50,7 +76,7 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $product->load(['category', 'supplier', 'variants']);
+        $product->load(['category', 'supplier', 'variants.inventories']);
 
         return response()->json(new ProductResource($product));
     }
@@ -60,8 +86,34 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        $product->update($request->validated());
-        $product->load(['category', 'supplier', 'variants']);
+        $data = $request->validated();
+        $variants = $data['variants'] ?? [];
+        unset($data['variants']);
+
+        $product->update($data);
+
+        if (isset($variants)) {
+            $existingVariantIds = $product->variants()->pluck('id')->toArray();
+            $submittedVariantIds = [];
+
+            foreach ($variants as $variantData) {
+                if (isset($variantData['id']) && in_array($variantData['id'], $existingVariantIds)) {
+                    $variant = $product->variants()->find($variantData['id']);
+                    $variant->update($variantData);
+                    $submittedVariantIds[] = $variantData['id'];
+                } else {
+                    $newVariant = $product->variants()->create($variantData);
+                    $submittedVariantIds[] = $newVariant->id;
+                }
+            }
+
+            $variantsToDelete = array_diff($existingVariantIds, $submittedVariantIds);
+            if (! empty($variantsToDelete)) {
+                $product->variants()->whereIn('id', $variantsToDelete)->delete();
+            }
+        }
+
+        $product->load(['category', 'supplier', 'variants.inventories']);
 
         return response()->json(new ProductResource($product));
     }
