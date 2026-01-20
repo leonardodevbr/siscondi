@@ -86,14 +86,10 @@
         </div>
 
         <div>
-          <label class="flex items-center">
-            <input
-              v-model="form.active"
-              type="checkbox"
-              class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span class="ml-2 text-sm text-slate-700">Ativo</span>
-          </label>
+          <Toggle
+            v-model="form.active"
+            label="Fornecedor Ativo"
+          />
         </div>
 
         <div class="flex justify-end gap-2 pt-4">
@@ -123,11 +119,13 @@ import { ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useSupplierStore } from '@/stores/supplier';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
+import Toggle from '@/components/Common/Toggle.vue';
 
 export default {
   name: 'SupplierForm',
   components: {
     XMarkIcon,
+    Toggle,
   },
   props: {
     supplier: {
@@ -160,7 +158,7 @@ export default {
             cnpj: supplier.cnpj || '',
             email: supplier.email || '',
             phone: supplier.phone || '',
-            active: supplier.active !== undefined ? supplier.active : true,
+            active: Boolean(supplier.active !== undefined ? supplier.active : true),
           };
         } else {
           form.value = {
@@ -207,6 +205,7 @@ export default {
           ...form.value,
           cnpj: form.value.cnpj.replace(/\D/g, ''),
           phone: form.value.phone.replace(/\D/g, ''),
+          active: Boolean(form.value.active),
         };
 
         if (props.supplier) {

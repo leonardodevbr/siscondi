@@ -11,16 +11,17 @@
       :placeholder="placeholder"
       :disabled="disabled"
       :close-on-select="closeOnSelect"
-      :classes="multiselectClasses"
-      @update:model-value="$emit('update:modelValue', $event)"
+      :can-clear="true"
+      @update:model-value="handleUpdate"
     />
   </div>
 </template>
 
 <script>
+import { defineComponent } from 'vue';
 import Multiselect from '@vueform/multiselect';
 
-export default {
+export default defineComponent({
   name: 'SelectInput',
   components: {
     Multiselect,
@@ -60,58 +61,16 @@ export default {
     },
   },
   emits: ['update:modelValue'],
-  computed: {
-    multiselectClasses() {
-      return {
-        container: 'multiselect-container',
-        containerActive: 'multiselect-container-active',
-        containerDisabled: 'multiselect-container-disabled',
-        containerOpen: 'multiselect-container-open',
-        containerOpenTop: 'multiselect-container-open-top',
-        containerActiveTop: 'multiselect-container-active-top',
-        singleLabel: 'multiselect-single-label',
-        multipleLabel: 'multiselect-multiple-label',
-        search: 'multiselect-search',
-        tags: 'multiselect-tags',
-        tagsSearch: 'multiselect-tags-search',
-        tag: 'multiselect-tag',
-        tagDisabled: 'multiselect-tag-disabled',
-        tagRemove: 'multiselect-tag-remove',
-        tagRemoveIcon: 'multiselect-tag-remove-icon',
-        tagsSearchWrapper: 'multiselect-tags-search-wrapper',
-        tagsSearchCount: 'multiselect-tags-search-count',
-        placeholder: 'multiselect-placeholder',
-        caret: 'multiselect-caret',
-        caretOpen: 'multiselect-caret-open',
-        clear: 'multiselect-clear',
-        clearIcon: 'multiselect-clear-icon',
-        spinner: 'multiselect-spinner',
-        dropdown: 'multiselect-dropdown',
-        dropdownTop: 'multiselect-dropdown-top',
-        dropdownHidden: 'multiselect-dropdown-hidden',
-        options: 'multiselect-options',
-        optionsTop: 'multiselect-options-top',
-        group: 'multiselect-group',
-        groupLabel: 'multiselect-group-label',
-        groupLabelPointable: 'multiselect-group-label-pointable',
-        groupLabelPointed: 'multiselect-group-label-pointed',
-        groupLabelSelected: 'multiselect-group-label-selected',
-        groupLabelDisabled: 'multiselect-group-label-disabled',
-        groupOptions: 'multiselect-group-options',
-        option: 'multiselect-option',
-        optionPointed: 'multiselect-option-pointed',
-        optionSelected: 'multiselect-option-selected',
-        optionDisabled: 'multiselect-option-disabled',
-        optionSelectedPointed: 'multiselect-option-selected-pointed',
-        optionSelectedDisabled: 'multiselect-option-selected-disabled',
-        noOptions: 'multiselect-no-options',
-        noResults: 'multiselect-no-results',
-        fakeInput: 'multiselect-fake-input',
-        spacer: 'multiselect-spacer',
-      };
-    },
+  setup(props, { emit }) {
+    const handleUpdate = (value) => {
+      emit('update:modelValue', value);
+    };
+
+    return {
+      handleUpdate,
+    };
   },
-};
+});
 </script>
 
 <style scoped>
@@ -126,19 +85,37 @@ export default {
 
 :deep(.multiselect-container .multiselect-single-label),
 :deep(.multiselect-container .multiselect-placeholder) {
-  @apply px-3 py-2 border border-slate-300 rounded;
+  @apply px-3 py-2 border border-slate-300 rounded text-sm;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
 }
 
 :deep(.multiselect-container .multiselect-search) {
-  @apply px-3 py-2 text-sm;
+  @apply px-3 py-2 text-sm border-0 outline-none;
+  width: 100%;
+}
+
+:deep(.multiselect-container-open .multiselect-search) {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+:deep(.multiselect-container .multiselect-single-label .multiselect-search) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 
 :deep(.multiselect-dropdown) {
-  @apply border border-slate-300 rounded-lg shadow-lg bg-white mt-1 z-50;
+  @apply border border-slate-300 rounded-lg bg-white mt-1 z-50;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 :deep(.multiselect-option) {
-  @apply px-3 py-2 text-sm text-slate-900;
+  @apply px-3 py-2 text-sm text-slate-900 cursor-pointer;
 }
 
 :deep(.multiselect-option:hover) {
