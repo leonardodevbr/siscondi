@@ -18,15 +18,29 @@ class StockMovementResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'product' => [
-                'id' => $this->product->id,
-                'name' => $this->product->name,
-                'sku' => $this->product->sku,
-            ],
-            'user' => [
-                'id' => $this->user->id,
-                'name' => $this->user->name,
-            ],
+            'product_variant' => $this->whenLoaded('productVariant', function () {
+                return [
+                    'id' => $this->productVariant->id,
+                    'sku' => $this->productVariant->sku,
+                    'description_full' => $this->productVariant->description_full,
+                    'product' => [
+                        'id' => $this->productVariant->product->id,
+                        'name' => $this->productVariant->product->name,
+                    ],
+                ];
+            }),
+            'branch' => $this->whenLoaded('branch', function () {
+                return [
+                    'id' => $this->branch->id,
+                    'name' => $this->branch->name,
+                ];
+            }),
+            'user' => $this->whenLoaded('user', function () {
+                return [
+                    'id' => $this->user->id,
+                    'name' => $this->user->name,
+                ];
+            }),
             'type' => $this->type->value,
             'quantity' => $this->quantity,
             'reason' => $this->reason,

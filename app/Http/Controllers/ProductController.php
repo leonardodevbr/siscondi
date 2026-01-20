@@ -20,7 +20,7 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $query = Product::query()->with(['category', 'supplier']);
+        $query = Product::query()->with(['category', 'supplier', 'variants']);
 
         if ($request->has('search')) {
             $search = $request->string('search');
@@ -38,7 +38,7 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): JsonResponse
     {
         $product = Product::create($request->validated());
-        $product->load(['category', 'supplier']);
+        $product->load(['category', 'supplier', 'variants']);
 
         return response()->json(new ProductResource($product), 201);
     }
@@ -50,7 +50,7 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $product->load(['category', 'supplier']);
+        $product->load(['category', 'supplier', 'variants']);
 
         return response()->json(new ProductResource($product));
     }
@@ -61,7 +61,7 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
         $product->update($request->validated());
-        $product->load(['category', 'supplier']);
+        $product->load(['category', 'supplier', 'variants']);
 
         return response()->json(new ProductResource($product));
     }

@@ -222,7 +222,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"category_id\": 1,\n    \"supplier_id\": null,\n    \"name\": \"Produto Teste\",\n    \"description\": \"Descrição do produto\",\n    \"sku\": \"SKU-001\",\n    \"barcode\": \"1234567890123\",\n    \"cost_price\": 10.00,\n    \"sell_price\": 20.00,\n    \"stock_quantity\": 100,\n    \"min_stock_quantity\": 10\n}",
+							"raw": "{\n    \"category_id\": 1,\n    \"supplier_id\": null,\n    \"name\": \"Camiseta Básica\",\n    \"description\": \"Camiseta básica de algodão\",\n    \"cost_price\": 10.00,\n    \"sell_price\": 20.00,\n    \"promotional_price\": null,\n    \"promotional_expires_at\": null\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -233,7 +233,8 @@
 							"raw": "{{baseUrl}}/products",
 							"host": ["{{baseUrl}}"],
 							"path": ["products"]
-						}
+						},
+						"description": "Cria um produto base. As variações (SKU, código de barras, estoque) devem ser criadas separadamente através das variantes do produto."
 					}
 				},
 				{
@@ -266,7 +267,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Produto Atualizado\",\n    \"sell_price\": 25.00,\n    \"stock_quantity\": 150\n}",
+							"raw": "{\n    \"name\": \"Camiseta Básica Atualizada\",\n    \"sell_price\": 25.00,\n    \"promotional_price\": 22.50,\n    \"promotional_expires_at\": \"2025-12-31\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -460,6 +461,125 @@
 			]
 		},
 		{
+			"name": "Branches",
+			"item": [
+				{
+					"name": "Listar Filiais",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/branches?search=",
+							"host": ["{{baseUrl}}"],
+							"path": ["branches"],
+							"query": [
+								{
+									"key": "search",
+									"value": "",
+									"description": "Buscar por nome"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Criar Filial",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Filial Shopping Center\",\n    \"is_main\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/branches",
+							"host": ["{{baseUrl}}"],
+							"path": ["branches"]
+						}
+					}
+				},
+				{
+					"name": "Visualizar Filial",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/branches/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["branches", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Atualizar Filial",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Filial Shopping Center Atualizada\",\n    \"is_main\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/branches/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["branches", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Deletar Filial",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/branches/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["branches", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Não é possível deletar a filial principal (is_main = true)."
+					}
+				}
+			]
+		},
+		{
 			"name": "Suppliers",
 			"item": [
 				{
@@ -621,7 +741,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"customer_id\": null,\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 2\n        },\n        {\n            \"product_id\": 2,\n            \"quantity\": 1\n        }\n    ],\n    \"payments\": [\n        {\n            \"method\": \"pix\",\n            \"amount\": 100.00,\n            \"installments\": 1\n        }\n    ],\n    \"discount_type\": \"fixed\",\n    \"discount_value\": 10.00,\n    \"discount_amount\": 10.00,\n    \"coupon_code\": \"PROMO10\",\n    \"note\": \"Cliente preferencial\"\n}",
+							"raw": "{\n    \"branch_id\": 1,\n    \"customer_id\": null,\n    \"items\": [\n        {\n            \"product_variant_id\": 1,\n            \"quantity\": 2\n        },\n        {\n            \"product_variant_id\": 2,\n            \"quantity\": 1\n        }\n    ],\n    \"payments\": [\n        {\n            \"method\": \"pix\",\n            \"amount\": 100.00,\n            \"installments\": 1\n        }\n    ],\n    \"discount_type\": \"fixed\",\n    \"discount_value\": 10.00,\n    \"discount_amount\": 10.00,\n    \"coupon_code\": \"PROMO10\",\n    \"note\": \"Cliente preferencial\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -632,7 +752,8 @@
 							"raw": "{{baseUrl}}/sales",
 							"host": ["{{baseUrl}}"],
 							"path": ["sales"]
-						}
+						},
+						"description": "Cria uma venda. Os itens devem usar product_variant_id (não product_id). O branch_id é obrigatório para identificar a filial onde a venda está sendo realizada."
 					}
 				},
 				{
@@ -720,7 +841,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"supplier_id\": 1,\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 50,\n            \"cost_price\": 15.00\n        },\n        {\n            \"product_id\": 2,\n            \"quantity\": 30,\n            \"cost_price\": 20.00\n        }\n    ],\n    \"reason\": \"Nota Fiscal 123\"\n}",
+							"raw": "{\n    \"branch_id\": 1,\n    \"supplier_id\": 1,\n    \"items\": [\n        {\n            \"product_variant_id\": 1,\n            \"quantity\": 50,\n            \"cost_price\": 15.00\n        },\n        {\n            \"product_variant_id\": 2,\n            \"quantity\": 30,\n            \"cost_price\": 20.00\n        }\n    ],\n    \"reason\": \"Nota Fiscal 123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -731,7 +852,8 @@
 							"raw": "{{baseUrl}}/stock/entries",
 							"host": ["{{baseUrl}}"],
 							"path": ["stock", "entries"]
-						}
+						},
+						"description": "Registra entrada de estoque. Os itens devem usar product_variant_id (não product_id). O branch_id é obrigatório para identificar a filial onde o estoque está sendo adicionado."
 					}
 				},
 				{
@@ -749,7 +871,8 @@
 									"value": "1"
 								}
 							]
-						}
+						},
+						"description": "Retorna todas as movimentações de estoque de todas as variantes de um produto. As movimentações incluem informações sobre a variante, filial e usuário responsável."
 					}
 				}
 			]
