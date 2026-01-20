@@ -138,6 +138,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useCustomerStore } from '@/stores/customer';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { useAlert } from '@/composables/useAlert';
 import CustomerForm from './Form.vue';
 
 let searchTimeout = null;
@@ -151,6 +152,7 @@ export default {
   },
   setup() {
     const toast = useToast();
+    const { confirm } = useAlert();
     const customerStore = useCustomerStore();
     const searchQuery = ref('');
     const showFormModal = ref(false);
@@ -185,7 +187,12 @@ export default {
     };
 
     const deleteCustomer = async (customer) => {
-      if (!confirm(`Tem certeza que deseja excluir o cliente "${customer.name}"?`)) {
+      const confirmed = await confirm(
+        'Excluir Cliente',
+        `Tem certeza que deseja excluir o cliente "${customer.name}"? Esta ação não pode ser desfeita.`
+      );
+
+      if (!confirmed) {
         return;
       }
 

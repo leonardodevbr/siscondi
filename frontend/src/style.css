@@ -34,3 +34,27 @@
 .Vue-Toastification__toast {
   z-index: 99999 !important;
 }
+
+/* SweetAlert2 Custom Styles */
+.swal2-popup {
+  @apply rounded-xl;
+}
+
+.swal2-actions {
+  @apply gap-2 !important;
+  margin-top: 1.5rem !important;
+}
+
+.swal2-confirm {
+  @apply bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  margin-left: 0.5rem !important;
+}
+
+.swal2-confirm.swal2-confirm--red {
+  @apply bg-red-600 hover:bg-red-700 focus:ring-red-500;
+}
+
+.swal2-cancel {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2;
+  margin-right: 0.5rem !important;
+}

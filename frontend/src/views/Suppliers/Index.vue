@@ -151,6 +151,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useSupplierStore } from '@/stores/supplier';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { useAlert } from '@/composables/useAlert';
 import SupplierForm from './Form.vue';
 
 let searchTimeout = null;
@@ -164,6 +165,7 @@ export default {
   },
   setup() {
     const toast = useToast();
+    const { confirm } = useAlert();
     const supplierStore = useSupplierStore();
     const searchQuery = ref('');
     const showFormModal = ref(false);
@@ -198,7 +200,12 @@ export default {
     };
 
     const deleteSupplier = async (supplier) => {
-      if (!confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
+      const confirmed = await confirm(
+        'Excluir Fornecedor',
+        `Tem certeza que deseja excluir o fornecedor "${supplier.name}"? Esta ação não pode ser desfeita.`
+      );
+
+      if (!confirmed) {
         return;
       }
 

@@ -201,6 +201,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { PencilSquareIcon, TrashIcon, PhotoIcon } from '@heroicons/vue/24/outline';
+import { useAlert } from '@/composables/useAlert';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -215,6 +216,7 @@ export default {
   setup() {
     const router = useRouter();
     const toast = useToast();
+    const { confirm } = useAlert();
     const productStore = useProductStore();
     const fileInput = ref(null);
     const categories = ref([]);
@@ -263,7 +265,12 @@ export default {
     };
 
     const deleteProduct = async (product) => {
-      if (!confirm(`Tem certeza que deseja excluir o produto "${product.name}"?`)) {
+      const confirmed = await confirm(
+        'Excluir Produto',
+        `Tem certeza que deseja excluir o produto "${product.name}"? Esta ação não pode ser desfeita.`
+      );
+
+      if (!confirmed) {
         return;
       }
 

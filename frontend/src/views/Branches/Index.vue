@@ -147,6 +147,7 @@
 
 <script>
 import api from '@/services/api';
+import { useAlert } from '@/composables/useAlert';
 
 export default {
   name: 'BranchesIndex',
@@ -209,7 +210,13 @@ export default {
       }
     },
     async deleteBranch(branch) {
-      if (!confirm(`Tem certeza que deseja excluir a filial "${branch.name}"?`)) {
+      const { confirm } = useAlert();
+      const confirmed = await confirm(
+        'Excluir Filial',
+        `Tem certeza que deseja excluir a filial "${branch.name}"? Esta ação não pode ser desfeita.`
+      );
+
+      if (!confirmed) {
         return;
       }
 

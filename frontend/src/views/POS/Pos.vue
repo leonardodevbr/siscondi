@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
 import { useToast } from 'vue-toastification';
+import { useAlert } from '@/composables/useAlert';
 import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
@@ -14,6 +15,7 @@ const router = useRouter();
 const cashRegisterStore = useCashRegisterStore();
 const cartStore = useCartStore();
 const toast = useToast();
+const { confirm } = useAlert();
 
 const showOpenModal = ref(false);
 const initialBalance = ref('');
@@ -205,12 +207,19 @@ async function handleFinalizeSale() {
   }
 }
 
-function handleCancelSale() {
+async function handleCancelSale() {
   if (cartStore.items.length === 0) {
     return;
   }
 
-  if (confirm('Deseja realmente cancelar esta venda?')) {
+  const confirmed = await confirm(
+    'Cancelar Venda',
+    'Deseja realmente cancelar esta venda? Todos os itens serão removidos do carrinho.',
+    'Sim, cancelar',
+    'blue'
+  );
+
+  if (confirmed) {
     cartStore.clearCart();
     toast.info('Venda cancelada.');
   }
