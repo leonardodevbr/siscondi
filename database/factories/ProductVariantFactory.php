@@ -27,9 +27,7 @@ class ProductVariantFactory extends Factory
         return [
             'product_id' => Product::factory(),
             'sku' => strtoupper(fake()->unique()->bothify('VAR-#####')),
-            'barcode' => fake()->boolean(70)
-                ? fake()->unique()->numerify('#############')
-                : null,
+            'barcode' => fake()->ean13(),
             'price' => fake()->boolean(30)
                 ? fake()->randomFloat(2, 10, 1000)
                 : null,

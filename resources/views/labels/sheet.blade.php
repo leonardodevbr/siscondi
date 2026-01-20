@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiquetas A4 - Pimaco 6180</title>
+    <title>Etiquetas Pimaco 6180 - Carta</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         @page {
-            size: A4 portrait;
+            size: letter portrait;
             margin: 12mm 4mm;
         }
 
@@ -40,6 +40,15 @@
             text-align: center;
             page-break-inside: avoid;
             border: 1px dotted #ccc;
+        }
+
+        .store-name {
+            font-size: 6pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #333;
+            margin-bottom: 0.5mm;
+            letter-spacing: 0.5px;
         }
 
         .product-name {
@@ -106,6 +115,7 @@
                     @for($col = 0; $col < $labelsPerRow && $currentIndex < $totalLabels; $col++)
                         <td>
                             @php $label = $labelsArray[$currentIndex]; $currentIndex++; @endphp
+                            <div class="store-name">{{ $storeName }}</div>
                             <div class="product-name">{{ Str::limit($label['product_name'], 35) }}</div>
                             @if(!empty($label['variant_description']))
                                 <div class="variant-description">{{ Str::limit($label['variant_description'], 40) }}</div>

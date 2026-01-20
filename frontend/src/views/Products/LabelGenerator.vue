@@ -106,7 +106,7 @@
                 class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="thermal">Térmica (40mm x 40mm)</option>
-                <option value="a4">A4 - Pimaco 6180 (3x10)</option>
+                <option value="a4">Folha (Pimaco 6180 / Carta)</option>
               </select>
             </div>
 

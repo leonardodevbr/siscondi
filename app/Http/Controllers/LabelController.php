@@ -64,10 +64,13 @@ class LabelController extends Controller
             }
         }
 
-        $view = $layout === 'thermal' ? 'labels.thermal' : 'labels.a4';
+        $storeName = config('app.name', 'Loja');
+        
+        $view = $layout === 'thermal' ? 'labels.thermal' : 'labels.sheet';
         
         $pdf = Pdf::loadView($view, [
             'labels' => $labelData,
+            'storeName' => $storeName,
         ]);
 
         if ($layout === 'thermal') {
@@ -78,7 +81,7 @@ class LabelController extends Controller
             $pdf->setOption('margin-right', 0);
             $pdf->setOption('enable-local-file-access', true);
         } else {
-            $pdf->setPaper('a4', 'portrait');
+            $pdf->setPaper('letter', 'portrait');
             $pdf->setOption('margin-top', 12);
             $pdf->setOption('margin-bottom', 12);
             $pdf->setOption('margin-left', 4);
