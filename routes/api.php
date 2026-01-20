@@ -17,3 +17,4 @@ require __DIR__.'/api/reports.php';
 require __DIR__.'/api/pix.php';
 require __DIR__.'/api/expenses.php';
 require __DIR__.'/api/coupons.php';
+require __DIR__.'/api/settings.php';
