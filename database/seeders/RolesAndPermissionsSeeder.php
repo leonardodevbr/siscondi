@@ -29,6 +29,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'financial.view',
             'financial.manage',
             'reports.view',
+            'marketing.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -66,6 +67,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'users.view',
             'users.create',
+            'marketing.manage',
         ]);
 
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);

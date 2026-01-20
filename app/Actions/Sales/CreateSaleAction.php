@@ -12,6 +12,7 @@ use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Exceptions\NoOpenCashRegisterException;
 use App\Models\CashRegister;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockMovement;
@@ -53,6 +54,14 @@ class CreateSaleAction
             $totalAmount = $this->calculateTotalAmount($items, $products);
             $discountAmount = $this->calculateDiscount($totalAmount, $data);
             $finalAmount = $totalAmount - $discountAmount;
+
+            $coupon = $this->validateAndApplyCoupon($data, $totalAmount);
+            if ($coupon) {
+                $couponDiscount = $coupon->calculateDiscount($totalAmount);
+                $discountAmount = $couponDiscount;
+                $finalAmount = $totalAmount - $discountAmount;
+                $coupon->incrementUsage();
+            }
 
             $hasPixPayment = collect($payments)->contains(fn (array $payment) => 
                 PaymentMethod::from($payment['method']) === PaymentMethod::PIX
@@ -235,5 +244,29 @@ class CreateSaleAction
                 'sale_id' => $sale->id,
             ]);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function validateAndApplyCoupon(array $data, float $totalAmount): ?Coupon
+    {
+        $couponCode = $data['coupon_code'] ?? null;
+
+        if (! $couponCode) {
+            return null;
+        }
+
+        $coupon = Coupon::where('code', strtoupper($couponCode))->first();
+
+        if (! $coupon) {
+            throw new \InvalidArgumentException("Coupon code '{$couponCode}' not found.");
+        }
+
+        if (! $coupon->isValid($totalAmount)) {
+            throw new \InvalidArgumentException("Coupon code '{$couponCode}' is not valid or has expired.");
+        }
+
+        return $coupon;
     }
 }
