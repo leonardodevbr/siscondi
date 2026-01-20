@@ -270,14 +270,14 @@ onMounted(async () => {
           @keyup.enter="handleOpenRegister"
         />
 
-        <div class="flex justify-end gap-3 pt-2">
+        <div class="flex justify-between w-full pt-2">
           <button
             type="button"
             :disabled="cashRegisterStore.loading"
             class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
             @click="handleCancelAndGoBack"
           >
-            Cancelar e Voltar
+            Cancelar
           </button>
           <button
             type="button"
