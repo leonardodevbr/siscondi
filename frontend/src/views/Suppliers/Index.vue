@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-slate-800">Fornecedores</h2>
         <p class="text-xs text-slate-500">
@@ -9,13 +9,13 @@
       </div>
       <button
         @click="showFormModal = true; editingSupplier = null"
-        class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+        class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors w-full md:w-auto"
       >
         Novo Fornecedor
       </button>
     </div>
 
-    <div class="card">
+    <div class="card p-4 sm:p-6">
       <div class="mb-4">
         <input
           v-model="searchQuery"
@@ -34,51 +34,51 @@
         <p class="text-slate-500">Nenhum fornecedor encontrado</p>
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Nome Fantasia
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Razão Social
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 CNPJ
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Telefone
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Status
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
                 Ações
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="supplier in supplierStore.suppliers" :key="supplier.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-slate-900">
+              <td class="px-4 sm:px-6 py-4">
+                <div class="text-sm font-medium text-slate-900 truncate max-w-xs">
                   {{ supplier.trade_name || '-' }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-slate-900">{{ supplier.name }}</div>
+              <td class="px-4 sm:px-6 py-4">
+                <div class="text-sm text-slate-900 truncate max-w-xs">{{ supplier.name }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ formatCnpj(supplier.cnpj) }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ formatPhone(supplier.phone) || '-' }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <span
                   :class="[
                     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
@@ -90,28 +90,30 @@
                   {{ supplier.active ? 'Ativo' : 'Inativo' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="editSupplier(supplier)"
-                  class="text-blue-600 hover:text-blue-900 mr-4"
-                  title="Editar"
-                >
-                  <PencilIcon class="h-5 w-5 inline" />
-                </button>
-                <button
-                  @click="deleteSupplier(supplier)"
-                  class="text-red-600 hover:text-red-900"
-                  title="Excluir"
-                >
-                  <TrashIcon class="h-5 w-5 inline" />
-                </button>
+              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="editSupplier(supplier)"
+                    class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                    title="Editar"
+                  >
+                    <PencilSquareIcon class="h-5 w-5" />
+                  </button>
+                  <button
+                    @click="deleteSupplier(supplier)"
+                    class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Excluir"
+                  >
+                    <TrashIcon class="h-5 w-5" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-if="supplierStore.pagination" class="mt-4 flex items-center justify-between">
+      <div v-if="supplierStore.pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-sm text-slate-500">
           Mostrando {{ supplierStore.pagination.from }} a {{ supplierStore.pagination.to }} de
           {{ supplierStore.pagination.total }} resultados
@@ -148,7 +150,7 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useSupplierStore } from '@/stores/supplier';
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import SupplierForm from './Form.vue';
 
 let searchTimeout = null;
@@ -157,7 +159,7 @@ export default {
   name: 'SuppliersIndex',
   components: {
     SupplierForm,
-    PencilIcon,
+    PencilSquareIcon,
     TrashIcon,
   },
   setup() {

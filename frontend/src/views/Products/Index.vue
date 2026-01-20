@@ -1,35 +1,35 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-slate-800">Produtos</h2>
         <p class="text-xs text-slate-500">
           Gerencie produtos, variações e estoque
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
         <button
           @click="handleImport"
-          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors"
+          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors w-full sm:w-auto"
         >
           Importar Excel
         </button>
         <router-link
           :to="{ name: 'products.labels' }"
-          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors"
+          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors text-center w-full sm:w-auto"
         >
           Gerar Etiquetas
         </router-link>
         <button
           @click="$router.push({ name: 'products.form' })"
-          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
         >
           Novo Produto
         </button>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card p-4 sm:p-6">
       <div class="mb-4 flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <input
@@ -66,78 +66,102 @@
         <p class="text-slate-500">Nenhum produto encontrado</p>
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Imagem
+              </th>
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Nome
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Categoria
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Preço Base
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Total em Estoque
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Variações
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
                 Ações
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="product in productStore.products" :key="product.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-slate-900">{{ product.name }}</div>
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                <div
+                  class="h-10 w-10 sm:h-12 sm:w-12 rounded overflow-hidden bg-slate-100 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform"
+                  @click="showImagePreview(getProductImage(product))"
+                  :title="product.name"
+                >
+                  <img
+                    v-if="getProductImage(product)"
+                    :src="getProductImage(product)"
+                    :alt="product.name"
+                    class="h-full w-full object-cover"
+                  />
+                  <PhotoIcon v-else class="h-6 w-6 text-slate-400" />
+                </div>
+              </td>
+              <td class="px-4 sm:px-6 py-4">
+                <div class="text-sm font-medium text-slate-900 truncate max-w-xs">
+                  {{ product.name }}
+                </div>
                 <div v-if="product.description" class="text-xs text-slate-500 truncate max-w-xs">
                   {{ product.description }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-slate-900">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-slate-900 truncate max-w-xs">
                   {{ product.category?.name || '-' }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-slate-900">
                   R$ {{ formatPrice(product.sell_price) }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ getTotalStock(product) }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ product.variants?.length || 0 }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="editProduct(product.id)"
-                  class="text-blue-600 hover:text-blue-900 mr-4"
-                >
-                  Editar
-                </button>
-                <button
-                  @click="deleteProduct(product)"
-                  class="text-red-600 hover:text-red-900"
-                >
-                  Excluir
-                </button>
+              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="editProduct(product.id)"
+                    class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                    title="Editar"
+                  >
+                    <PencilSquareIcon class="h-5 w-5" />
+                  </button>
+                  <button
+                    @click="deleteProduct(product)"
+                    class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Excluir"
+                  >
+                    <TrashIcon class="h-5 w-5" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-if="productStore.pagination" class="mt-4 flex items-center justify-between">
+      <div v-if="productStore.pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-sm text-slate-500">
           Mostrando {{ productStore.pagination.from }} a {{ productStore.pagination.to }} de
           {{ productStore.pagination.total }} resultados
@@ -176,12 +200,18 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
+import { PencilSquareIcon, TrashIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 import api from '@/services/api';
 
 let searchTimeout = null;
 
 export default {
   name: 'ProductsIndex',
+  components: {
+    PencilSquareIcon,
+    TrashIcon,
+    PhotoIcon,
+  },
   setup() {
     const router = useRouter();
     const toast = useToast();
@@ -229,7 +259,7 @@ export default {
     };
 
     const editProduct = (id) => {
-      router.push({ name: 'products.form', params: { id } });
+      router.push({ name: 'products.form.edit', params: { id } });
     };
 
     const deleteProduct = async (product) => {
@@ -283,6 +313,31 @@ export default {
       });
     };
 
+    const getProductImage = (product) => {
+      if (product.variants && product.variants.length > 0) {
+        const variantWithImage = product.variants.find((v) => v.image);
+        if (variantWithImage) {
+          return variantWithImage.image;
+        }
+      }
+      return null;
+    };
+
+    const showImagePreview = (imageUrl) => {
+      if (!imageUrl) return;
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head><title>Preview</title></head>
+            <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f3f4f6;">
+              <img src="${imageUrl}" style="max-width:90%;max-height:90%;object-fit:contain;" />
+            </body>
+          </html>
+        `);
+      }
+    };
+
     onMounted(() => {
       loadProducts();
       loadCategories();
@@ -302,6 +357,8 @@ export default {
       handleFileSelect,
       getTotalStock,
       formatPrice,
+      getProductImage,
+      showImagePreview,
     };
   },
 };

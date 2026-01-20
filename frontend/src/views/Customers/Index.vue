@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-slate-800">Clientes</h2>
         <p class="text-xs text-slate-500">
@@ -9,13 +9,13 @@
       </div>
       <button
         @click="showFormModal = true; editingCustomer = null"
-        class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+        class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors w-full md:w-auto"
       >
         Novo Cliente
       </button>
     </div>
 
-    <div class="card">
+    <div class="card p-4 sm:p-6">
       <div class="mb-4">
         <input
           v-model="searchQuery"
@@ -34,69 +34,73 @@
         <p class="text-slate-500">Nenhum cliente encontrado</p>
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Nome
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 CPF/CNPJ
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Email
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Telefone
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
                 Ações
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="customer in customerStore.customers" :key="customer.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-slate-900">{{ customer.name }}</div>
+              <td class="px-4 sm:px-6 py-4">
+                <div class="text-sm font-medium text-slate-900 truncate max-w-xs">
+                  {{ customer.name }}
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ formatCpfCnpj(customer.cpf_cnpj) }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-slate-900">
+              <td class="px-4 sm:px-6 py-4">
+                <div class="text-sm text-slate-900 truncate max-w-xs">
                   {{ customer.email || '-' }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ formatPhone(customer.phone) || '-' }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="editCustomer(customer)"
-                  class="text-blue-600 hover:text-blue-900 mr-4"
-                  title="Editar"
-                >
-                  <PencilIcon class="h-5 w-5 inline" />
-                </button>
-                <button
-                  @click="deleteCustomer(customer)"
-                  class="text-red-600 hover:text-red-900"
-                  title="Excluir"
-                >
-                  <TrashIcon class="h-5 w-5 inline" />
-                </button>
+              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-4px_0px_6px_-2px_rgba(0,0,0,0.1)]">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="editCustomer(customer)"
+                    class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                    title="Editar"
+                  >
+                    <PencilSquareIcon class="h-5 w-5" />
+                  </button>
+                  <button
+                    @click="deleteCustomer(customer)"
+                    class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Excluir"
+                  >
+                    <TrashIcon class="h-5 w-5" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-if="customerStore.pagination" class="mt-4 flex items-center justify-between">
+      <div v-if="customerStore.pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-sm text-slate-500">
           Mostrando {{ customerStore.pagination.from }} a {{ customerStore.pagination.to }} de
           {{ customerStore.pagination.total }} resultados
@@ -133,7 +137,7 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useCustomerStore } from '@/stores/customer';
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import CustomerForm from './Form.vue';
 
 let searchTimeout = null;
@@ -142,7 +146,7 @@ export default {
   name: 'CustomersIndex',
   components: {
     CustomerForm,
-    PencilIcon,
+    PencilSquareIcon,
     TrashIcon,
   },
   setup() {

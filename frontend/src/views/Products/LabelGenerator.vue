@@ -11,7 +11,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2">
-        <div class="card">
+        <div class="card p-4 sm:p-6">
           <h3 class="text-md font-semibold text-slate-800 mb-4">Seleção de Produtos</h3>
 
           <div v-if="loading" class="text-center py-8">
@@ -72,7 +72,7 @@
       </div>
 
       <div class="lg:col-span-1">
-        <div class="card sticky top-4">
+        <div class="card sticky top-4 p-4 sm:p-6">
           <h3 class="text-md font-semibold text-slate-800 mb-4">Carrinho de Impressão</h3>
 
           <div v-if="cartItems.length === 0" class="text-sm text-slate-500 py-4">

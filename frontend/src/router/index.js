@@ -61,7 +61,7 @@ const routes = [
       },
       {
         path: 'products/:id/edit',
-        name: 'products.form',
+        name: 'products.form.edit',
         component: ProductForm,
       },
       {
