@@ -7,6 +7,9 @@ namespace App\Imports;
 use App\Models\Category;
 use App\Models\ImportBatch;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Branch;
+use App\Models\Inventory;
 use App\Models\Supplier;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
@@ -45,20 +48,20 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEm
         $supplierName = trim((string) ($row['supplier'] ?? ''));
         if (! empty($supplierName)) {
             $supplier = Supplier::where('name', $supplierName)->first();
-            
+
             if (! $supplier) {
                 $cnpjBase = abs(crc32($supplierName));
-                $cnpj = '00.' . str_pad((string) ($cnpjBase % 1000), 3, '0', STR_PAD_LEFT) . 
-                        '.' . str_pad((string) (($cnpjBase / 1000) % 1000), 3, '0', STR_PAD_LEFT) . 
+                $cnpj = '00.' . str_pad((string) ($cnpjBase % 1000), 3, '0', STR_PAD_LEFT) .
+                        '.' . str_pad((string) (($cnpjBase / 1000) % 1000), 3, '0', STR_PAD_LEFT) .
                         '/0001-' . str_pad((string) ($cnpjBase % 100), 2, '0', STR_PAD_LEFT);
-                
+
                 while (Supplier::where('cnpj', $cnpj)->exists()) {
                     $cnpjBase++;
-                    $cnpj = '00.' . str_pad((string) ($cnpjBase % 1000), 3, '0', STR_PAD_LEFT) . 
-                            '.' . str_pad((string) (($cnpjBase / 1000) % 1000), 3, '0', STR_PAD_LEFT) . 
+                    $cnpj = '00.' . str_pad((string) ($cnpjBase % 1000), 3, '0', STR_PAD_LEFT) .
+                            '.' . str_pad((string) (($cnpjBase / 1000) % 1000), 3, '0', STR_PAD_LEFT) .
                             '/0001-' . str_pad((string) ($cnpjBase % 100), 2, '0', STR_PAD_LEFT);
                 }
-                
+
                 $supplier = Supplier::create([
                     'name' => $supplierName,
                     'trade_name' => $supplierName,
@@ -73,23 +76,64 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation, SkipsEm
         $costPriceValue = $row['cost_price'] ?? 0;
         $sellPriceValue = $row['sell_price'] ?? 0;
         $stockQuantityValue = $row['stock_quantity'] ?? 0;
-        $minStockQuantityValue = $row['min_stock_quantity'] ?? 0;
 
         $costPrice = is_numeric($costPriceValue) ? (float) $costPriceValue : 0.0;
         $sellPrice = is_numeric($sellPriceValue) ? (float) $sellPriceValue : 0.0;
         $stockQuantity = is_numeric($stockQuantityValue) ? (int) $stockQuantityValue : 0;
-        $minStockQuantity = is_numeric($minStockQuantityValue) ? (int) $minStockQuantityValue : 0;
 
-        $product = Product::updateOrCreate(
-            ['sku' => $sku],
-            [
+        $mainBranch = Branch::where('is_main', true)->first()
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
+
+        $existingVariant = ProductVariant::where('sku', $sku)->first();
+
+        if ($existingVariant) {
+            $product = $existingVariant->product;
+
+            $product->update([
                 'category_id' => $category->id,
                 'supplier_id' => $supplier?->id,
-                'name' => trim((string) ($row['name'] ?? '')),
+                'name' => trim((string) ($row['name'] ?? $product->name)),
                 'cost_price' => $costPrice,
                 'sell_price' => $sellPrice,
-                'stock_quantity' => $stockQuantity,
-                'min_stock_quantity' => $minStockQuantity,
+            ]);
+
+            $variant = $existingVariant;
+        } else {
+            $product = Product::firstOrCreate(
+                [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'category_id' => $category->id,
+                    'supplier_id' => $supplier?->id,
+                ],
+                [
+                    'cost_price' => $costPrice,
+                    'sell_price' => $sellPrice,
+                ]
+            );
+
+            $product->update([
+                'cost_price' => $costPrice,
+                'sell_price' => $sellPrice,
+            ]);
+
+            $variant = ProductVariant::create([
+                'product_id' => $product->id,
+                'sku' => $sku,
+                'barcode' => null,
+                'price' => null,
+                'image' => null,
+                'attributes' => null,
+            ]);
+        }
+
+        Inventory::updateOrCreate(
+            [
+                'branch_id' => $mainBranch->id,
+                'product_variant_id' => $variant->id,
+            ],
+            [
+                'quantity' => $stockQuantity,
+                'min_quantity' => 0,
             ]
         );
 

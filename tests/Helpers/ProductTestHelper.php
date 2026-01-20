@@ -23,7 +23,11 @@ trait ProductTestHelper
         }
 
         $product = Product::factory()->create($productAttributes);
-        $variant = ProductVariant::factory()->for($product)->create($variantAttributes);
+        // Garantir que o preço efetivo venha do produto (sell/promotional),
+        // para que os testes que esperam valores exatos de total funcionem.
+        $variant = ProductVariant::factory()
+            ->for($product)
+            ->create(array_merge(['price' => null], $variantAttributes));
 
         Inventory::create([
             'branch_id' => $mainBranch->id,
