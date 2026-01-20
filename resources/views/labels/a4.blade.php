@@ -11,49 +11,52 @@
             box-sizing: border-box;
         }
 
+        @page {
+            size: A4 portrait;
+            margin: 12mm 4mm;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
         }
 
-        .labels-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(10, 1fr);
-            width: 210mm;
-            height: 297mm;
-            gap: 0;
-            padding: 10mm 7mm;
+        .labels-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
         }
 
-        .label {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+        .labels-table tr {
+            height: 25.4mm;
+        }
+
+        .labels-table td {
+            width: 33.33%;
+            height: 25.4mm;
+            padding: 2mm;
+            vertical-align: middle;
             text-align: center;
-            border: 1px solid #ddd;
-            padding: 3mm;
             page-break-inside: avoid;
+            border: 1px dotted #ccc;
         }
 
         .product-name {
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: bold;
             margin-bottom: 1mm;
-            max-width: 100%;
+            line-height: 1.2;
+            max-height: 2.4em;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            word-wrap: break-word;
         }
 
         .variant-description {
-            font-size: 8pt;
-            color: #666;
-            margin-bottom: 2mm;
+            font-size: 7pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 1mm;
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -65,39 +68,67 @@
         }
 
         .barcode-image {
-            max-width: 100%;
+            max-width: 90%;
+            max-height: 8mm;
             height: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         .barcode-value {
-            font-size: 7pt;
+            font-size: 6pt;
             font-family: 'Courier New', monospace;
-            margin-top: 1mm;
+            margin-top: 0.5mm;
         }
 
         .price {
-            font-size: 11pt;
+            font-size: 10pt;
             font-weight: bold;
             color: #000;
-            margin-top: 2mm;
+            margin-top: 1mm;
         }
     </style>
 </head>
 <body>
-    <div class="labels-grid">
-        @foreach($labels as $label)
-            <div class="label">
-                <div class="product-name">{{ Str::limit($label['product_name'], 30) }}</div>
-                @if($label['variant_description'])
-                    <div class="variant-description">{{ Str::limit($label['variant_description'], 35) }}</div>
-                @endif
-                <div class="barcode-container">
-                    <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">
-                    <div class="barcode-value">{{ $label['barcode_value'] }}</div>
-                </div>
-                <div class="price">R$ {{ number_format($label['price'], 2, ',', '.') }}</div>
-            </div>
-        @endforeach
-    </div>
+    @php
+        $labelsArray = is_array($labels) ? $labels : $labels->toArray();
+        $totalLabels = count($labelsArray);
+        $labelsPerRow = 3;
+        $rowsPerPage = 10;
+        $labelsPerPage = $labelsPerRow * $rowsPerPage;
+        $currentIndex = 0;
+    @endphp
+
+    @while($currentIndex < $totalLabels)
+        <table class="labels-table">
+            @for($row = 0; $row < $rowsPerPage && $currentIndex < $totalLabels; $row++)
+                <tr>
+                    @for($col = 0; $col < $labelsPerRow && $currentIndex < $totalLabels; $col++)
+                        <td>
+                            @php $label = $labelsArray[$currentIndex]; $currentIndex++; @endphp
+                            <div class="product-name">{{ Str::limit($label['product_name'], 35) }}</div>
+                            @if(!empty($label['variant_description']))
+                                <div class="variant-description">{{ Str::limit($label['variant_description'], 40) }}</div>
+                            @endif
+                            <div class="barcode-container">
+                                <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">
+                                <div class="barcode-value">{{ $label['barcode_value'] }}</div>
+                            </div>
+                            <div class="price">R$ {{ number_format($label['price'], 2, ',', '.') }}</div>
+                        </td>
+                    @endfor
+                    @if($col < $labelsPerRow)
+                        @for($emptyCol = $col; $emptyCol < $labelsPerRow; $emptyCol++)
+                            <td></td>
+                        @endfor
+                    @endif
+                </tr>
+            @endfor
+        </table>
+
+        @if($currentIndex < $totalLabels)
+            <div style="page-break-after: always;"></div>
+        @endif
+    @endwhile
 </body>
 </html>

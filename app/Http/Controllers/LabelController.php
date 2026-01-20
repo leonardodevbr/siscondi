@@ -79,6 +79,11 @@ class LabelController extends Controller
             $pdf->setOption('enable-local-file-access', true);
         } else {
             $pdf->setPaper('a4', 'portrait');
+            $pdf->setOption('margin-top', 12);
+            $pdf->setOption('margin-bottom', 12);
+            $pdf->setOption('margin-left', 4);
+            $pdf->setOption('margin-right', 4);
+            $pdf->setOption('enable-local-file-access', true);
         }
 
         return $pdf->stream('etiquetas.pdf');
