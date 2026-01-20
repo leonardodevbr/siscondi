@@ -41,20 +41,14 @@
           />
         </div>
         <div class="w-full sm:w-48">
-          <select
+          <SelectInput
             v-model="filters.category_id"
-            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="loadProducts"
-          >
-            <option value="">Todas as categorias</option>
-            <option
-              v-for="category in categories"
-              :key="category.id"
-              :value="category.id"
-            >
-              {{ category.name }}
-            </option>
-          </select>
+            :options="categoryOptions"
+            mode="single"
+            :searchable="true"
+            placeholder="Todas as categorias"
+            @update:model-value="loadProducts"
+          />
         </div>
       </div>
 
@@ -189,13 +183,14 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
+import SelectInput from '@/components/Common/SelectInput.vue';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -206,6 +201,7 @@ export default {
     PencilSquareIcon,
     TrashIcon,
     ProductThumb,
+    SelectInput,
   },
   setup() {
     const router = useRouter();
@@ -344,9 +340,21 @@ export default {
       loadCategories();
     });
 
+    const categoryOptions = computed(() => {
+      const options = [{ value: '', label: 'Todas as categorias' }];
+      categories.value.forEach((category) => {
+        options.push({
+          value: category.id,
+          label: category.name,
+        });
+      });
+      return options;
+    });
+
     return {
       productStore,
       categories,
+      categoryOptions,
       filters,
       fileInput,
       loadProducts,

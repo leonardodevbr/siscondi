@@ -58,3 +58,20 @@
   @apply bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2;
   margin-right: 0.5rem !important;
 }
+
+/* Multiselect Custom Styles */
+:root {
+  --ms-tag-bg: #2563eb;
+  --ms-tag-color: #ffffff;
+  --ms-tag-radius: 0.375rem;
+  --ms-border-color: #cbd5e1;
+  --ms-border-color-active: #3b82f6;
+  --ms-radius: 0.375rem;
+  --ms-ring-width: 2px;
+  --ms-ring-color: #3b82f6;
+  --ms-option-bg-selected: #2563eb;
+  --ms-option-color-selected: #ffffff;
+  --ms-option-bg-pointed: #eff6ff;
+  --ms-option-color-pointed: #1e40af;
+  --ms-dropdown-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
