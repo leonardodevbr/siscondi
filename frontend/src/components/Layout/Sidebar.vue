@@ -12,6 +12,8 @@ import {
   ChartBarIcon,
   TicketIcon,
   Cog6ToothIcon,
+  QrCodeIcon,
+  BuildingStorefrontIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -43,6 +45,7 @@ const menuGroups = computed(() => [
     items: [
       { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon },
       { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon },
+      { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: QrCodeIcon },
       { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon },
       { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon },
     ],
@@ -57,6 +60,7 @@ const menuGroups = computed(() => [
   {
     title: 'Admin',
     items: [
+      { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon },
       { name: 'Cupons', to: { name: 'coupons' }, icon: TicketIcon },
       { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon },
     ],

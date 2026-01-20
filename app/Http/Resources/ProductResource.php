@@ -26,7 +26,7 @@ class ProductResource extends JsonResource
             'promotional_expires_at' => $this->promotional_expires_at,
             'effective_price' => $this->getEffectivePrice(),
             'has_active_promotion' => $this->hasActivePromotion(),
-            'variants' => $this->whenLoaded('variants', fn () => $this->variants),
+            'variants' => $this->whenLoaded('variants', fn () => ProductVariantResource::collection($this->variants)),
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
                 'name' => $this->category->name,

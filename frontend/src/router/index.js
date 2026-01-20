@@ -5,6 +5,7 @@ import HomeView from '@/views/Dashboard/Home.vue';
 import LoginView from '@/views/Auth/Login.vue';
 import PosView from '@/views/POS/Pos.vue';
 import ProductsIndex from '@/views/Products/Index.vue';
+import LabelGenerator from '@/views/Products/LabelGenerator.vue';
 import SalesIndex from '@/views/Sales/Index.vue';
 import CustomersIndex from '@/views/Customers/Index.vue';
 import SuppliersIndex from '@/views/Suppliers/Index.vue';
@@ -12,6 +13,7 @@ import ExpensesIndex from '@/views/Expenses/Index.vue';
 import ReportsIndex from '@/views/Reports/Index.vue';
 import CouponsIndex from '@/views/Coupons/Index.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
+import BranchesIndex from '@/views/Branches/Index.vue';
 
 const routes = [
   {
@@ -52,6 +54,11 @@ const routes = [
         component: ProductsIndex,
       },
       {
+        path: 'products/labels',
+        name: 'products.labels',
+        component: LabelGenerator,
+      },
+      {
         path: 'customers',
         name: 'customers',
         component: CustomersIndex,
@@ -75,6 +82,11 @@ const routes = [
         path: 'coupons',
         name: 'coupons',
         component: CouponsIndex,
+      },
+      {
+        path: 'branches',
+        name: 'branches.index',
+        component: BranchesIndex,
       },
       {
         path: 'settings',
