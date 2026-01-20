@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -25,7 +25,7 @@ class SaleItemFactory extends Factory
 
         return [
             'sale_id' => Sale::factory(),
-            'product_id' => Product::factory(),
+            'product_variant_id' => ProductVariant::factory(),
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'total_price' => $totalPrice,

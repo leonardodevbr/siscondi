@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\CashRegisterStatus;
-use App\Enums\PaymentMethod;
+use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\User;
 use Carbon\Carbon;
@@ -16,15 +17,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class ReportApiTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $manager;
     private Category $category;
-    private Product $product;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -33,11 +36,9 @@ class ReportApiTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
-        $this->product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'stock_quantity' => 100,
-            'sell_price' => 10.00,
-        ]);
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->manager = User::factory()->create([
             'email' => 'manager@test.com',
@@ -79,23 +80,23 @@ class ReportApiTest extends TestCase
         $yesterday = Carbon::yesterday();
         $lastWeek = Carbon::today()->subWeek();
 
-        // Criar venda de hoje
         $saleToday = Sale::factory()->create([
             'user_id' => $this->manager->id,
+            'branch_id' => $this->mainBranch->id,
             'final_amount' => 100.00,
             'created_at' => $today->copy()->setTime(10, 0),
         ]);
 
-        // Criar venda de ontem
         $saleYesterday = Sale::factory()->create([
             'user_id' => $this->manager->id,
+            'branch_id' => $this->mainBranch->id,
             'final_amount' => 50.00,
             'created_at' => $yesterday->copy()->setTime(10, 0),
         ]);
 
-        // Criar venda da semana passada (fora do período)
         $saleLastWeek = Sale::factory()->create([
             'user_id' => $this->manager->id,
+            'branch_id' => $this->mainBranch->id,
             'final_amount' => 200.00,
             'created_at' => $lastWeek->copy()->setTime(10, 0),
         ]);
@@ -138,6 +139,7 @@ class ReportApiTest extends TestCase
 
         Sale::factory()->count(3)->create([
             'user_id' => $this->manager->id,
+            'branch_id' => $this->mainBranch->id,
             'created_at' => $today->copy()->setTime(10, 0),
         ]);
 
@@ -155,22 +157,41 @@ class ReportApiTest extends TestCase
 
     public function test_stock_report_low_stock(): void
     {
-        $normalProduct = Product::factory()->create([
+        $product1 = Product::factory()->create([
             'category_id' => $this->category->id,
-            'stock_quantity' => 100,
-            'min_stock_quantity' => 10,
         ]);
 
-        $lowStockProduct = Product::factory()->create([
+        $product2 = Product::factory()->create([
             'category_id' => $this->category->id,
-            'stock_quantity' => 5,
-            'min_stock_quantity' => 10,
         ]);
 
-        $outOfStockProduct = Product::factory()->create([
+        $product3 = Product::factory()->create([
             'category_id' => $this->category->id,
-            'stock_quantity' => 0,
-            'min_stock_quantity' => 10,
+        ]);
+
+        $variant1 = ProductVariant::factory()->for($product1)->create();
+        $variant2 = ProductVariant::factory()->for($product2)->create();
+        $variant3 = ProductVariant::factory()->for($product3)->create();
+
+        \App\Models\Inventory::create([
+            'branch_id' => $this->mainBranch->id,
+            'product_variant_id' => $variant1->id,
+            'quantity' => 100,
+            'min_quantity' => 10,
+        ]);
+
+        \App\Models\Inventory::create([
+            'branch_id' => $this->mainBranch->id,
+            'product_variant_id' => $variant2->id,
+            'quantity' => 5,
+            'min_quantity' => 10,
+        ]);
+
+        \App\Models\Inventory::create([
+            'branch_id' => $this->mainBranch->id,
+            'product_variant_id' => $variant3->id,
+            'quantity' => 0,
+            'min_quantity' => 10,
         ]);
 
         $this->actingAs($this->manager, 'sanctum');
@@ -180,23 +201,25 @@ class ReportApiTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'name', 'stock_quantity', 'min_stock_quantity'],
+                '*' => ['id', 'name'],
             ],
         ]);
 
         $data = $response->json('data');
         $productIds = array_column($data, 'id');
 
-        $this->assertContains($lowStockProduct->id, $productIds);
-        $this->assertNotContains($normalProduct->id, $productIds);
-        $this->assertNotContains($outOfStockProduct->id, $productIds);
+        $this->assertContains($product2->id, $productIds);
+        $this->assertNotContains($product1->id, $productIds);
+        $this->assertNotContains($product3->id, $productIds);
     }
 
     public function test_stock_report_export(): void
     {
-        Product::factory()->count(5)->create([
+        $product = Product::factory()->create([
             'category_id' => $this->category->id,
         ]);
+
+        ProductVariant::factory()->for($product)->create();
 
         $this->actingAs($this->manager, 'sanctum');
 

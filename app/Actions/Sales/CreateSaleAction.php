@@ -14,7 +14,8 @@ use App\Exceptions\InvalidCouponException;
 use App\Exceptions\NoOpenCashRegisterException;
 use App\Models\CashRegister;
 use App\Models\Coupon;
-use App\Models\Product;
+use App\Models\Inventory;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -36,22 +37,29 @@ class CreateSaleAction
             throw new NoOpenCashRegisterException();
         }
 
-        return DB::transaction(function () use ($data, $user, $cashRegister): Sale {
+        $branchId = $data['branch_id'] ?? null;
+
+        if (! $branchId) {
+            throw new \InvalidArgumentException('branch_id is required.');
+        }
+
+        return DB::transaction(function () use ($data, $user, $cashRegister, $branchId): Sale {
             $items = $data['items'];
             $payments = $data['payments'];
             $customerId = $data['customer_id'] ?? null;
             $note = $data['note'] ?? null;
 
-            $productIds = array_column($items, 'product_id');
-            $products = Product::query()
-                ->whereIn('id', $productIds)
+            $variantIds = array_column($items, 'product_variant_id');
+            $variants = ProductVariant::query()
+                ->whereIn('id', $variantIds)
+                ->with('product')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
-            $this->validateStock($items, $products);
+            $this->validateStock($items, $variants, (int) $branchId);
 
-            $totalAmount = $this->calculateTotalAmount($items, $products);
+            $totalAmount = $this->calculateTotalAmount($items, $variants);
             $discountAmount = $this->calculateDiscount($totalAmount, $data);
 
             $coupon = $this->validateAndApplyCoupon($data, $totalAmount);
@@ -73,6 +81,7 @@ class CreateSaleAction
 
             $sale = Sale::create([
                 'user_id' => $user->id,
+                'branch_id' => $branchId,
                 'customer_id' => $customerId,
                 'coupon_id' => $couponId,
                 'total_amount' => $totalAmount,
@@ -82,15 +91,15 @@ class CreateSaleAction
                 'note' => $note,
             ]);
 
-            $this->createSaleItems($sale, $items, $products);
+            $this->createSaleItems($sale, $items, $variants);
             $this->createPayments($sale, $payments, $hasPixPayment);
-            $this->decrementStock($sale, $items, $products, $user);
+            $this->decrementStock($sale, $items, $variants, (int) $branchId, $user);
             
             if (! $hasPixPayment) {
                 $this->createCashRegisterTransaction($cashRegister, $sale, $payments);
             }
 
-            $sale->load(['items.product', 'payments', 'customer', 'user', 'coupon']);
+            $sale->load(['items.productVariant.product', 'payments', 'customer', 'user', 'coupon', 'branch']);
 
             return $sale;
         });
@@ -118,23 +127,34 @@ class CreateSaleAction
 
     /**
      * @param array<int, array<string, mixed>> $items
-     * @param Collection<int, Product> $products
+     * @param Collection<int, ProductVariant> $variants
      */
-    private function validateStock(array $items, Collection $products): void
+    private function validateStock(array $items, Collection $variants, int $branchId): void
     {
         foreach ($items as $item) {
-            $productId = $item['product_id'];
+            $variantId = $item['product_variant_id'];
             $quantity = $item['quantity'];
 
-            $product = $products->get($productId);
+            $variant = $variants->get($variantId);
 
-            if (! $product) {
-                throw new \InvalidArgumentException("Product with ID {$productId} not found.");
+            if (! $variant) {
+                throw new \InvalidArgumentException("Product variant with ID {$variantId} not found.");
             }
 
-            if ($product->stock_quantity < $quantity) {
+            $inventory = Inventory::where('branch_id', $branchId)
+                ->where('product_variant_id', $variantId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $inventory) {
                 throw new \InvalidArgumentException(
-                    "Insufficient stock for product {$product->name}. Available: {$product->stock_quantity}, Requested: {$quantity}"
+                    "Inventory not found for variant {$variant->description_full} at branch {$branchId}."
+                );
+            }
+
+            if ($inventory->quantity < $quantity) {
+                throw new \InvalidArgumentException(
+                    "Insufficient stock for variant {$variant->description_full}. Available: {$inventory->quantity}, Requested: {$quantity}"
                 );
             }
         }
@@ -142,18 +162,18 @@ class CreateSaleAction
 
     /**
      * @param array<int, array<string, mixed>> $items
-     * @param Collection<int, Product> $products
+     * @param Collection<int, ProductVariant> $variants
      */
-    private function calculateTotalAmount(array $items, Collection $products): float
+    private function calculateTotalAmount(array $items, Collection $variants): float
     {
         $total = 0;
 
         foreach ($items as $item) {
-            $productId = $item['product_id'];
+            $variantId = $item['product_variant_id'];
             $quantity = $item['quantity'];
 
-            $product = $products->get($productId);
-            $unitPrice = $product->getEffectivePrice();
+            $variant = $variants->get($variantId);
+            $unitPrice = $variant->getEffectivePrice();
             $total += $unitPrice * $quantity;
         }
 
@@ -162,20 +182,20 @@ class CreateSaleAction
 
     /**
      * @param array<int, array<string, mixed>> $items
-     * @param Collection<int, Product> $products
+     * @param Collection<int, ProductVariant> $variants
      */
-    private function createSaleItems(Sale $sale, array $items, Collection $products): void
+    private function createSaleItems(Sale $sale, array $items, Collection $variants): void
     {
         foreach ($items as $item) {
-            $productId = $item['product_id'];
+            $variantId = $item['product_variant_id'];
             $quantity = $item['quantity'];
 
-            $product = $products->get($productId);
-            $unitPrice = $product->getEffectivePrice();
+            $variant = $variants->get($variantId);
+            $unitPrice = $variant->getEffectivePrice();
             $totalPrice = $unitPrice * $quantity;
 
             $sale->items()->create([
-                'product_id' => $productId,
+                'product_variant_id' => $variantId,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'total_price' => $totalPrice,
@@ -205,19 +225,26 @@ class CreateSaleAction
 
     /**
      * @param array<int, array<string, mixed>> $items
-     * @param Collection<int, Product> $products
+     * @param Collection<int, ProductVariant> $variants
      */
-    private function decrementStock(Sale $sale, array $items, Collection $products, User $user): void
+    private function decrementStock(Sale $sale, array $items, Collection $variants, int $branchId, User $user): void
     {
         foreach ($items as $item) {
-            $productId = $item['product_id'];
+            $variantId = $item['product_variant_id'];
             $quantity = $item['quantity'];
 
-            $product = $products->get($productId);
-            $product->decrement('stock_quantity', $quantity);
+            $inventory = Inventory::where('branch_id', $branchId)
+                ->where('product_variant_id', $variantId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($inventory) {
+                $inventory->decrement('quantity', $quantity);
+            }
 
             StockMovement::create([
-                'product_id' => $productId,
+                'product_variant_id' => $variantId,
+                'branch_id' => $branchId,
                 'user_id' => $user->id,
                 'type' => StockMovementType::SALE,
                 'quantity' => $quantity,

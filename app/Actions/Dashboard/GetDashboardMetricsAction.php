@@ -6,7 +6,9 @@ namespace App\Actions\Dashboard;
 
 use App\Enums\SaleStatus;
 use App\Models\Expense;
+use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Support\Carbon;
@@ -40,34 +42,52 @@ class GetDashboardMetricsAction
                 ->count();
 
             $lowStockProducts = Product::query()
-                ->whereColumn('stock_quantity', '<=', 'min_stock_quantity')
-                ->select('id', 'name', 'stock_quantity', 'min_stock_quantity')
-                ->orderBy('stock_quantity', 'asc')
+                ->whereHas('variants.inventories', function ($query): void {
+                    $query->whereColumn('inventories.quantity', '<=', 'inventories.min_quantity');
+                })
+                ->select('id', 'name')
                 ->orderBy('id', 'asc')
                 ->limit(5)
                 ->get()
                 ->map(function ($product) {
+                    $totalQuantity = Inventory::query()
+                        ->whereHas('productVariant', function ($query) use ($product): void {
+                            $query->where('product_id', $product->id);
+                        })
+                        ->sum('quantity');
+
+                    $totalMinQuantity = Inventory::query()
+                        ->whereHas('productVariant', function ($query) use ($product): void {
+                            $query->where('product_id', $product->id);
+                        })
+                        ->sum('min_quantity');
+
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
-                        'stock_quantity' => $product->stock_quantity,
-                        'min_stock_quantity' => $product->min_stock_quantity,
+                        'stock_quantity' => $totalQuantity,
+                        'min_stock_quantity' => $totalMinQuantity,
                     ];
-                });
+                })
+                ->filter(function ($product) {
+                    return $product['stock_quantity'] <= $product['min_stock_quantity'];
+                })
+                ->values();
 
             $topSellingProducts = SaleItem::query()
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->join('products', 'sale_items.product_id', '=', 'products.id')
+                ->join('product_variants', 'sale_items.product_variant_id', '=', 'product_variants.id')
+                ->join('products', 'product_variants.product_id', '=', 'products.id')
                 ->where('sales.status', SaleStatus::COMPLETED)
                 ->where('sales.created_at', '>=', $startOfMonth)
-                ->select('sale_items.product_id', 'products.name', DB::raw('SUM(sale_items.quantity) as total_quantity'))
-                ->groupBy('sale_items.product_id', 'products.name')
+                ->select('products.id', 'products.name', DB::raw('SUM(sale_items.quantity) as total_quantity'))
+                ->groupBy('products.id', 'products.name')
                 ->orderByDesc('total_quantity')
                 ->limit(5)
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'id' => $item->product_id,
+                        'id' => $item->id,
                         'name' => $item->name,
                         'total_quantity' => (int) $item->total_quantity,
                     ];
@@ -82,7 +102,7 @@ class GetDashboardMetricsAction
                 'profit_month' => $profitMonth,
                 'net_profit_month' => $netProfitMonth,
                 'total_sales_count_today' => $totalSalesCountToday,
-                'low_stock_products' => $lowStockProducts->values()->all(),
+                'low_stock_products' => $lowStockProducts->all(),
                 'top_selling_products' => $topSellingProducts->values()->all(),
             ];
         });
@@ -92,7 +112,8 @@ class GetDashboardMetricsAction
     {
         $salesItems = SaleItem::query()
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->join('product_variants', 'sale_items.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('sales.status', SaleStatus::COMPLETED)
             ->where('sales.created_at', '>=', $startOfMonth)
             ->select('sale_items.unit_price', 'sale_items.quantity', 'products.cost_price')

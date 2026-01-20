@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\CashRegisterStatus;
+use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Category;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +21,7 @@ class ErrorHandlingTest extends TestCase
 
     private User $seller;
     private Category $category;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -29,6 +30,9 @@ class ErrorHandlingTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->seller = User::factory()->create([
             'email' => 'seller-error@test.com',
@@ -97,11 +101,8 @@ class ErrorHandlingTest extends TestCase
             ->postJson('/api/products', [
                 // category_id ausente de propósito
                 'name' => '',
-                'sku' => '',
                 'cost_price' => -10,
                 'sell_price' => -5,
-                'stock_quantity' => -1,
-                'min_stock_quantity' => -1,
             ]);
 
         $response->assertStatus(422);
@@ -112,4 +113,3 @@ class ErrorHandlingTest extends TestCase
         $response->assertJsonMissing(['trace', 'exception']);
     }
 }
-

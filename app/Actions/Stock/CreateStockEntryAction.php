@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Stock;
 
 use App\Enums\StockMovementType;
-use App\Models\Product;
+use App\Models\Inventory;
+use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -20,39 +21,55 @@ class CreateStockEntryAction
     {
         DB::transaction(function () use ($data, $user): void {
             $items = $data['items'];
-            $supplierId = $data['supplier_id'] ?? null;
+            $branchId = $data['branch_id'] ?? null;
             $reason = $data['reason'] ?? null;
 
-            $productIds = array_column($items, 'product_id');
-            $products = Product::query()
-                ->whereIn('id', $productIds)
+            if (! $branchId) {
+                throw new \InvalidArgumentException('branch_id is required.');
+            }
+
+            $variantIds = array_column($items, 'product_variant_id');
+            $variants = ProductVariant::query()
+                ->whereIn('id', $variantIds)
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
             foreach ($items as $item) {
-                $productId = $item['product_id'];
+                $variantId = $item['product_variant_id'];
                 $quantity = $item['quantity'];
                 $newCostPrice = $item['cost_price'] ?? null;
 
-                $product = $products->get($productId);
+                $variant = $variants->get($variantId);
 
-                if (! $product) {
-                    throw new \InvalidArgumentException("Product with ID {$productId} not found.");
+                if (! $variant) {
+                    throw new \InvalidArgumentException("Product variant with ID {$variantId} not found.");
                 }
 
                 StockMovement::create([
-                    'product_id' => $productId,
+                    'product_variant_id' => $variantId,
+                    'branch_id' => $branchId,
                     'user_id' => $user->id,
                     'type' => StockMovementType::ENTRY,
                     'quantity' => $quantity,
                     'reason' => $reason,
                 ]);
 
-                $product->increment('stock_quantity', $quantity);
+                $inventory = Inventory::firstOrCreate(
+                    [
+                        'branch_id' => $branchId,
+                        'product_variant_id' => $variantId,
+                    ],
+                    [
+                        'quantity' => 0,
+                        'min_quantity' => 0,
+                    ]
+                );
 
-                if ($newCostPrice !== null) {
-                    $product->update(['cost_price' => $newCostPrice]);
+                $inventory->increment('quantity', $quantity);
+
+                if ($newCostPrice !== null && $variant->product) {
+                    $variant->product->update(['cost_price' => $newCostPrice]);
                 }
             }
         });

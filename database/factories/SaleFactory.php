@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\SaleStatus;
+use App\Models\Branch;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -25,6 +26,7 @@ class SaleFactory extends Factory
 
         return [
             'user_id' => User::factory(),
+            'branch_id' => Branch::where('is_main', true)->value('id') ?? Branch::factory(),
             'customer_id' => null,
             'total_amount' => $totalAmount,
             'discount_amount' => $discountAmount,

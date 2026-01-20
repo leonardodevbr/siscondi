@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Exports\SalesReportExport;
 use App\Exports\StockReportExport;
+use App\Models\Inventory;
+use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +31,7 @@ class ReportController extends Controller
         ]);
 
         $query = Sale::query()
-            ->with(['user', 'customer', 'payments'])
+            ->with(['user', 'customer', 'payments', 'branch'])
             ->whereDate('created_at', '>=', $request->input('start_date'))
             ->whereDate('created_at', '<=', $request->input('end_date'))
             ->orderBy('created_at', 'desc');
@@ -39,7 +41,7 @@ class ReportController extends Controller
         }
 
         if ($request->has('payment_method')) {
-            $query->whereHas('payments', function ($q) use ($request) {
+            $query->whereHas('payments', function ($q) use ($request): void {
                 $q->where('method', $request->string('payment_method'));
             });
         }
@@ -95,8 +97,9 @@ class ReportController extends Controller
             'status' => ['nullable', 'string', 'in:low_stock,out_of_stock,all'],
         ]);
 
-        $query = \App\Models\Product::query()
-            ->with('category');
+        $query = Product::query()
+            ->with('category')
+            ->whereHas('variants.inventories');
 
         if ($request->has('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
@@ -104,10 +107,14 @@ class ReportController extends Controller
 
         $status = $request->input('status', 'all');
         if ($status === 'low_stock') {
-            $query->whereColumn('stock_quantity', '<=', 'min_stock_quantity')
-                ->where('stock_quantity', '>', 0);
+            $query->whereHas('variants.inventories', function ($q): void {
+                $q->whereColumn('inventories.quantity', '<=', 'inventories.min_quantity')
+                    ->where('inventories.quantity', '>', 0);
+            });
         } elseif ($status === 'out_of_stock') {
-            $query->where('stock_quantity', 0);
+            $query->whereHas('variants.inventories', function ($q): void {
+                $q->where('inventories.quantity', 0);
+            });
         }
 
         $products = $query->orderBy('name', 'asc')->paginate(15);

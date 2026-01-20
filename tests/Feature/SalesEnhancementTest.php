@@ -6,22 +6,25 @@ namespace Tests\Feature;
 
 use App\Enums\CashRegisterStatus;
 use App\Enums\PaymentMethod;
-use App\Models\Category;
+use App\Models\Branch;
 use App\Models\CashRegister;
-use App\Models\Product;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class SalesEnhancementTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $seller;
     private Category $category;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -30,6 +33,9 @@ class SalesEnhancementTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->seller = User::factory()->create([
             'email' => 'seller@test.com',
@@ -66,20 +72,24 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'promotional_price' => 80.00,
-            'promotional_expires_at' => now()->addDays(5),
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            [
+                'category_id' => $this->category->id,
+                'sell_price' => 100.00,
+                'promotional_price' => 80.00,
+                'promotional_expires_at' => now()->addDays(5),
+            ],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     ['method' => PaymentMethod::MONEY->value, 'amount' => 80.00],
@@ -101,20 +111,24 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'promotional_price' => 80.00,
-            'promotional_expires_at' => now()->subDay(),
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            [
+                'category_id' => $this->category->id,
+                'sell_price' => 100.00,
+                'promotional_price' => 80.00,
+                'promotional_expires_at' => now()->subDay(),
+            ],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     ['method' => PaymentMethod::MONEY->value, 'amount' => 100.00],
@@ -135,18 +149,19 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 100.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     ['method' => PaymentMethod::MONEY->value, 'amount' => 90.00],
@@ -167,18 +182,19 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 100.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     ['method' => PaymentMethod::MONEY->value, 'amount' => 85.00],
@@ -199,18 +215,19 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 100.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     [
@@ -239,20 +256,24 @@ class SalesEnhancementTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'sell_price' => 100.00,
-            'promotional_price' => 80.00,
-            'promotional_expires_at' => now()->addDays(5),
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            [
+                'category_id' => $this->category->id,
+                'sell_price' => 100.00,
+                'promotional_price' => 80.00,
+                'promotional_expires_at' => now()->addDays(5),
+            ],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
+                    ['product_variant_id' => $variant->id, 'quantity' => 1],
                 ],
                 'payments' => [
                     ['method' => PaymentMethod::MONEY->value, 'amount' => 72.00],

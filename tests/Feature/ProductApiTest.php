@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
@@ -11,11 +12,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class ProductApiTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $manager;
     private User $seller;
@@ -77,11 +80,8 @@ class ProductApiTest extends TestCase
             ->postJson('/api/products', [
                 'category_id' => $this->category->id,
                 'name' => 'Test Product',
-                'sku' => 'SKU-12345',
                 'cost_price' => 10.00,
                 'sell_price' => 20.00,
-                'stock_quantity' => 100,
-                'min_stock_quantity' => 10,
             ]);
 
         $response->assertStatus(403);
@@ -95,28 +95,22 @@ class ProductApiTest extends TestCase
             ->postJson('/api/products', [
                 'category_id' => $this->category->id,
                 'name' => 'Test Product',
-                'sku' => 'SKU-12345',
                 'cost_price' => 10.00,
                 'sell_price' => 20.00,
-                'stock_quantity' => 100,
-                'min_stock_quantity' => 10,
             ]);
 
         $response->assertStatus(201);
         $response->assertJsonStructure([
             'id',
             'name',
-            'sku',
             'cost_price',
             'sell_price',
             'effective_price',
             'has_active_promotion',
-            'stock_quantity',
             'category' => ['id', 'name'],
         ]);
         $this->assertDatabaseHas('products', [
             'name' => 'Test Product',
-            'sku' => 'SKU-12345',
         ]);
     }
 
@@ -127,11 +121,8 @@ class ProductApiTest extends TestCase
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/products', [
                 'category_id' => $this->category->id,
-                'sku' => 'SKU-12345',
                 'cost_price' => 10.00,
                 'sell_price' => 20.00,
-                'stock_quantity' => 100,
-                'min_stock_quantity' => 10,
             ]);
 
         $response->assertStatus(422);
@@ -146,11 +137,8 @@ class ProductApiTest extends TestCase
             ->postJson('/api/products', [
                 'category_id' => $this->category->id,
                 'name' => 'Test Product',
-                'sku' => 'SKU-12345',
                 'cost_price' => -10.00,
                 'sell_price' => 20.00,
-                'stock_quantity' => 100,
-                'min_stock_quantity' => 10,
             ]);
 
         $response->assertStatus(422);
@@ -164,13 +152,11 @@ class ProductApiTest extends TestCase
         Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Camiseta',
-            'sku' => 'SKU-001',
         ]);
 
         Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Calça',
-            'sku' => 'SKU-002',
         ]);
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")

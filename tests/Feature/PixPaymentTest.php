@@ -9,25 +9,27 @@ use App\Enums\CashRegisterTransactionType;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\SaleStatus;
+use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Category;
 use App\Models\Payment;
-use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class PixPaymentTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $seller;
     private Category $category;
-    private Product $product;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -36,11 +38,9 @@ class PixPaymentTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
-        $this->product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'stock_quantity' => 100,
-            'sell_price' => 50.00,
-        ]);
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->seller = User::factory()->create([
             'email' => 'seller@test.com',
@@ -77,12 +77,19 @@ class PixPaymentTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 50.00],
+            [],
+            100
+        );
+
         $this->actingAs($this->seller, 'sanctum');
 
         $response = $this->postJson('/api/sales', [
+            'branch_id' => $this->mainBranch->id,
             'items' => [
                 [
-                    'product_id' => $this->product->id,
+                    'product_variant_id' => $variant->id,
                     'quantity' => 1,
                 ],
             ],
@@ -113,6 +120,7 @@ class PixPaymentTest extends TestCase
 
         $sale = Sale::factory()->create([
             'user_id' => $this->seller->id,
+            'branch_id' => $this->mainBranch->id,
             'status' => SaleStatus::PENDING_PAYMENT,
             'final_amount' => 50.00,
         ]);
@@ -146,6 +154,7 @@ class PixPaymentTest extends TestCase
 
         $sale = Sale::factory()->create([
             'user_id' => $this->seller->id,
+            'branch_id' => $this->mainBranch->id,
             'status' => SaleStatus::PENDING_PAYMENT,
             'final_amount' => 50.00,
         ]);
@@ -188,6 +197,7 @@ class PixPaymentTest extends TestCase
     {
         $sale = Sale::factory()->create([
             'user_id' => $this->seller->id,
+            'branch_id' => $this->mainBranch->id,
             'status' => SaleStatus::PENDING_PAYMENT,
             'final_amount' => 50.00,
         ]);
@@ -218,6 +228,7 @@ class PixPaymentTest extends TestCase
     {
         $sale = Sale::factory()->create([
             'user_id' => $this->seller->id,
+            'branch_id' => $this->mainBranch->id,
             'status' => SaleStatus::COMPLETED,
             'final_amount' => 50.00,
         ]);

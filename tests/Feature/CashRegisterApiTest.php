@@ -7,23 +7,25 @@ namespace Tests\Feature;
 use App\Enums\CashRegisterStatus;
 use App\Enums\CashRegisterTransactionType;
 use App\Enums\PaymentMethod;
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\CashRegister;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class CashRegisterApiTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $seller;
     private Category $category;
-    private Product $product;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -33,16 +35,8 @@ class CashRegisterApiTest extends TestCase
 
         $this->category = Category::factory()->create();
 
-        $this->product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'stock_quantity' => 100,
-        ]);
-
-        $this->seller = User::factory()->create([
-            'email' => 'seller@test.com',
-            'password' => Hash::make('password'),
-        ]);
-        $this->seller->assignRole('seller');
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
     }
 
     private function seedRolesAndPermissions(): void
@@ -63,6 +57,12 @@ class CashRegisterApiTest extends TestCase
 
         $managerRole = Role::firstOrCreate(['name' => 'manager']);
         $managerRole->syncPermissions($permissions);
+
+        $this->seller = User::factory()->create([
+            'email' => 'seller@test.com',
+            'password' => Hash::make('password'),
+        ]);
+        $this->seller->assignRole('seller');
     }
 
     public function test_can_open_cash_register(): void
@@ -157,20 +157,27 @@ class CashRegisterApiTest extends TestCase
 
     public function test_sale_blocked_without_open_cash_register(): void
     {
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id],
+            [],
+            100
+        );
+
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $this->product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 1,
                     ],
                 ],
                 'payments' => [
                     [
                         'method' => PaymentMethod::MONEY->value,
-                        'amount' => (float) $this->product->sell_price,
+                        'amount' => (float) $variant->getEffectivePrice(),
                     ],
                 ],
             ]);
@@ -189,20 +196,27 @@ class CashRegisterApiTest extends TestCase
             'initial_balance' => 100.00,
         ]);
 
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 50.00],
+            [],
+            100
+        );
+
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $this->product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 1,
                     ],
                 ],
                 'payments' => [
                     [
                         'method' => PaymentMethod::MONEY->value,
-                        'amount' => $this->product->sell_price,
+                        'amount' => $variant->getEffectivePrice(),
                     ],
                 ],
             ]);
@@ -212,7 +226,7 @@ class CashRegisterApiTest extends TestCase
         $this->assertDatabaseHas('cash_register_transactions', [
             'cash_register_id' => $cashRegister->id,
             'type' => CashRegisterTransactionType::SALE->value,
-            'amount' => (string) $this->product->sell_price,
+            'amount' => (string) $variant->getEffectivePrice(),
         ]);
     }
 
@@ -352,7 +366,12 @@ class CashRegisterApiTest extends TestCase
 
     public function test_complete_flow_open_sell_bleed_close(): void
     {
-        // 1. Vendedor abre o caixa
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'sell_price' => 50.00],
+            [],
+            100
+        );
+
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $openResponse = $this->withHeader('Authorization', "Bearer {$token}")
@@ -363,53 +382,45 @@ class CashRegisterApiTest extends TestCase
         $openResponse->assertStatus(201);
         $cashRegisterId = $openResponse->json('cash_register.id');
 
-        // 2. Vendedor faz uma venda
         $saleResponse = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $this->product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 1,
                     ],
                 ],
                 'payments' => [
                     [
                         'method' => PaymentMethod::MONEY->value,
-                        'amount' => $this->product->sell_price,
+                        'amount' => $variant->getEffectivePrice(),
                     ],
                 ],
             ]);
 
         $saleResponse->assertStatus(201);
 
-        // 3. Gerente faz Sangria
         $manager = User::factory()->create([
             'email' => 'manager-flow@test.com',
             'password' => Hash::make('password'),
         ]);
 
-        // FIX DEFINITIVO: Dar a permissão diretamente ao usuário, ignorando roles/cache
         $permission = Permission::firstOrCreate(['name' => 'financial.manage']);
         $manager->givePermissionTo($permission);
         
-        // Limpa cache do Spatie Permission ANTES de criar o token
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         
-        // Recarrega o usuário do banco para garantir que as permissões estejam atualizadas
         $manager = $manager->fresh();
         
-        // Verifica se a permissão foi atribuída corretamente usando can()
         if (!$manager->can('financial.manage')) {
             $this->fail('Manager does not have financial.manage permission. Has: ' . json_encode($manager->getAllPermissions()->pluck('name')->toArray()));
         }
 
-        // Criar o token DEPOIS de dar a permissão e limpar o cache
         $managerToken = $manager->createToken('manager-token')->plainTextToken;
         
-        // Limpar cache novamente após criar o token (por garantia)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         
-        // Usar actingAs para garantir que o usuário correto esteja autenticado
         $this->actingAs($manager, 'sanctum');
 
         $bleedResponse = $this->postJson("/api/cash-register/{$cashRegisterId}/movement", [
@@ -420,10 +431,9 @@ class CashRegisterApiTest extends TestCase
 
         $bleedResponse->assertStatus(201);
 
-        // 4. Vendedor fecha o caixa (precisa desautenticar o manager e autenticar o seller)
         $this->actingAs($this->seller, 'sanctum');
         
-        $expectedBalance = 100.00 + (float) $this->product->sell_price - 20.00;
+        $expectedBalance = 100.00 + (float) $variant->getEffectivePrice() - 20.00;
 
         $closeResponse = $this->postJson("/api/cash-register/{$cashRegisterId}/close", [
             'final_balance' => $expectedBalance,

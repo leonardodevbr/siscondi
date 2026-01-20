@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\StockMovementType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class StockMovement extends Model
+class Inventory extends Model
 {
     use HasFactory;
 
@@ -17,12 +16,10 @@ class StockMovement extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'product_variant_id',
         'branch_id',
-        'user_id',
-        'type',
+        'product_variant_id',
         'quantity',
-        'reason',
+        'min_quantity',
     ];
 
     /**
@@ -30,19 +27,11 @@ class StockMovement extends Model
      */
     protected $casts = [
         'quantity' => 'integer',
-        'type' => StockMovementType::class,
+        'min_quantity' => 'integer',
     ];
 
     /**
-     * @return BelongsTo<ProductVariant, StockMovement>
-     */
-    public function productVariant(): BelongsTo
-    {
-        return $this->belongsTo(ProductVariant::class);
-    }
-
-    /**
-     * @return BelongsTo<Branch, StockMovement>
+     * @return BelongsTo<Branch, Inventory>
      */
     public function branch(): BelongsTo
     {
@@ -50,10 +39,10 @@ class StockMovement extends Model
     }
 
     /**
-     * @return BelongsTo<User, StockMovement>
+     * @return BelongsTo<ProductVariant, Inventory>
      */
-    public function user(): BelongsTo
+    public function productVariant(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(ProductVariant::class);
     }
 }

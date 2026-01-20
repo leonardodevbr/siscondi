@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Models\Coupon;
-use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,9 +29,10 @@ class StoreSaleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'branch_id' => ['required', 'exists:branches,id'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.product_variant_id' => ['required', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'payments' => ['required', 'array', 'min:1'],
             'payments.*.method' => ['required', Rule::enum(PaymentMethod::class)],
@@ -59,17 +60,18 @@ class StoreSaleRequest extends FormRequest
             $items = $this->input('items', []);
             $payments = $this->input('payments', []);
 
-            $productIds = array_column($items, 'product_id');
-            $products = Product::query()
-                ->whereIn('id', $productIds)
+            $variantIds = array_column($items, 'product_variant_id');
+            $variants = ProductVariant::query()
+                ->whereIn('id', $variantIds)
+                ->with('product')
                 ->get()
                 ->keyBy('id');
 
             $totalAmount = 0;
             foreach ($items as $item) {
-                $product = $products->get($item['product_id']);
-                if ($product) {
-                    $totalAmount += $product->getEffectivePrice() * $item['quantity'];
+                $variant = $variants->get($item['product_variant_id']);
+                if ($variant) {
+                    $totalAmount += $variant->getEffectivePrice() * $item['quantity'];
                 }
             }
 

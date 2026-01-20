@@ -6,23 +6,29 @@ namespace Tests\Feature;
 
 use App\Enums\CashRegisterStatus;
 use App\Enums\PaymentMethod;
-use App\Models\Category;
+use App\Models\Branch;
 use App\Models\CashRegister;
+use App\Models\Category;
+use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class SaleApiTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $seller;
     private Category $category;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -31,6 +37,9 @@ class SaleApiTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->seller = User::factory()->create([
             'email' => 'seller@test.com',
@@ -67,21 +76,20 @@ class SaleApiTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto Teste',
-            'sku' => 'SKU-TEST-001',
-            'sell_price' => 50.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto Teste', 'sell_price' => 50.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 2,
                     ],
                 ],
@@ -107,6 +115,7 @@ class SaleApiTest extends TestCase
 
         $this->assertDatabaseHas('sales', [
             'user_id' => $this->seller->id,
+            'branch_id' => $this->mainBranch->id,
             'total_amount' => 100.00,
             'final_amount' => 100.00,
             'status' => 'completed',
@@ -116,7 +125,7 @@ class SaleApiTest extends TestCase
 
         $this->assertDatabaseHas('sale_items', [
             'sale_id' => $sale->id,
-            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
             'quantity' => 2,
             'unit_price' => 50.00,
             'total_price' => 100.00,
@@ -129,31 +138,35 @@ class SaleApiTest extends TestCase
             'installments' => 1,
         ]);
 
-        $product->refresh();
-        $this->assertEquals(8, $product->stock_quantity, 'Stock should be decremented from 10 to 8');
+        $inventory = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant->id)
+            ->first();
+        
+        $this->assertEquals(8, $inventory->quantity, 'Stock should be decremented from 10 to 8');
     }
 
     public function test_insufficient_stock_prevents_sale_and_rolls_back(): void
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto Teste',
-            'sku' => 'SKU-TEST-002',
-            'sell_price' => 50.00,
-            'stock_quantity' => 5,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto Teste', 'sell_price' => 50.00],
+            [],
+            5
+        );
 
-        $initialStock = $product->stock_quantity;
+        $initialStock = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant->id)
+            ->value('quantity');
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 6,
                     ],
                 ],
@@ -172,29 +185,31 @@ class SaleApiTest extends TestCase
         $this->assertDatabaseCount('sale_items', 0);
         $this->assertDatabaseCount('payments', 0);
 
-        $product->refresh();
-        $this->assertEquals($initialStock, $product->stock_quantity, 'Stock should remain unchanged after rollback');
+        $inventory = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant->id)
+            ->first();
+        
+        $this->assertEquals($initialStock, $inventory->quantity, 'Stock should remain unchanged after rollback');
     }
 
     public function test_payment_validation_fails_when_amount_does_not_match_total(): void
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto Teste',
-            'sku' => 'SKU-TEST-003',
-            'sell_price' => 100.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto Teste', 'sell_price' => 100.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 1,
                     ],
                 ],
@@ -217,21 +232,20 @@ class SaleApiTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto Teste',
-            'sku' => 'SKU-TEST-004',
-            'sell_price' => 100.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto Teste', 'sell_price' => 100.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 1,
                     ],
                 ],
@@ -261,33 +275,30 @@ class SaleApiTest extends TestCase
     {
         $this->openCashRegister($this->seller);
 
-        $product1 = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto 1',
-            'sku' => 'SKU-TEST-005',
-            'sell_price' => 50.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant1 = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto 1', 'sell_price' => 50.00],
+            [],
+            10
+        );
 
-        $product2 = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto 2',
-            'sku' => 'SKU-TEST-006',
-            'sell_price' => 30.00,
-            'stock_quantity' => 10,
-        ]);
+        $variant2 = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto 2', 'sell_price' => 30.00],
+            [],
+            10
+        );
 
         $token = $this->seller->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product1->id,
+                        'product_variant_id' => $variant1->id,
                         'quantity' => 2,
                     ],
                     [
-                        'product_id' => $product2->id,
+                        'product_variant_id' => $variant2->id,
                         'quantity' => 1,
                     ],
                 ],
@@ -314,10 +325,14 @@ class SaleApiTest extends TestCase
         $this->assertDatabaseCount('sale_items', 2);
         $this->assertDatabaseCount('payments', 2);
 
-        $product1->refresh();
-        $product2->refresh();
+        $inventory1 = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant1->id)
+            ->first();
+        $inventory2 = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant2->id)
+            ->first();
 
-        $this->assertEquals(8, $product1->stock_quantity);
-        $this->assertEquals(9, $product2->stock_quantity);
+        $this->assertEquals(8, $inventory1->quantity);
+        $this->assertEquals(9, $inventory2->quantity);
     }
 }

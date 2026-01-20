@@ -26,14 +26,8 @@ class ProductFactory extends Factory
                 : null,
             'name' => fake()->words(3, true),
             'description' => fake()->optional()->sentence(10),
-            'sku' => strtoupper(fake()->unique()->bothify('SKU-#####')),
-            'barcode' => fake()->boolean(70)
-                ? fake()->unique()->numerify('#############')
-                : null,
             'cost_price' => fake()->randomFloat(2, 1, 500),
             'sell_price' => fake()->randomFloat(2, 1, 800),
-            'stock_quantity' => fake()->numberBetween(0, 500),
-            'min_stock_quantity' => fake()->numberBetween(0, 50),
         ];
     }
 }

@@ -24,9 +24,10 @@ class StoreStockEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'branch_id' => ['required', 'exists:branches,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.product_variant_id' => ['required', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string', 'max:500'],

@@ -19,6 +19,7 @@ class Sale extends Model
      */
     protected $fillable = [
         'user_id',
+        'branch_id',
         'customer_id',
         'coupon_id',
         'total_amount',
@@ -44,6 +45,14 @@ class Sale extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Branch, Sale>
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**

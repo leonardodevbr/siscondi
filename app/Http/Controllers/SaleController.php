@@ -28,7 +28,7 @@ class SaleController extends Controller
     {
         $this->authorize('pos.access');
 
-        $query = Sale::query()->with(['user', 'customer', 'coupon', 'items.product', 'payments']);
+        $query = Sale::query()->with(['user', 'customer', 'coupon', 'items.productVariant.product', 'payments', 'branch']);
 
         if ($request->has('status')) {
             $query->where('status', $request->string('status'));
@@ -81,7 +81,7 @@ class SaleController extends Controller
     {
         $this->authorize('pos.access');
 
-        $sale->load(['user', 'customer', 'coupon', 'items.product', 'payments']);
+        $sale->load(['user', 'customer', 'coupon', 'items.productVariant.product', 'payments', 'branch']);
 
         return response()->json(new SaleResource($sale));
     }
@@ -92,7 +92,7 @@ class SaleController extends Controller
     public function update(UpdateSaleRequest $request, Sale $sale): JsonResponse
     {
         $sale->update($request->validated());
-        $sale->load(['user', 'customer', 'coupon', 'items.product', 'payments']);
+        $sale->load(['user', 'customer', 'coupon', 'items.productVariant.product', 'payments', 'branch']);
 
         return response()->json(new SaleResource($sale));
     }

@@ -17,7 +17,7 @@ class SaleItem extends Model
      */
     protected $fillable = [
         'sale_id',
-        'product_id',
+        'product_variant_id',
         'quantity',
         'unit_price',
         'total_price',
@@ -41,10 +41,18 @@ class SaleItem extends Model
     }
 
     /**
-     * @return BelongsTo<Product, SaleItem>
+     * @return BelongsTo<ProductVariant, SaleItem>
      */
-    public function product(): BelongsTo
+    public function productVariant(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    /**
+     * Acessa o produto através da variação
+     */
+    public function getProductAttribute(): ?Product
+    {
+        return $this->productVariant?->product;
     }
 }

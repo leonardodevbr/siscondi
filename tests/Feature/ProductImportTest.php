@@ -6,9 +6,12 @@ namespace Tests\Feature;
 
 use App\Enums\ImportBatchStatus;
 use App\Exports\TestProductsExport;
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\ImportBatch;
+use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +28,7 @@ class ProductImportTest extends TestCase
 
     private User $manager;
     private Category $category;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -35,6 +39,9 @@ class ProductImportTest extends TestCase
         $this->category = Category::factory()->create([
             'name' => 'Categoria Existente',
         ]);
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->manager = User::factory()->create([
             'email' => 'manager@test.com',
@@ -115,9 +122,26 @@ class ProductImportTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('products', [
-            'sku' => 'SKU-IMP-001',
             'name' => 'Produto Importado 1',
         ]);
+
+        $product = Product::where('name', 'Produto Importado 1')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(100.00, (float) $product->sell_price);
+        $this->assertEquals(50.00, (float) $product->cost_price);
+
+        $variant = ProductVariant::where('product_id', $product->id)
+            ->where('sku', 'SKU-IMP-001')
+            ->first();
+        
+        $this->assertNotNull($variant, 'Product variant should be created with SKU');
+
+        $inventory = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant->id)
+            ->first();
+        
+        $this->assertNotNull($inventory, 'Inventory should be created for the variant');
+        $this->assertEquals(10, $inventory->quantity);
 
         $this->assertDatabaseHas('categories', [
             'name' => 'Nova Categoria',
@@ -136,12 +160,6 @@ class ProductImportTest extends TestCase
         $this->assertEquals(1, $batch->success_count);
         $this->assertEquals(0, $batch->error_count);
 
-        $product = Product::where('sku', 'SKU-IMP-001')->first();
-        $this->assertNotNull($product);
-        $this->assertEquals(100.00, (float) $product->sell_price);
-        $this->assertEquals(50.00, (float) $product->cost_price);
-        $this->assertEquals(10, $product->stock_quantity);
-
         if (file_exists($filePath)) {
             unlink($filePath);
         }
@@ -150,10 +168,13 @@ class ProductImportTest extends TestCase
     public function test_import_updates_existing_product(): void
     {
         $existingProduct = Product::factory()->create([
-            'sku' => 'SKU-EXIST-001',
             'name' => 'Produto Existente',
             'sell_price' => 50.00,
             'cost_price' => 25.00,
+        ]);
+
+        $existingVariant = ProductVariant::factory()->for($existingProduct)->create([
+            'sku' => 'SKU-EXIST-001',
         ]);
 
         $data = [
@@ -189,8 +210,15 @@ class ProductImportTest extends TestCase
 
         $this->assertEquals(75.00, (float) $existingProduct->sell_price);
         $this->assertEquals(30.00, (float) $existingProduct->cost_price);
-        $this->assertEquals(20, $existingProduct->stock_quantity);
         $this->assertEquals('Produto Atualizado', $existingProduct->name);
+
+        $inventory = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $existingVariant->id)
+            ->first();
+        
+        if ($inventory) {
+            $this->assertEquals(20, $inventory->quantity);
+        }
 
         if (file_exists($filePath)) {
             unlink($filePath);

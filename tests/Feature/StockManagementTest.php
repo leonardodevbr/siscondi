@@ -4,23 +4,32 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\CashRegisterStatus;
+use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
+use App\Models\Branch;
+use App\Models\CashRegister;
 use App\Models\Category;
+use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Helpers\ProductTestHelper;
 use Tests\TestCase;
 
 class StockManagementTest extends TestCase
 {
     use RefreshDatabase;
+    use ProductTestHelper;
 
     private User $stockist;
     private Category $category;
+    private Branch $mainBranch;
 
     protected function setUp(): void
     {
@@ -29,6 +38,9 @@ class StockManagementTest extends TestCase
         $this->seedRolesAndPermissions();
 
         $this->category = Category::factory()->create();
+
+        $this->mainBranch = Branch::where('is_main', true)->first() 
+            ?? Branch::factory()->create(['name' => 'Matriz', 'is_main' => true]);
 
         $this->stockist = User::factory()->create([
             'email' => 'stockist@test.com',
@@ -58,21 +70,29 @@ class StockManagementTest extends TestCase
         $product = Product::factory()->create([
             'category_id' => $this->category->id,
             'name' => 'Produto Teste',
-            'sku' => 'SKU-STOCK-001',
             'cost_price' => 10.00,
-            'stock_quantity' => 50,
         ]);
 
-        $initialStock = $product->stock_quantity;
+        $variant = ProductVariant::factory()->for($product)->create();
+
+        $inventory = Inventory::create([
+            'branch_id' => $this->mainBranch->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 50,
+            'min_quantity' => 10,
+        ]);
+
+        $initialStock = $inventory->quantity;
         $initialCostPrice = $product->cost_price;
 
         $token = $this->stockist->createToken('test-token')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/stock/entries', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 30,
                         'cost_price' => 12.00,
                     ],
@@ -82,13 +102,15 @@ class StockManagementTest extends TestCase
 
         $response->assertStatus(201);
 
+        $inventory->refresh();
         $product->refresh();
 
-        $this->assertEquals($initialStock + 30, $product->stock_quantity);
+        $this->assertEquals($initialStock + 30, $inventory->quantity);
         $this->assertEquals(12.00, (float) $product->cost_price);
 
         $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'branch_id' => $this->mainBranch->id,
             'user_id' => $this->stockist->id,
             'type' => StockMovementType::ENTRY->value,
             'quantity' => 30,
@@ -98,13 +120,11 @@ class StockManagementTest extends TestCase
 
     public function test_sale_creates_stock_movement_record(): void
     {
-        $product = Product::factory()->create([
-            'category_id' => $this->category->id,
-            'name' => 'Produto Venda',
-            'sku' => 'SKU-SALE-001',
-            'sell_price' => 50.00,
-            'stock_quantity' => 100,
-        ]);
+        $variant = $this->createProductWithVariant(
+            ['category_id' => $this->category->id, 'name' => 'Produto Venda', 'sell_price' => 50.00],
+            [],
+            100
+        );
 
         $seller = User::factory()->create([
             'email' => 'seller@test.com',
@@ -116,9 +136,9 @@ class StockManagementTest extends TestCase
         $sellerRole->givePermissionTo('pos.access');
         $seller->assignRole('seller');
 
-        \App\Models\CashRegister::factory()->create([
+        CashRegister::factory()->create([
             'user_id' => $seller->id,
-            'status' => \App\Enums\CashRegisterStatus::OPEN,
+            'status' => CashRegisterStatus::OPEN,
             'initial_balance' => 100.00,
         ]);
 
@@ -126,9 +146,10 @@ class StockManagementTest extends TestCase
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/sales', [
+                'branch_id' => $this->mainBranch->id,
                 'items' => [
                     [
-                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
                         'quantity' => 5,
                     ],
                 ],
@@ -146,14 +167,18 @@ class StockManagementTest extends TestCase
         $saleId = $response->json('id');
 
         $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'branch_id' => $this->mainBranch->id,
             'user_id' => $seller->id,
             'type' => StockMovementType::SALE->value,
             'quantity' => 5,
             'reason' => "Sale #{$saleId}",
         ]);
 
-        $product->refresh();
-        $this->assertEquals(95, $product->stock_quantity);
+        $inventory = Inventory::where('branch_id', $this->mainBranch->id)
+            ->where('product_variant_id', $variant->id)
+            ->first();
+        
+        $this->assertEquals(95, $inventory->quantity);
     }
 }

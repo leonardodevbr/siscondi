@@ -23,14 +23,10 @@ class Product extends Model
         'supplier_id',
         'name',
         'description',
-        'sku',
-        'barcode',
         'cost_price',
         'sell_price',
         'promotional_price',
         'promotional_expires_at',
-        'stock_quantity',
-        'min_stock_quantity',
     ];
 
     /**
@@ -41,8 +37,6 @@ class Product extends Model
         'sell_price' => 'decimal:2',
         'promotional_price' => 'decimal:2',
         'promotional_expires_at' => 'datetime',
-        'stock_quantity' => 'integer',
-        'min_stock_quantity' => 'integer',
     ];
 
     /**
@@ -62,11 +56,21 @@ class Product extends Model
     }
 
     /**
-     * @return HasMany<StockMovement>
+     * @return HasMany<ProductVariant>
      */
-    public function stockMovements(): HasMany
+    public function variants(): HasMany
     {
-        return $this->hasMany(StockMovement::class);
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
+     * Alias para variants() para compatibilidade
+     *
+     * @return HasMany<ProductVariant>
+     */
+    public function productVariants(): HasMany
+    {
+        return $this->variants();
     }
 
     public function getEffectivePrice(): float
