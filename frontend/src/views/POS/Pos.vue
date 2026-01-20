@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
 import { useToast } from 'vue-toastification';
@@ -9,6 +10,7 @@ import Button from '@/components/Common/Button.vue';
 import Input from '@/components/Common/Input.vue';
 import Modal from '@/components/Common/Modal.vue';
 
+const router = useRouter();
 const cashRegisterStore = useCashRegisterStore();
 const cartStore = useCartStore();
 const toast = useToast();
@@ -51,6 +53,10 @@ async function handleOpenRegister() {
     const message = error.response?.data?.message || error.message || 'Erro ao abrir o caixa.';
     toast.error(message);
   }
+}
+
+function handleCancelAndGoBack() {
+  router.push({ name: 'dashboard' });
 }
 
 async function searchProducts(query) {
@@ -264,11 +270,19 @@ onMounted(async () => {
           @keyup.enter="handleOpenRegister"
         />
 
-        <div class="flex gap-3 pt-2">
+        <div class="flex justify-end gap-3 pt-2">
           <button
             type="button"
             :disabled="cashRegisterStore.loading"
-            class="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+            @click="handleCancelAndGoBack"
+          >
+            Cancelar e Voltar
+          </button>
+          <button
+            type="button"
+            :disabled="cashRegisterStore.loading"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
             @click="handleOpenRegister"
           >
             <span v-if="cashRegisterStore.loading">Abrindo...</span>
@@ -489,22 +503,21 @@ onMounted(async () => {
               </span>
             </div>
 
-            <div class="space-y-2">
-              <Button
-                type="button"
-                variant="primary"
-                class="w-full"
-                @click="handleFinalizeSale"
-              >
-                Finalizar Venda (F2)
-              </Button>
+            <div class="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
-                class="w-full border-red-300 text-red-600 hover:bg-red-50"
+                class="border-red-300 text-red-600 hover:bg-red-50"
                 @click="handleCancelSale"
               >
                 Cancelar (Esc)
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                @click="handleFinalizeSale"
+              >
+                Finalizar Venda (F2)
               </Button>
             </div>
           </div>
