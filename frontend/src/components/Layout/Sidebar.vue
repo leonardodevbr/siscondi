@@ -34,7 +34,7 @@ const menuGroups = computed(() => [
   {
     title: 'Principal',
     items: [
-      { name: 'Dashboard', to: { name: 'dashboard' }, icon: HomeIcon },
+      { name: 'Painel', to: { name: 'dashboard' }, icon: HomeIcon },
       { name: 'PDV / Frente de Caixa', to: { name: 'pos' }, icon: ComputerDesktopIcon },
     ],
   },

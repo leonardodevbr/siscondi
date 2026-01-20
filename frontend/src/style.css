@@ -25,3 +25,12 @@
   }
 }
 
+/* Toast Notifications - Z-Index Supremo */
+.Vue-Toastification__container {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+.Vue-Toastification__toast {
+  z-index: 99999 !important;
+}

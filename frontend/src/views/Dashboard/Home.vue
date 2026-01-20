@@ -1,8 +1,12 @@
+<script setup>
+import { formatCurrency } from '@/utils/format';
+</script>
+
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-slate-800">Dashboard</h2>
+        <h2 class="text-lg font-semibold text-slate-800">Painel</h2>
         <p class="text-xs text-slate-500">
           Visão geral rápida das operações da loja.
         </p>
@@ -15,7 +19,7 @@
           Faturamento de hoje
         </p>
         <p class="mt-2 text-2xl font-semibold text-slate-900">
-          R$ 0,00
+          {{ formatCurrency(0) }}
         </p>
         <p class="mt-1 text-xs text-slate-400">
           Integração futura com endpoint /api/dashboard

@@ -32,9 +32,9 @@ function handleLogout() {
         @logout="handleLogout"
       />
 
-      <main class="flex-1 bg-gray-50">
-        <div class="p-4 md:p-6">
-          <div class="card p-4 md:p-6">
+      <main class="flex-1 overflow-hidden bg-gray-50">
+        <div class="h-full p-4 md:p-6">
+          <div class="card h-full p-4 md:p-6">
             <router-view />
           </div>
         </div>
