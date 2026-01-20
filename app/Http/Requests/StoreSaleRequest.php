@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
+use App\Models\Coupon;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,6 +41,7 @@ class StoreSaleRequest extends FormRequest
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -74,11 +76,20 @@ class StoreSaleRequest extends FormRequest
             $discountType = $this->input('discount_type');
             $discountValue = (float) ($this->input('discount_value', 0));
             $discountAmount = (float) ($this->input('discount_amount', 0));
+            $couponCode = $this->input('coupon_code');
 
             if ($discountType === 'percentage') {
                 $discountAmount = $totalAmount * ($discountValue / 100);
             } elseif ($discountType === 'fixed') {
                 $discountAmount = $discountValue;
+            }
+
+            if ($couponCode) {
+                $coupon = Coupon::where('code', strtoupper((string) $couponCode))->first();
+
+                if ($coupon) {
+                    $discountAmount = $coupon->calculateDiscount($totalAmount);
+                }
             }
 
             $finalAmount = $totalAmount - $discountAmount;
