@@ -20,10 +20,10 @@
             CEP
           </label>
           <input
-            v-model="addressData.cep"
+            :value="addressData.zip_code"
             type="text"
             @blur="fetchAddress"
-            @input="formatCep"
+            @input="(e) => formatCep(e)"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="00000-000"
             maxlength="9"
@@ -34,7 +34,8 @@
             Logradouro
           </label>
           <input
-            v-model="addressData.street"
+            :value="addressData.street"
+            @input="updateField('street', $event.target.value)"
             type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Rua, Avenida, etc."
@@ -49,7 +50,8 @@
           </label>
           <input
             ref="numberInput"
-            v-model="addressData.number"
+            :value="addressData.number"
+            @input="updateField('number', $event.target.value)"
             type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="123"
@@ -60,7 +62,8 @@
             Complemento
           </label>
           <input
-            v-model="addressData.complement"
+            :value="addressData.complement"
+            @input="updateField('complement', $event.target.value)"
             type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Apto, Bloco, etc."
@@ -74,7 +77,8 @@
             Bairro
           </label>
           <input
-            v-model="addressData.neighborhood"
+            :value="addressData.neighborhood"
+            @input="updateField('neighborhood', $event.target.value)"
             type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Bairro"
@@ -85,7 +89,8 @@
             Cidade
           </label>
           <input
-            v-model="addressData.city"
+            :value="addressData.city"
+            @input="updateField('city', $event.target.value)"
             type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Cidade"
@@ -98,7 +103,8 @@
           Estado (UF)
         </label>
         <input
-          v-model="addressData.state"
+          :value="addressData.state"
+          @input="updateField('state', $event.target.value.toUpperCase())"
           type="text"
           maxlength="2"
           class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
@@ -110,7 +116,7 @@
 </template>
 
 <script>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
 
 export default {
@@ -120,8 +126,16 @@ export default {
   },
   props: {
     modelValue: {
-      type: String,
-      default: '',
+      type: Object,
+      default: () => ({
+        zip_code: '',
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+      }),
     },
   },
   emits: ['update:modelValue'],
@@ -130,25 +144,35 @@ export default {
     const numberInput = ref(null);
     const loading = ref(false);
 
-    const addressData = ref({
-      cep: '',
-      street: '',
-      number: '',
-      complement: '',
-      neighborhood: '',
-      city: '',
-      state: '',
+    const addressData = computed({
+      get: () => props.modelValue || {
+        zip_code: '',
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+      },
+      set: (value) => {
+        emit('update:modelValue', value);
+      },
     });
+
+    const updateField = (field, value) => {
+      const updated = { ...addressData.value, [field]: value };
+      emit('update:modelValue', updated);
+    };
 
     const formatCep = (event) => {
       let value = event.target.value.replace(/\D/g, '');
       value = value.substring(0, 8);
       value = value.replace(/(\d{5})(\d{3})/, '$1-$2');
-      addressData.value.cep = value;
+      updateField('zip_code', value);
     };
 
     const fetchAddress = async () => {
-      const cep = addressData.value.cep.replace(/\D/g, '');
+      const cep = addressData.value.zip_code.replace(/\D/g, '');
       
       if (cep.length !== 8) {
         return;
@@ -164,10 +188,15 @@ export default {
           return;
         }
 
-        addressData.value.street = data.logradouro || '';
-        addressData.value.neighborhood = data.bairro || '';
-        addressData.value.city = data.localidade || '';
-        addressData.value.state = data.uf || '';
+        const updated = {
+          ...addressData.value,
+          street: data.logradouro || '',
+          neighborhood: data.bairro || '',
+          city: data.localidade || '',
+          state: data.uf || '',
+        };
+
+        emit('update:modelValue', updated);
 
         await nextTick();
         if (numberInput.value) {
@@ -180,127 +209,14 @@ export default {
       }
     };
 
-    const formatAddressString = () => {
-      const parts = [];
-
-      if (addressData.value.street) {
-        parts.push(addressData.value.street);
-      }
-
-      if (addressData.value.number) {
-        parts.push(`nº ${addressData.value.number}`);
-      }
-
-      if (addressData.value.complement) {
-        parts.push(addressData.value.complement);
-      }
-
-      if (addressData.value.neighborhood) {
-        parts.push(`- ${addressData.value.neighborhood}`);
-      }
-
-      if (addressData.value.city || addressData.value.state) {
-        const cityState = [addressData.value.city, addressData.value.state]
-          .filter(Boolean)
-          .join('/');
-        if (cityState) {
-          parts.push(cityState);
-        }
-      }
-
-      if (addressData.value.cep) {
-        parts.push(`CEP: ${addressData.value.cep}`);
-      }
-
-      return parts.join(', ');
-    };
-
-    watch(
-      () => addressData.value,
-      () => {
-        const formatted = formatAddressString();
-        emit('update:modelValue', formatted);
-      },
-      { deep: true }
-    );
-
-    const parseAddressString = (addressString) => {
-      if (!addressString) {
-        return {
-          cep: '',
-          street: '',
-          number: '',
-          complement: '',
-          neighborhood: '',
-          city: '',
-          state: '',
-        };
-      }
-
-      const cepMatch = addressString.match(/CEP:\s*(\d{5}-?\d{3})/);
-      const cep = cepMatch ? cepMatch[1].replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2') : '';
-
-      const parts = addressString.split(',').map((p) => p.trim());
-      let street = '';
-      let number = '';
-      let complement = '';
-      let neighborhood = '';
-      let city = '';
-      let state = '';
-
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        
-        if (part.startsWith('CEP:')) continue;
-        
-        if (part.includes('/')) {
-          const cityState = part.split('/').map((p) => p.trim());
-          city = cityState[0] || '';
-          state = cityState[1] || '';
-        } else if (part.startsWith('-')) {
-          neighborhood = part.replace(/^-\s*/, '');
-        } else if (part.startsWith('nº') || part.match(/^\d+$/)) {
-          number = part.replace(/^nº\s*/, '');
-        } else if (street === '') {
-          street = part;
-        } else if (complement === '' && !part.includes('/')) {
-          complement = part;
-        }
-      }
-
-      return {
-        cep,
-        street,
-        number,
-        complement,
-        neighborhood,
-        city,
-        state,
-      };
-    };
-
     watch(
       () => props.modelValue,
       (newValue) => {
-        if (newValue) {
-          const parsed = parseAddressString(newValue);
-          if (parsed.street || parsed.city || parsed.cep) {
-            addressData.value = parsed;
-            isOpen.value = true;
-          }
-        } else if (!isOpen.value) {
-          addressData.value = {
-            cep: '',
-            street: '',
-            number: '',
-            complement: '',
-            neighborhood: '',
-            city: '',
-            state: '',
-          };
+        if (newValue && (newValue.street || newValue.city || newValue.zip_code)) {
+          isOpen.value = true;
         }
       },
-      { immediate: true }
+      { immediate: true, deep: true }
     );
 
     return {
@@ -310,6 +226,7 @@ export default {
       loading,
       formatCep,
       fetchAddress,
+      updateField,
     };
   },
 };

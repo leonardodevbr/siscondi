@@ -85,6 +85,8 @@
           </div>
         </div>
 
+        <AddressForm v-model="form.addressData" />
+
         <div>
           <Toggle
             v-model="form.active"
@@ -120,12 +122,14 @@ import { useToast } from 'vue-toastification';
 import { useSupplierStore } from '@/stores/supplier';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
 import Toggle from '@/components/Common/Toggle.vue';
+import AddressForm from '@/components/Common/AddressForm.vue';
 
 export default {
   name: 'SupplierForm',
   components: {
     XMarkIcon,
     Toggle,
+    AddressForm,
   },
   props: {
     supplier: {
@@ -145,6 +149,15 @@ export default {
       cnpj: '',
       email: '',
       phone: '',
+      addressData: {
+        zip_code: '',
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+      },
       active: true,
     });
 
@@ -158,6 +171,15 @@ export default {
             cnpj: supplier.cnpj || '',
             email: supplier.email || '',
             phone: supplier.phone || '',
+            addressData: {
+              zip_code: supplier.zip_code || '',
+              street: supplier.street || '',
+              number: supplier.number || '',
+              complement: supplier.complement || '',
+              neighborhood: supplier.neighborhood || '',
+              city: supplier.city || '',
+              state: supplier.state || '',
+            },
             active: Boolean(supplier.active !== undefined ? supplier.active : true),
           };
         } else {
@@ -167,6 +189,15 @@ export default {
             cnpj: '',
             email: '',
             phone: '',
+            addressData: {
+              zip_code: '',
+              street: '',
+              number: '',
+              complement: '',
+              neighborhood: '',
+              city: '',
+              state: '',
+            },
             active: true,
           };
         }
@@ -201,11 +232,19 @@ export default {
       saving.value = true;
 
       try {
+        const { addressData, ...rest } = form.value;
         const payload = {
-          ...form.value,
+          ...rest,
           cnpj: form.value.cnpj.replace(/\D/g, ''),
           phone: form.value.phone.replace(/\D/g, ''),
           active: Boolean(form.value.active),
+          zip_code: addressData?.zip_code || '',
+          street: addressData?.street || '',
+          number: addressData?.number || '',
+          complement: addressData?.complement || '',
+          neighborhood: addressData?.neighborhood || '',
+          city: addressData?.city || '',
+          state: addressData?.state || '',
         };
 
         if (props.supplier) {

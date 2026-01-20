@@ -30,6 +30,13 @@ class StoreSupplierRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
             'active' => ['nullable', 'boolean'],
+            'zip_code' => ['nullable', 'string', 'max:10'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:20'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'size:2'],
         ];
     }
 }

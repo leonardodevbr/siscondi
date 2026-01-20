@@ -32,7 +32,13 @@ class UpdateCustomerRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customerId)],
             'phone' => ['nullable', 'string', 'max:20'],
             'birth_date' => ['nullable', 'date'],
-            'address' => ['nullable', 'string'],
+            'zip_code' => ['nullable', 'string', 'max:10'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:20'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'size:2'],
         ];
     }
 }

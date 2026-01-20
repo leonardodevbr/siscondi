@@ -85,7 +85,7 @@
           />
         </div>
 
-        <AddressForm v-model="form.address" />
+        <AddressForm v-model="form.addressData" />
 
         <div class="flex justify-end gap-2 pt-4">
           <button
@@ -140,7 +140,15 @@ export default {
       email: '',
       phone: '',
       birth_date: '',
-      address: '',
+      addressData: {
+        zip_code: '',
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+      },
     });
 
     watch(
@@ -153,7 +161,15 @@ export default {
             email: customer.email || '',
             phone: customer.phone || '',
             birth_date: customer.birth_date ? customer.birth_date.split('T')[0] : '',
-            address: customer.address || '',
+            addressData: {
+              zip_code: customer.zip_code || '',
+              street: customer.street || '',
+              number: customer.number || '',
+              complement: customer.complement || '',
+              neighborhood: customer.neighborhood || '',
+              city: customer.city || '',
+              state: customer.state || '',
+            },
           };
         } else {
           form.value = {
@@ -162,7 +178,15 @@ export default {
             email: '',
             phone: '',
             birth_date: '',
-            address: '',
+            addressData: {
+              zip_code: '',
+              street: '',
+              number: '',
+              complement: '',
+              neighborhood: '',
+              city: '',
+              state: '',
+            },
           };
         }
       },
@@ -205,10 +229,18 @@ export default {
       saving.value = true;
 
       try {
+        const { addressData, ...rest } = form.value;
         const payload = {
-          ...form.value,
+          ...rest,
           cpf_cnpj: form.value.cpf_cnpj.replace(/\D/g, ''),
           phone: form.value.phone.replace(/\D/g, ''),
+          zip_code: addressData?.zip_code || '',
+          street: addressData?.street || '',
+          number: addressData?.number || '',
+          complement: addressData?.complement || '',
+          neighborhood: addressData?.neighborhood || '',
+          city: addressData?.city || '',
+          state: addressData?.state || '',
         };
 
         if (props.customer) {
