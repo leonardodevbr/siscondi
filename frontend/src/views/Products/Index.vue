@@ -7,40 +7,87 @@
           Gerencie produtos, variações e estoque
         </p>
       </div>
-      <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+      
+      <!-- Desktop: Botões visíveis -->
+      <div class="hidden md:flex gap-2">
         <button
           @click="handleImport"
-          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors w-full sm:w-auto"
+          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors"
         >
           Importar Excel
         </button>
         <router-link
           :to="{ name: 'products.labels' }"
-          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors text-center w-full sm:w-auto"
+          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors"
         >
           Gerar Etiquetas
         </router-link>
         <button
           @click="$router.push({ name: 'products.form' })"
-          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
+          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
         >
           Novo Produto
         </button>
       </div>
+
+      <!-- Mobile: Botão Novo + Menu Dropdown -->
+      <div class="flex md:hidden items-center justify-between gap-2">
+        <button
+          @click="$router.push({ name: 'products.form' })"
+          class="flex-1 bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <PlusIcon class="h-5 w-5" />
+          <span class="hidden xs:inline">Novo</span>
+        </button>
+        
+        <Menu as="div" class="relative">
+          <MenuButton class="p-2 rounded border border-slate-300 hover:bg-slate-50 transition-colors">
+            <EllipsisVerticalIcon class="h-5 w-5 text-slate-600" />
+          </MenuButton>
+          <MenuItems class="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-lg z-50">
+            <div class="py-1">
+              <MenuItem v-slot="{ active }">
+                <router-link
+                  :to="{ name: 'products.labels' }"
+                  :class="[
+                    active ? 'bg-slate-100' : '',
+                    'flex items-center gap-2 px-4 py-2 text-sm text-slate-700',
+                  ]"
+                >
+                  <QrCodeIcon class="h-5 w-5" />
+                  Gerar Etiquetas
+                </router-link>
+              </MenuItem>
+              <MenuItem v-slot="{ active }">
+                <button
+                  @click="handleImport"
+                  :class="[
+                    active ? 'bg-slate-100' : '',
+                    'w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 text-left',
+                  ]"
+                >
+                  <ArrowUpTrayIcon class="h-5 w-5" />
+                  Importar Excel
+                </button>
+              </MenuItem>
+            </div>
+          </MenuItems>
+        </Menu>
+      </div>
     </div>
 
     <div class="card p-4 sm:p-6">
-      <div class="mb-4 flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
+      <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
           <input
             v-model="filters.search"
             type="text"
             placeholder="Buscar por nome..."
-            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             @input="debouncedSearch"
           />
         </div>
-        <div class="w-full sm:w-48">
+        <div>
           <SelectInput
             v-model="filters.category_id"
             :options="categoryOptions"
@@ -187,7 +234,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
+import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
 import SelectInput from '@/components/Common/SelectInput.vue';
@@ -200,6 +248,14 @@ export default {
   components: {
     PencilSquareIcon,
     TrashIcon,
+    PlusIcon,
+    EllipsisVerticalIcon,
+    QrCodeIcon,
+    ArrowUpTrayIcon,
+    Menu,
+    MenuButton,
+    MenuItems,
+    MenuItem,
     ProductThumb,
     SelectInput,
   },
