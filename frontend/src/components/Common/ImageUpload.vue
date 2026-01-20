@@ -26,15 +26,23 @@
           :src="imagePreview"
           alt="Preview"
           class="h-full w-full object-cover"
+          @error="handleImageError"
         />
         <button
           type="button"
           @click.stop="removeImage"
-          class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
+          class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors z-10"
           title="Remover imagem"
         >
           <XMarkIcon class="h-4 w-4" />
         </button>
+        <div
+          v-if="imageError"
+          class="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 text-slate-400"
+        >
+          <PhotoIcon class="h-8 w-8 mb-1" />
+          <span class="text-xs text-center px-2">Imagem inválida</span>
+        </div>
       </div>
     </div>
   </div>
@@ -42,13 +50,14 @@
 
 <script>
 import { ref, computed, watch } from 'vue';
-import { CameraIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { CameraIcon, XMarkIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 
 export default {
   name: 'ImageUpload',
   components: {
     CameraIcon,
     XMarkIcon,
+    PhotoIcon,
   },
   props: {
     modelValue: {
@@ -65,6 +74,7 @@ export default {
   setup(props, { emit }) {
     const fileInput = ref(null);
     const imagePreview = ref(null);
+    const imageError = ref(false);
 
     const sizeClass = computed(() => {
       const sizes = {
@@ -75,7 +85,28 @@ export default {
       return sizes[props.size] || sizes.md;
     });
 
+    const isValidImageUrl = (url) => {
+      if (!url || typeof url !== 'string') return false;
+      
+      if (url.includes('via.placeholder.com')) {
+        return false;
+      }
+      
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      
+      return true;
+    };
+
     const updatePreview = (value) => {
+      imageError.value = false;
+      
       if (value instanceof File) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -83,10 +114,25 @@ export default {
         };
         reader.readAsDataURL(value);
       } else if (typeof value === 'string' && value) {
-        imagePreview.value = value;
+        if (!isValidImageUrl(value)) {
+          imagePreview.value = null;
+          return;
+        }
+        
+        if (value.startsWith('http://') || value.startsWith('https://')) {
+          imagePreview.value = value;
+        } else if (value.startsWith('products/') || value.startsWith('product-variants/')) {
+          imagePreview.value = `/storage/${value}`;
+        } else {
+          imagePreview.value = value;
+        }
       } else {
         imagePreview.value = null;
       }
+    };
+
+    const handleImageError = () => {
+      imageError.value = true;
     };
 
     watch(
@@ -109,6 +155,7 @@ export default {
     };
 
     const removeImage = () => {
+      imageError.value = false;
       emit('update:modelValue', null);
       if (fileInput.value) {
         fileInput.value.value = '';
@@ -118,10 +165,12 @@ export default {
     return {
       fileInput,
       imagePreview,
+      imageError,
       sizeClass,
       triggerFileInput,
       handleFileSelect,
       removeImage,
+      handleImageError,
     };
   },
 };

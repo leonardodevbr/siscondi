@@ -1,6 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
 import { useToast } from 'vue-toastification';
@@ -8,17 +7,13 @@ import { useAlert } from '@/composables/useAlert';
 import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
-import Input from '@/components/Common/Input.vue';
-import Modal from '@/components/Common/Modal.vue';
+import PosClosedState from '@/components/Pos/PosClosedState.vue';
 
-const router = useRouter();
 const cashRegisterStore = useCashRegisterStore();
 const cartStore = useCartStore();
 const toast = useToast();
 const { confirm } = useAlert();
 
-const showOpenModal = ref(false);
-const initialBalance = ref('');
 const searchQuery = ref('');
 const products = ref([]);
 const loadingProducts = ref(false);
@@ -29,36 +24,9 @@ const cartTotal = computed(() => cartStore.subtotal);
 async function checkCashRegisterStatus() {
   try {
     await cashRegisterStore.checkStatus();
-    if (!cashRegisterStore.isOpen) {
-      showOpenModal.value = true;
-    }
   } catch (error) {
     toast.error('Erro ao verificar status do caixa.');
-    showOpenModal.value = true;
   }
-}
-
-async function handleOpenRegister() {
-  const balance = parseFloat(initialBalance.value);
-
-  if (!initialBalance.value || isNaN(balance) || balance < 0) {
-    toast.error('Informe um saldo inicial válido (maior ou igual a zero).');
-    return;
-  }
-
-  try {
-    await cashRegisterStore.openRegister(balance);
-    toast.success('Caixa aberto com sucesso!');
-    showOpenModal.value = false;
-    initialBalance.value = '';
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Erro ao abrir o caixa.';
-    toast.error(message);
-  }
-}
-
-function handleCancelAndGoBack() {
-  router.push({ name: 'dashboard' });
 }
 
 async function searchProducts(query) {
@@ -225,16 +193,6 @@ async function handleCancelSale() {
   }
 }
 
-watch(showOpenModal, async (isOpen) => {
-  if (isOpen) {
-    await nextTick();
-    const balanceInput = document.querySelector('#initial-balance');
-    if (balanceInput) {
-      balanceInput.focus();
-    }
-  }
-});
-
 onMounted(async () => {
   await checkCashRegisterStatus();
 
@@ -244,66 +202,18 @@ onMounted(async () => {
     if (searchInput) {
       searchInput.focus();
     }
-  } else if (showOpenModal.value) {
-    await nextTick();
-    const balanceInput = document.querySelector('#initial-balance');
-    if (balanceInput) {
-      balanceInput.focus();
-    }
   }
 });
 </script>
 
 <template>
   <div class="flex h-full flex-col">
-    <!-- Modal para abrir caixa -->
-    <Modal
-      :is-open="showOpenModal"
-      :closable="false"
-      title="Abrir Caixa"
-      @close="() => {}"
-    >
-      <div class="space-y-4">
-        <p class="text-sm text-slate-600">
-          Para iniciar as vendas, é necessário abrir o caixa com um saldo inicial.
-        </p>
-
-        <Input
-          id="initial-balance"
-          v-model="initialBalance"
-          label="Saldo Inicial (R$)"
-          type="number"
-          step="0.01"
-          min="0"
-          autocomplete="off"
-          @keyup.enter="handleOpenRegister"
-        />
-
-        <div class="flex justify-between w-full pt-2">
-          <button
-            type="button"
-            :disabled="cashRegisterStore.loading"
-            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
-            @click="handleCancelAndGoBack"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            :disabled="cashRegisterStore.loading"
-            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
-            @click="handleOpenRegister"
-          >
-            <span v-if="cashRegisterStore.loading">Abrindo...</span>
-            <span v-else>Abrir Caixa</span>
-          </button>
-        </div>
-      </div>
-    </Modal>
+    <!-- Tela de Empty State quando caixa está fechado -->
+    <PosClosedState v-if="!cashRegisterStore.isOpen" />
 
     <!-- Interface de Vendas (só aparece se caixa estiver aberto) -->
     <div
-      v-if="cashRegisterStore.isOpen"
+      v-else
       class="flex h-full flex-col gap-4"
     >
       <!-- Header com saldo do caixa -->

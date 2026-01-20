@@ -31,7 +31,7 @@ class ProductVariantFactory extends Factory
             'price' => fake()->boolean(30)
                 ? fake()->randomFloat(2, 10, 1000)
                 : null,
-            'image' => fake()->optional()->imageUrl(640, 480, 'fashion', true),
+            'image' => null,
             'attributes' => [
                 'cor' => fake()->randomElement($colors),
                 'tamanho' => fake()->randomElement($sizes),
