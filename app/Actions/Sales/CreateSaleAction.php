@@ -10,6 +10,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
+use App\Exceptions\InvalidCouponException;
 use App\Exceptions\NoOpenCashRegisterException;
 use App\Models\CashRegister;
 use App\Models\Coupon;
@@ -19,7 +20,6 @@ use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection as SupportCollection;
 
 class CreateSaleAction
 {
@@ -53,15 +53,17 @@ class CreateSaleAction
 
             $totalAmount = $this->calculateTotalAmount($items, $products);
             $discountAmount = $this->calculateDiscount($totalAmount, $data);
-            $finalAmount = $totalAmount - $discountAmount;
 
             $coupon = $this->validateAndApplyCoupon($data, $totalAmount);
+            $couponId = null;
+
             if ($coupon) {
-                $couponDiscount = $coupon->calculateDiscount($totalAmount);
-                $discountAmount = $couponDiscount;
-                $finalAmount = $totalAmount - $discountAmount;
+                $discountAmount = $coupon->calculateDiscount($totalAmount);
                 $coupon->incrementUsage();
+                $couponId = $coupon->id;
             }
+
+            $finalAmount = $totalAmount - $discountAmount;
 
             $hasPixPayment = collect($payments)->contains(fn (array $payment) => 
                 PaymentMethod::from($payment['method']) === PaymentMethod::PIX
@@ -72,6 +74,7 @@ class CreateSaleAction
             $sale = Sale::create([
                 'user_id' => $user->id,
                 'customer_id' => $customerId,
+                'coupon_id' => $couponId,
                 'total_amount' => $totalAmount,
                 'discount_amount' => $discountAmount,
                 'final_amount' => $finalAmount,
@@ -87,7 +90,7 @@ class CreateSaleAction
                 $this->createCashRegisterTransaction($cashRegister, $sale, $payments);
             }
 
-            $sale->load(['items.product', 'payments', 'customer', 'user']);
+            $sale->load(['items.product', 'payments', 'customer', 'user', 'coupon']);
 
             return $sale;
         });
@@ -248,6 +251,7 @@ class CreateSaleAction
 
     /**
      * @param array<string, mixed> $data
+     * @throws InvalidCouponException
      */
     private function validateAndApplyCoupon(array $data, float $totalAmount): ?Coupon
     {
@@ -260,11 +264,27 @@ class CreateSaleAction
         $coupon = Coupon::where('code', strtoupper($couponCode))->first();
 
         if (! $coupon) {
-            throw new \InvalidArgumentException("Coupon code '{$couponCode}' not found.");
+            throw InvalidCouponException::notFound($couponCode);
         }
 
-        if (! $coupon->isValid($totalAmount)) {
-            throw new \InvalidArgumentException("Coupon code '{$couponCode}' is not valid or has expired.");
+        if (! $coupon->active) {
+            throw InvalidCouponException::inactive($couponCode);
+        }
+
+        if ($coupon->starts_at && now()->isBefore($coupon->starts_at)) {
+            throw InvalidCouponException::notYetActive($couponCode);
+        }
+
+        if ($coupon->expires_at && now()->isAfter($coupon->expires_at)) {
+            throw InvalidCouponException::expired($couponCode);
+        }
+
+        if ($coupon->usage_limit !== null && $coupon->used_count >= $coupon->usage_limit) {
+            throw InvalidCouponException::usageLimitReached($couponCode);
+        }
+
+        if ($coupon->min_purchase_amount !== null && $totalAmount < (float) $coupon->min_purchase_amount) {
+            throw InvalidCouponException::minimumPurchaseNotMet($couponCode, (float) $coupon->min_purchase_amount);
         }
 
         return $coupon;

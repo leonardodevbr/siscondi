@@ -20,6 +20,7 @@ class Sale extends Model
     protected $fillable = [
         'user_id',
         'customer_id',
+        'coupon_id',
         'total_amount',
         'discount_amount',
         'final_amount',
@@ -51,6 +52,14 @@ class Sale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * @return BelongsTo<Coupon, Sale>
+     */
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     /**

@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Sales\CreateSaleAction;
-use App\Enums\SaleStatus;
+use App\Exceptions\InvalidCouponException;
 use App\Exceptions\NoOpenCashRegisterException;
 use App\Http\Requests\StoreSaleRequest;
+use App\Http\Requests\UpdateSaleRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class SaleController extends Controller
     {
         $this->authorize('pos.access');
 
-        $query = Sale::query()->with(['user', 'customer', 'items.product', 'payments']);
+        $query = Sale::query()->with(['user', 'customer', 'coupon', 'items.product', 'payments']);
 
         if ($request->has('status')) {
             $query->where('status', $request->string('status'));
@@ -43,7 +44,7 @@ class SaleController extends Controller
 
         $sales = $query->latest()->paginate(15);
 
-        return response()->json($sales);
+        return SaleResource::collection($sales)->response();
     }
 
     /**
@@ -62,6 +63,10 @@ class SaleController extends Controller
             return response()->json([
                 'message' => $e->getMessage(),
             ], 403);
+        } catch (InvalidCouponException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\InvalidArgumentException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -76,7 +81,7 @@ class SaleController extends Controller
     {
         $this->authorize('pos.access');
 
-        $sale->load(['user', 'customer', 'items.product', 'payments']);
+        $sale->load(['user', 'customer', 'coupon', 'items.product', 'payments']);
 
         return response()->json(new SaleResource($sale));
     }
@@ -84,21 +89,10 @@ class SaleController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Sale $sale): JsonResponse
+    public function update(UpdateSaleRequest $request, Sale $sale): JsonResponse
     {
-        $this->authorize('pos.discount');
-
-        $validated = $request->validate([
-            'status' => ['sometimes', 'required', 'string'],
-            'note' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        if (isset($validated['status'])) {
-            $validated['status'] = SaleStatus::from($validated['status']);
-        }
-
-        $sale->update($validated);
-        $sale->load(['user', 'customer', 'items.product', 'payments']);
+        $sale->update($request->validated());
+        $sale->load(['user', 'customer', 'coupon', 'items.product', 'payments']);
 
         return response()->json(new SaleResource($sale));
     }

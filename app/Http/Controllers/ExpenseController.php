@@ -7,6 +7,10 @@ namespace App\Http\Controllers;
 use App\Actions\Expense\CreateExpenseAction;
 use App\Actions\Expense\PayExpenseAction;
 use App\Exceptions\NoOpenCashRegisterException;
+use App\Http\Requests\PayExpenseRequest;
+use App\Http\Requests\StoreExpenseRequest;
+use App\Http\Requests\UpdateExpenseRequest;
+use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,27 +55,18 @@ class ExpenseController extends Controller
 
         $expenses = $query->orderBy('due_date', 'desc')->paginate(15);
 
-        return response()->json($expenses);
+        return ExpenseResource::collection($expenses)->response();
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreExpenseRequest $request): JsonResponse
     {
-        $this->authorize('financial.manage');
+        $expense = $this->createExpenseAction->execute($request->validated(), $request->user());
+        $expense->load(['category', 'user']);
 
-        $validated = $request->validate([
-            'description' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'due_date' => ['required', 'date'],
-            'expense_category_id' => ['required', 'integer', 'exists:expense_categories,id'],
-            'paid_at' => ['nullable', 'date'],
-        ]);
-
-        $expense = $this->createExpenseAction->execute($validated, $request->user());
-
-        return response()->json($expense->load(['category', 'user']), 201);
+        return response()->json(new ExpenseResource($expense), 201);
     }
 
     /**
@@ -83,33 +78,24 @@ class ExpenseController extends Controller
 
         $expense->load(['category', 'user', 'cashRegisterTransaction']);
 
-        return response()->json($expense);
+        return response()->json(new ExpenseResource($expense));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Expense $expense): JsonResponse
+    public function update(UpdateExpenseRequest $request, Expense $expense): JsonResponse
     {
-        $this->authorize('financial.manage');
-
         if ($expense->isPaid()) {
             return response()->json([
                 'message' => 'Cannot update a paid expense.',
             ], 400);
         }
 
-        $validated = $request->validate([
-            'description' => ['sometimes', 'string', 'max:255'],
-            'amount' => ['sometimes', 'numeric', 'min:0.01'],
-            'due_date' => ['sometimes', 'date'],
-            'expense_category_id' => ['sometimes', 'integer', 'exists:expense_categories,id'],
-        ]);
-
-        $expense->update($validated);
+        $expense->update($request->validated());
         $expense->load(['category', 'user']);
 
-        return response()->json($expense);
+        return response()->json(new ExpenseResource($expense));
     }
 
     /**
@@ -133,20 +119,15 @@ class ExpenseController extends Controller
     /**
      * Pay an expense.
      */
-    public function pay(Request $request, Expense $expense): JsonResponse
+    public function pay(PayExpenseRequest $request, Expense $expense): JsonResponse
     {
-        $this->authorize('financial.manage');
-
-        $validated = $request->validate([
-            'payment_method' => ['required', 'string', 'in:CASH,BANK_TRANSFER,CREDIT_CARD'],
-        ]);
-
         try {
-            $expense = $this->payExpenseAction->execute($expense, $validated['payment_method']);
+            $expense = $this->payExpenseAction->execute($expense, $request->validated()['payment_method']);
+            $expense->load(['category', 'user', 'cashRegisterTransaction']);
 
             return response()->json([
                 'message' => 'Expense paid successfully',
-                'expense' => $expense->load(['category', 'user', 'cashRegisterTransaction']),
+                'expense' => new ExpenseResource($expense),
             ]);
         } catch (NoOpenCashRegisterException $e) {
             return response()->json([

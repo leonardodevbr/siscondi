@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +29,7 @@ class ProductController extends Controller
 
         $products = $query->paginate(15);
 
-        return response()->json($products);
+        return ProductResource::collection($products)->response();
     }
 
     /**
@@ -36,10 +38,9 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): JsonResponse
     {
         $product = Product::create($request->validated());
-
         $product->load(['category', 'supplier']);
 
-        return response()->json($product, 201);
+        return response()->json(new ProductResource($product), 201);
     }
 
     /**
@@ -51,35 +52,18 @@ class ProductController extends Controller
 
         $product->load(['category', 'supplier']);
 
-        return response()->json($product);
+        return response()->json(new ProductResource($product));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product): JsonResponse
+    public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        $this->authorize('products.edit');
-
-        $validated = $request->validate([
-            'category_id' => ['sometimes', 'required', 'exists:categories,id'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sku' => ['sometimes', 'required', 'string', 'max:255', 'unique:products,sku,' . $product->id],
-            'barcode' => ['nullable', 'string', 'max:13', 'unique:products,barcode,' . $product->id],
-            'cost_price' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'sell_price' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'promotional_price' => ['nullable', 'numeric', 'min:0'],
-            'promotional_expires_at' => ['nullable', 'date'],
-            'stock_quantity' => ['sometimes', 'required', 'integer', 'min:0'],
-            'min_stock_quantity' => ['sometimes', 'required', 'integer', 'min:0'],
-        ]);
-
-        $product->update($validated);
+        $product->update($request->validated());
         $product->load(['category', 'supplier']);
 
-        return response()->json($product);
+        return response()->json(new ProductResource($product));
     }
 
     /**

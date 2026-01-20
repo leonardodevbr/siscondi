@@ -62,4 +62,9 @@ class Expense extends Model
     {
         return $this->paid_at !== null;
     }
+
+    public function isOverdue(): bool
+    {
+        return ! $this->isPaid() && $this->due_date->isPast();
+    }
 }

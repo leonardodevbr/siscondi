@@ -26,6 +26,12 @@ class SaleResource extends JsonResource
                 'id' => $this->customer->id,
                 'name' => $this->customer->name,
             ] : null,
+            'coupon' => $this->whenLoaded('coupon', fn () => $this->coupon ? [
+                'id' => $this->coupon->id,
+                'code' => $this->coupon->code,
+                'type' => $this->coupon->type->value,
+                'value' => $this->coupon->value,
+            ] : null),
             'total_amount' => $this->total_amount,
             'discount_amount' => $this->discount_amount,
             'final_amount' => $this->final_amount,

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateSettingRequest;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
@@ -31,17 +31,9 @@ class SettingController extends Controller
         return response()->json($settings);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(UpdateSettingRequest $request): JsonResponse
     {
-        $this->authorize('settings.manage');
-
-        $data = $request->validate([
-            'settings' => ['required', 'array'],
-            'settings.*.key' => ['required', 'string', 'max:100'],
-            'settings.*.value' => ['nullable'],
-            'settings.*.group' => ['nullable', 'string', 'max:50'],
-            'settings.*.type' => ['nullable', 'string', 'in:string,boolean,integer,json'],
-        ]);
+        $data = $request->validated();
 
         foreach ($data['settings'] as $item) {
             /** @var Setting $setting */

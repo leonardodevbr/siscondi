@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCouponRequest;
 use App\Http\Requests\UpdateCouponRequest;
+use App\Http\Resources\CouponResource;
 use App\Models\Coupon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,33 +24,33 @@ class CouponController extends Controller
         }
 
         if ($request->has('code')) {
-            $query->where('code', 'like', '%'.$request->string('code').'%');
+            $query->where('code', 'like', '%' . $request->string('code') . '%');
         }
 
         $coupons = $query->orderByDesc('created_at')->paginate(15);
 
-        return response()->json($coupons);
+        return CouponResource::collection($coupons)->response();
     }
 
     public function store(StoreCouponRequest $request): JsonResponse
     {
         $coupon = Coupon::create($request->validated());
 
-        return response()->json($coupon, 201);
+        return response()->json(new CouponResource($coupon), 201);
     }
 
     public function show(Coupon $coupon): JsonResponse
     {
         $this->authorize('marketing.manage');
 
-        return response()->json($coupon);
+        return response()->json(new CouponResource($coupon));
     }
 
     public function update(UpdateCouponRequest $request, Coupon $coupon): JsonResponse
     {
         $coupon->update($request->validated());
 
-        return response()->json($coupon);
+        return response()->json(new CouponResource($coupon));
     }
 
     public function destroy(Coupon $coupon): JsonResponse

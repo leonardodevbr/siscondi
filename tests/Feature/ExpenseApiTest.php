@@ -82,8 +82,10 @@ class ExpenseApiTest extends TestCase
             'amount',
             'due_date',
             'paid_at',
-            'expense_category_id',
-            'user_id',
+            'is_paid',
+            'is_overdue',
+            'category' => ['id', 'name'],
+            'user' => ['id', 'name'],
         ]);
 
         $this->assertDatabaseHas('expenses', [

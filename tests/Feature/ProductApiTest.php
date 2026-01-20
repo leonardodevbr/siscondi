@@ -109,7 +109,10 @@ class ProductApiTest extends TestCase
             'sku',
             'cost_price',
             'sell_price',
-            'category_id',
+            'effective_price',
+            'has_active_promotion',
+            'stock_quantity',
+            'category' => ['id', 'name'],
         ]);
         $this->assertDatabaseHas('products', [
             'name' => 'Test Product',
