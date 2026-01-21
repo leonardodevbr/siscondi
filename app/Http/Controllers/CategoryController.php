@@ -27,11 +27,18 @@ class CategoryController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        if ($request->has('active')) {
-            $query->where('active', $request->boolean('active'));
-        }
+        if ($request->boolean('only_active')) {
+            $query->whereHas('products')
+                ->withCount('products');
 
-        $categories = $query->paginate(15);
+            $categories = $query->orderBy('name')->get();
+        } else {
+            if ($request->has('active')) {
+                $query->where('active', $request->boolean('active'));
+            }
+
+            $categories = $query->paginate(15);
+        }
 
         return response()->json($categories);
     }

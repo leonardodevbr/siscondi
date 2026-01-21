@@ -232,6 +232,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
+import { useCategoryStore } from '@/stores/category';
 import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
@@ -262,8 +263,8 @@ export default {
     const toast = useToast();
     const { confirm } = useAlert();
     const productStore = useProductStore();
+    const categoryStore = useCategoryStore();
     const fileInput = ref(null);
-    const categories = ref([]);
     const filters = ref({
       search: '',
       category_id: '',
@@ -286,8 +287,7 @@ export default {
 
     const loadCategories = async () => {
       try {
-        const response = await api.get('/categories');
-        categories.value = response.data.data || response.data || [];
+        await categoryStore.fetchForFilter();
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
       }
@@ -396,10 +396,12 @@ export default {
 
     const categoryOptions = computed(() => {
       const options = [{ id: null, name: 'Todas as categorias' }];
-      categories.value.forEach((category) => {
+      categoryStore.items.forEach((category) => {
+        const count = category.products_count ?? 0;
+        const label = count > 0 ? `${category.name} (${count})` : category.name;
         options.push({
           id: category.id,
-          name: category.name,
+          name: label,
         });
       });
       return options;
@@ -407,7 +409,7 @@ export default {
 
     return {
       productStore,
-      categories,
+      categoryStore,
       categoryOptions,
       filters,
       fileInput,
