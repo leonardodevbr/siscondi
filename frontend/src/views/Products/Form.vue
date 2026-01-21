@@ -109,6 +109,18 @@
             />
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Composição / Tecido
+            </label>
+            <input
+              v-model="form.composition"
+              type="text"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ex: 100% Algodão, Seda Pura, Poliéster com Elastano"
+            />
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">
@@ -427,6 +439,7 @@ export default {
     const form = ref({
       name: '',
       description: '',
+      composition: '',
       category_id: null,
       supplier_id: null,
       cost_price: null,
@@ -487,6 +500,7 @@ export default {
         form.value = {
           name: product.name || '',
           description: product.description || '',
+          composition: product.composition || '',
           category_id: categoryId,
           supplier_id: supplierId,
           cost_price: product.cost_price || null,
@@ -657,6 +671,10 @@ export default {
           
           if (form.value.cover_image instanceof File) {
             formData.append('cover_image', form.value.cover_image);
+          }
+
+          if (form.value.composition) {
+            formData.append('composition', form.value.composition);
           }
 
           if (form.value.variants.length > 0) {
