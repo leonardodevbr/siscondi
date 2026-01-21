@@ -473,27 +473,49 @@ export default {
 
       try {
         const product = await productStore.fetchOne(route.params.id);
-          form.value = {
+
+        const categoryId =
+          (product.category && product.category.id) ??
+          product.category_id ??
+          null;
+
+        const supplierId =
+          (product.supplier && product.supplier.id) ??
+          product.supplier_id ??
+          null;
+
+        form.value = {
           name: product.name || '',
           description: product.description || '',
-          category_id: product.category_id ?? null,
-          supplier_id: product.supplier_id || null,
+          category_id: categoryId,
+          supplier_id: supplierId,
           cost_price: product.cost_price || null,
           sell_price: product.sell_price || '',
           promotional_price: product.promotional_price || null,
           promotional_expires_at: product.promotional_expires_at || null,
           cover_image: product.cover_image || null,
-          variants: (product.variants || []).map((v) => ({
-            id: v.id,
-            sku: v.sku || '',
-            barcode: v.barcode || '',
-            price: v.price || null,
-            image: v.image || null,
-            attributes: v.attributes || {},
-            stock: Array.isArray(v.inventories) && v.inventories.length > 0
-              ? v.inventories[0].quantity ?? 0
-              : 0,
-          })),
+          variants: (product.variants || []).map((v) => {
+            const attrs = v.attributes || {};
+
+            const stock =
+              Array.isArray(v.inventories) && v.inventories.length > 0
+                ? v.inventories[0].quantity ?? 0
+                : 0;
+
+            return {
+              id: v.id,
+              sku: v.sku || '',
+              barcode: v.barcode || '',
+              price: v.price || null,
+              image: v.image || null,
+              attributes: {
+                cor: attrs.cor ?? '',
+                tamanho: attrs.tamanho ?? '',
+                ...attrs,
+              },
+              stock,
+            };
+          }),
         };
       } catch (error) {
         toast.error('Erro ao carregar produto');
