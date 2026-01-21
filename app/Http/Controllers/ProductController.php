@@ -129,6 +129,7 @@ class ProductController extends Controller
                 if ($product->image) {
                     Storage::disk('public')->delete($product->image);
                 }
+
                 $image = $request->file('cover_image');
                 $path = $image->store('products', 'public');
                 $data['image'] = $path;
@@ -136,13 +137,44 @@ class ProductController extends Controller
 
             $product->update($data);
 
-            if (isset($variants)) {
-                $existingVariantIds = $product->variants()->pluck('id')->toArray();
-                $submittedVariantIds = [];
+            // Sincronização inteligente das variações
+            if (is_array($variants)) {
+                $existingVariantIds = $product->variants()->pluck('id')->all();
+
+                $submittedIds = collect($variants)
+                    ->pluck('id')
+                    ->filter()
+                    ->map(static fn ($id): int => (int) $id)
+                    ->all();
+
+                // Remove variações que não vieram no payload (foram excluídas no frontend)
+                $variantsToDelete = array_diff($existingVariantIds, $submittedIds);
+                if ($variantsToDelete !== []) {
+                    $variantsToDeleteModels = $product->variants()
+                        ->whereIn('id', $variantsToDelete)
+                        ->get();
+
+                    foreach ($variantsToDeleteModels as $variantToDelete) {
+                        if ($variantToDelete->image) {
+                            Storage::disk('public')->delete($variantToDelete->image);
+                        }
+                    }
+
+                    $product->variants()
+                        ->whereIn('id', $variantsToDelete)
+                        ->delete();
+                }
+
+                $mainBranch = \App\Models\Branch::where('is_main', true)->first();
 
                 foreach ($variants as $index => $variantData) {
+                    if (! is_array($variantData)) {
+                        continue;
+                    }
+
                     $variantData = $this->handleVariantImage($request, $variantData, $index, $product->id);
 
+                    // Gera SKU se necessário
                     if (empty($variantData['sku'])) {
                         $generatedSku = $this->skuGeneratorService->generate($product, $variantData['attributes'] ?? []);
                         if ($generatedSku !== null) {
@@ -150,34 +182,46 @@ class ProductController extends Controller
                         }
                     }
 
-                    if (isset($variantData['id']) && in_array($variantData['id'], $existingVariantIds)) {
-                        $variant = $product->variants()->find($variantData['id']);
-                        
+                    // Extrai informações de estoque da variação (se vierem)
+                    $stockValue = $variantData['stock'] ?? $variantData['quantity'] ?? null;
+                    unset($variantData['stock'], $variantData['quantity']);
+
+                    $variantId = isset($variantData['id']) ? (int) $variantData['id'] : null;
+                    unset($variantData['id']);
+
+                    if ($variantId && in_array($variantId, $existingVariantIds, true)) {
+                        $variant = $product->variants()->findOrFail($variantId);
+
                         if (isset($variantData['image']) && $variant->image && $variantData['image'] !== $variant->image) {
                             Storage::disk('public')->delete($variant->image);
                         }
-                        
-                        $variant->update($variantData);
-                        $submittedVariantIds[] = $variantData['id'];
-                    } else {
-                        $newVariant = $product->variants()->create($variantData);
-                        $submittedVariantIds[] = $newVariant->id;
-                    }
-                }
 
-                $variantsToDelete = array_diff($existingVariantIds, $submittedVariantIds);
-                if (! empty($variantsToDelete)) {
-                    $variantsToDeleteModels = $product->variants()->whereIn('id', $variantsToDelete)->get();
-                    foreach ($variantsToDeleteModels as $variantToDelete) {
-                        if ($variantToDelete->image) {
-                            Storage::disk('public')->delete($variantToDelete->image);
-                        }
+                        $variant->update($variantData);
+                    } else {
+                        $variant = $product->variants()->create($variantData);
                     }
-                    $product->variants()->whereIn('id', $variantsToDelete)->delete();
+
+                    // Atualização de estoque: só mexe se veio explicitamente quantidade
+                    if ($mainBranch && $stockValue !== null) {
+                        /** @var \App\Models\Inventory $inventory */
+                        $inventory = \App\Models\Inventory::firstOrCreate(
+                            [
+                                'branch_id' => $mainBranch->id,
+                                'product_variant_id' => $variant->id,
+                            ],
+                            [
+                                'quantity' => 0,
+                                'min_quantity' => 0,
+                            ]
+                        );
+
+                        $inventory->quantity = (int) $stockValue;
+                        $inventory->save();
+                    }
                 }
             }
 
-            $product->load(['category', 'supplier', 'variants.inventories']);
+            $product->refresh()->load(['category', 'supplier', 'variants.inventories']);
 
             return response()->json(new ProductResource($product));
         });

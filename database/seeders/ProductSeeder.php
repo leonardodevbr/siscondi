@@ -25,26 +25,30 @@ class ProductSeeder extends Seeder
         /** @var SkuGeneratorService $skuGenerator */
         $skuGenerator = app(SkuGeneratorService::class);
 
-        Product::factory(10)->create()->each(function (Product $product) use ($mainBranch): void {
+        Product::factory(10)->create()->each(function (Product $product) use ($mainBranch, $skuGenerator): void {
             $variantsCount = fake()->numberBetween(3, 5);
 
-            ProductVariant::factory($variantsCount)
-                ->for($product)
-                ->create()
-                ->each(function (ProductVariant $variant) use ($mainBranch, $skuGenerator, $product): void {
-                    if (! $variant->sku) {
-                        $generated = $skuGenerator->generate($product, $variant->attributes ?? []);
-                        $variant->sku = $generated ?? strtoupper(fake()->unique()->bothify('VAR-#####'));
-                        $variant->save();
-                    }
+            // ALTERAÇÃO AQUI: Usamos make() para gerar em memória, iteramos, definimos o SKU e salvamos manualmente.
+            $variants = ProductVariant::factory($variantsCount)->make();
 
-                    Inventory::create([
-                        'branch_id' => $mainBranch->id,
-                        'product_variant_id' => $variant->id,
-                        'quantity' => fake()->numberBetween(10, 100),
-                        'min_quantity' => fake()->numberBetween(5, 20),
-                    ]);
-                });
+            foreach ($variants as $variant) {
+                // Associa ao produto pai
+                $variant->product_id = $product->id;
+
+                // Gera o SKU antes de salvar
+                $generated = $skuGenerator->generate($product, $variant->attributes ?? []);
+                $variant->sku = $generated ?? strtoupper(fake()->unique()->bothify('VAR-#####'));
+
+                // Agora sim salva no banco
+                $variant->save();
+
+                Inventory::create([
+                    'branch_id' => $mainBranch->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => fake()->numberBetween(10, 100),
+                    'min_quantity' => fake()->numberBetween(5, 20),
+                ]);
+            }
         });
 
         $this->command->info('Created 10 products with variants and inventories.');

@@ -295,7 +295,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-1">
                     Preço (Opcional - se diferente do base)
@@ -307,6 +307,19 @@
                     min="0"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Deixe vazio para usar preço base"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Estoque Atual
+                  </label>
+                  <input
+                    v-model.number="variant.stock"
+                    type="number"
+                    min="0"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Quantidade em estoque"
                   />
                 </div>
               </div>
@@ -460,7 +473,7 @@ export default {
 
       try {
         const product = await productStore.fetchOne(route.params.id);
-        form.value = {
+          form.value = {
           name: product.name || '',
           description: product.description || '',
           category_id: product.category_id ?? null,
@@ -477,6 +490,9 @@ export default {
             price: v.price || null,
             image: v.image || null,
             attributes: v.attributes || {},
+            stock: Array.isArray(v.inventories) && v.inventories.length > 0
+              ? v.inventories[0].quantity ?? 0
+              : 0,
           })),
         };
       } catch (error) {

@@ -39,7 +39,7 @@ class StoreProductRequest extends FormRequest
             'variants.*.barcode' => ['nullable', 'string', 'max:13'],
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.image' => ['nullable', 'image', 'max:2048'],
-            'variants.*.attributes' => ['nullable', 'array'],
+            'variants.*.attributes' => ['nullable'],
             'initial_stock' => ['nullable', 'array'],
             'initial_stock.*.quantity' => ['nullable', 'integer', 'min:0'],
         ];
