@@ -166,8 +166,14 @@
                 </div>
               </td>
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-slate-900">
-                  {{ product.variants?.length || 0 }}
+                <div v-if="product.has_variants" class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  {{ product.variants?.length || 0 }} opções
+                </div>
+                <div v-else class="text-sm text-slate-400">
+                  <span v-if="getSimpleVariantAttributes(product)" class="text-slate-600">
+                    {{ getSimpleVariantAttributes(product) }}
+                  </span>
+                  <span v-else>-</span>
                 </div>
               </td>
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
@@ -406,6 +412,27 @@ export default {
       return null;
     };
 
+    const getSimpleVariantAttributes = (product) => {
+      if (product.has_variants || !product.variants || product.variants.length === 0) {
+        return null;
+      }
+
+      const variant = product.variants[0];
+      if (!variant.attributes) {
+        return null;
+      }
+
+      const parts = [];
+      if (variant.attributes.cor) {
+        parts.push(variant.attributes.cor);
+      }
+      if (variant.attributes.tamanho) {
+        parts.push(variant.attributes.tamanho);
+      }
+
+      return parts.length > 0 ? parts.join(' / ') : null;
+    };
+
     const showImagePreview = (imageUrl) => {
       if (!imageUrl) return;
       const newWindow = window.open('', '_blank');
@@ -466,6 +493,7 @@ export default {
       formatPrice,
       getProductImage,
       showImagePreview,
+      getSimpleVariantAttributes,
     };
   },
 };
