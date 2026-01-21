@@ -136,13 +136,16 @@
             <div v-if="form.variants.length === 0">
               <label class="block text-sm font-medium text-slate-700 mb-1">
                 Estoque Atual
+                <span v-if="currentBranchName" class="text-xs font-normal text-slate-500">
+                  ({{ currentBranchName }})
+                </span>
               </label>
               <input
                 v-model.number="form.stock"
                 type="number"
                 min="0"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Quantidade em estoque"
+                :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
               />
             </div>
 
@@ -350,13 +353,17 @@
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-1">
                     Estoque Atual
+                    <span v-if="currentBranchName" class="text-xs font-normal text-slate-500">
+                      ({{ currentBranchName }})
+                    </span>
                   </label>
                   <input
                     v-model.number="variant.stock"
                     type="number"
                     min="0"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Quantidade em estoque"
+                    :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
+                    :title="currentBranchName ? `Estoque na filial ${currentBranchName}` : 'Estoque atual'"
                   />
                 </div>
               </div>
@@ -367,7 +374,9 @@
         <!-- Tab 3: Estoque Inicial (apenas criação) -->
         <div v-if="!isEdit && activeTab === 'stock'" class="space-y-4 px-6 py-6">
           <p class="text-sm text-slate-600 mb-4">
-            Defina a quantidade inicial de cada variação para a filial Matriz
+            Defina a quantidade inicial de cada variação para
+            <span v-if="currentBranchName" class="font-semibold">{{ currentBranchName }}</span>
+            <span v-else class="font-semibold">a filial atual</span>
           </p>
 
           <div v-if="form.variants.length === 0" class="text-center py-8 text-slate-500">
@@ -418,11 +427,6 @@
         </button>
       </div>
     </form>
-
-    <!-- Debug temporário do estado do formulário -->
-    <pre class="mt-4 text-xs text-slate-500 bg-slate-50 p-2 rounded overflow-auto">
-{{ form }}
-    </pre>
   </div>
 </template>
 
@@ -433,6 +437,8 @@ import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { useSettingsStore } from '@/stores/settings';
 import { useSupplierStore } from '@/stores/supplier';
+import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
 import { SparklesIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
@@ -453,6 +459,8 @@ export default {
     const productStore = useProductStore();
     const settingsStore = useSettingsStore();
     const supplierStore = useSupplierStore();
+    const authStore = useAuthStore();
+    const appStore = useAppStore();
 
     const isEdit = computed(() => !!route.params.id);
     const activeTab = ref('general');
@@ -513,6 +521,16 @@ export default {
       }, 0);
     });
 
+    const currentBranchName = computed(() => {
+      if (appStore.currentBranch?.name) {
+        return appStore.currentBranch.name;
+      }
+      if (authStore.user?.branch?.name) {
+        return authStore.user.branch.name;
+      }
+      return null;
+    });
+
     const loadProduct = async () => {
       if (!isEdit.value) return;
 
@@ -532,10 +550,11 @@ export default {
         const loadedVariants = (product.variants || []).map((v) => {
           const attrs = v.attributes || {};
 
-          const stock =
+          const stock = v.current_stock !== undefined ? v.current_stock : (
             Array.isArray(v.inventories) && v.inventories.length > 0
               ? v.inventories[0].quantity ?? 0
-              : 0;
+              : 0
+          );
 
           return {
             id: v.id,
@@ -552,10 +571,13 @@ export default {
           };
         });
 
-        const simpleStock =
-          loadedVariants.length === 1 && loadedVariants[0]
-            ? loadedVariants[0].stock ?? 0
-            : 0;
+        const simpleStock = product.current_stock !== undefined 
+          ? product.current_stock 
+          : (
+            loadedVariants.length === 1 && loadedVariants[0]
+              ? loadedVariants[0].stock ?? 0
+              : 0
+          );
 
         form.value = {
           name: product.name || '',
@@ -733,6 +755,9 @@ export default {
               }
               formData.append(`variants[${index}][attributes]`, JSON.stringify(variant.attributes));
               if (variant.id) formData.append(`variants[${index}][id]`, variant.id);
+              if (variant.stock !== undefined && variant.stock !== null) {
+                formData.append(`variants[${index}][stock]`, variant.stock);
+              }
             });
           }
 
@@ -757,6 +782,7 @@ export default {
             payload.variants = form.value.variants.map((v) => ({
               ...v,
               image: v.image instanceof File ? null : v.image,
+              stock: v.stock !== undefined && v.stock !== null ? v.stock : undefined,
             }));
 
             if (!isEdit.value && initialStock.value.length > 0) {
@@ -821,6 +847,8 @@ export default {
       supplierOptions,
       initialStock,
       settingsStore,
+      currentBranchName,
+      totalStock,
       addVariant,
       removeVariant,
       generateSkuIfEmpty,
