@@ -18,8 +18,8 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-6">
-      <div class="card p-6">
-        <div class="border-b border-slate-200 mb-6 pb-4">
+      <div class="card">
+        <div class="border-b border-slate-200 px-6 pt-6 pb-4">
           <nav class="flex space-x-4">
             <button
               type="button"
@@ -62,7 +62,7 @@
         </div>
 
         <!-- Tab 1: Dados Gerais -->
-        <div v-show="activeTab === 'general'" class="space-y-4">
+        <div v-show="activeTab === 'general'" class="space-y-4 px-6 py-6">
           <div class="flex items-start gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">
@@ -79,7 +79,7 @@
                   v-model="form.name"
                   type="text"
                   required
-                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: Camiseta Básica"
                 />
               </div>
@@ -88,20 +88,11 @@
                 <label class="block text-sm font-medium text-slate-700 mb-1">
                   Categoria *
                 </label>
-                <select
+                <SearchableSelect
                   v-model="form.category_id"
-                  required
-                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Selecione uma categoria</option>
-                  <option
-                    v-for="category in categories"
-                    :key="category.id"
-                    :value="category.id"
-                  >
-                    {{ category.name }}
-                  </option>
-                </select>
+                  :options="categoryOptions"
+                  placeholder="Selecione uma categoria"
+                />
               </div>
             </div>
           </div>
@@ -113,7 +104,7 @@
             <textarea
               v-model="form.description"
               rows="3"
-              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Descrição do produto"
             />
           </div>
@@ -123,19 +114,11 @@
               <label class="block text-sm font-medium text-slate-700 mb-1">
                 Fornecedor
               </label>
-              <select
+              <SearchableSelect
                 v-model="form.supplier_id"
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione um fornecedor</option>
-                <option
-                  v-for="supplier in suppliers"
-                  :key="supplier.id"
-                  :value="supplier.id"
-                >
-                  {{ supplier.name }}
-                </option>
-              </select>
+                :options="supplierOptions"
+                placeholder="Selecione um fornecedor"
+              />
             </div>
           </div>
 
@@ -149,7 +132,7 @@
                 type="number"
                 step="0.01"
                 min="0"
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
               />
             </div>
@@ -164,7 +147,7 @@
                 step="0.01"
                 min="0"
                 required
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
               />
             </div>
@@ -178,7 +161,7 @@
                 type="number"
                 step="0.01"
                 min="0"
-                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
               />
             </div>
@@ -186,7 +169,7 @@
         </div>
 
         <!-- Tab 2: Variações -->
-        <div v-show="activeTab === 'variants'" class="space-y-4">
+        <div v-show="activeTab === 'variants'" class="space-y-4 px-6 py-6">
           <div class="flex justify-between items-center">
             <p class="text-sm text-slate-600">
               Adicione as variações do produto (cores, tamanhos, etc.)
@@ -254,7 +237,7 @@
                       :required="!settingsStore.skuAutoGeneration"
                       :disabled="settingsStore.skuAutoGeneration"
                       :class="[
-                        'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-9',
+                        'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-9',
                         settingsStore.skuAutoGeneration
                           ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
                           : 'border-slate-300',
@@ -277,7 +260,7 @@
                     v-model="variant.barcode"
                     type="text"
                     maxlength="13"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="7891234567890"
                   />
                 </div>
@@ -292,7 +275,7 @@
                   <input
                     v-model="variant.attributes.cor"
                     type="text"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: Azul"
                     @input="handleAttributeChange(variant, index)"
                   />
@@ -305,7 +288,7 @@
                   <input
                     v-model="variant.attributes.tamanho"
                     type="text"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: P, M, G"
                     @input="handleAttributeChange(variant, index)"
                   />
@@ -322,7 +305,7 @@
                     type="number"
                     step="0.01"
                     min="0"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Deixe vazio para usar preço base"
                   />
                 </div>
@@ -332,7 +315,7 @@
         </div>
 
         <!-- Tab 3: Estoque Inicial (apenas criação) -->
-        <div v-if="!isEdit && activeTab === 'stock'" class="space-y-4">
+        <div v-if="!isEdit && activeTab === 'stock'" class="space-y-4 px-6 py-6">
           <p class="text-sm text-slate-600 mb-4">
             Defina a quantidade inicial de cada variação para a filial Matriz
           </p>
@@ -358,7 +341,7 @@
                   v-model.number="initialStock[index]"
                   type="number"
                   min="0"
-                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Quantidade"
                 />
               </div>
@@ -394,6 +377,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { useSettingsStore } from '@/stores/settings';
+import { useSupplierStore } from '@/stores/supplier';
+import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
 import { SparklesIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 import api from '@/services/api';
@@ -401,6 +386,7 @@ import api from '@/services/api';
 export default {
   name: 'ProductForm',
   components: {
+    SearchableSelect,
     ImageUpload,
     SparklesIcon,
     LockClosedIcon,
@@ -411,12 +397,13 @@ export default {
     const toast = useToast();
     const productStore = useProductStore();
     const settingsStore = useSettingsStore();
+    const supplierStore = useSupplierStore();
 
     const isEdit = computed(() => !!route.params.id);
     const activeTab = ref('general');
     const saving = ref(false);
     const categories = ref([]);
-    const suppliers = ref([]);
+    const suppliers = computed(() => supplierStore.items || []);
     const initialStock = ref([]);
 
     const form = ref({
@@ -449,14 +436,19 @@ export default {
       }
     };
 
-    const loadSuppliers = async () => {
-      try {
-        const response = await api.get('/suppliers');
-        suppliers.value = response.data.data || response.data || [];
-      } catch (error) {
-        console.error('Erro ao carregar fornecedores:', error);
-      }
-    };
+    const supplierOptions = computed(() =>
+      suppliers.value.map((supplier) => ({
+        id: supplier.id,
+        name: supplier.trade_name || supplier.name || `Fornecedor #${supplier.id}`,
+      })),
+    );
+
+    const categoryOptions = computed(() =>
+      categories.value.map((category) => ({
+        id: category.id,
+        name: category.name,
+      })),
+    );
 
     const loadProduct = async () => {
       if (!isEdit.value) return;
@@ -707,7 +699,7 @@ export default {
       }
 
       await loadCategories();
-      await loadSuppliers();
+      await supplierStore.fetchAll();
       await loadProduct();
     });
 
@@ -718,6 +710,8 @@ export default {
       form,
       categories,
       suppliers,
+      categoryOptions,
+      supplierOptions,
       initialStock,
       settingsStore,
       addVariant,
