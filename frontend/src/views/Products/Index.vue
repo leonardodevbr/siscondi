@@ -409,6 +409,11 @@ export default {
     };
 
     const getProductImage = (product) => {
+      // Primeiro verifica a imagem do produto
+      if (product.image) {
+        return product.image;
+      }
+      // Depois verifica a imagem das variações
       if (product.variants && product.variants.length > 0) {
         const variantWithImage = product.variants.find((v) => v.image);
         if (variantWithImage) {

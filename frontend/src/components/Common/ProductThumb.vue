@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'rounded overflow-hidden bg-slate-100 flex items-center justify-center',
+      'rounded overflow-hidden bg-gray-100 flex items-center justify-center',
       sizeClass || size,
       imageError || !src ? 'cursor-default' : 'cursor-pointer hover:scale-150 transition-transform',
     ]"
@@ -15,7 +15,9 @@
       class="h-full w-full object-cover"
       @error="handleImageError"
     />
-    <PhotoIcon v-else class="h-6 w-6 text-slate-400" />
+    <div v-else class="flex flex-col items-center justify-center text-gray-400">
+      <PhotoIcon class="h-6 w-6" />
+    </div>
   </div>
 </template>
 
