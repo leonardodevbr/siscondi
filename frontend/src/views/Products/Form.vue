@@ -132,6 +132,31 @@
                 placeholder="Selecione um fornecedor"
               />
             </div>
+
+            <div v-if="form.variants.length === 0">
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Estoque Atual
+              </label>
+              <input
+                v-model.number="form.stock"
+                type="number"
+                min="0"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Quantidade em estoque"
+              />
+            </div>
+
+            <div v-else>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Total em Estoque
+              </label>
+              <input
+                :value="totalStock"
+                type="number"
+                disabled
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+              />
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -447,6 +472,7 @@ export default {
       promotional_price: null,
       promotional_expires_at: null,
       cover_image: null,
+      stock: 0,
       variants: [],
     });
 
@@ -481,6 +507,12 @@ export default {
       })),
     );
 
+    const totalStock = computed(() => {
+      return form.value.variants.reduce((sum, variant) => {
+        return sum + (Number(variant.stock) || 0);
+      }, 0);
+    });
+
     const loadProduct = async () => {
       if (!isEdit.value) return;
 
@@ -497,6 +529,34 @@ export default {
           product.supplier_id ??
           null;
 
+        const loadedVariants = (product.variants || []).map((v) => {
+          const attrs = v.attributes || {};
+
+          const stock =
+            Array.isArray(v.inventories) && v.inventories.length > 0
+              ? v.inventories[0].quantity ?? 0
+              : 0;
+
+          return {
+            id: v.id,
+            sku: v.sku || '',
+            barcode: v.barcode || '',
+            price: v.price || null,
+            image: v.image || null,
+            attributes: {
+              cor: attrs.cor ?? '',
+              tamanho: attrs.tamanho ?? '',
+              ...attrs,
+            },
+            stock,
+          };
+        });
+
+        const simpleStock =
+          loadedVariants.length === 1 && loadedVariants[0]
+            ? loadedVariants[0].stock ?? 0
+            : 0;
+
         form.value = {
           name: product.name || '',
           description: product.description || '',
@@ -508,28 +568,8 @@ export default {
           promotional_price: product.promotional_price || null,
           promotional_expires_at: product.promotional_expires_at || null,
           cover_image: product.cover_image || null,
-          variants: (product.variants || []).map((v) => {
-            const attrs = v.attributes || {};
-
-            const stock =
-              Array.isArray(v.inventories) && v.inventories.length > 0
-                ? v.inventories[0].quantity ?? 0
-                : 0;
-
-            return {
-              id: v.id,
-              sku: v.sku || '',
-              barcode: v.barcode || '',
-              price: v.price || null,
-              image: v.image || null,
-              attributes: {
-                cor: attrs.cor ?? '',
-                tamanho: attrs.tamanho ?? '',
-                ...attrs,
-              },
-              stock,
-            };
-          }),
+          stock: simpleStock,
+          variants: loadedVariants,
         };
       } catch (error) {
         toast.error('Erro ao carregar produto');
@@ -677,6 +717,10 @@ export default {
             formData.append('composition', form.value.composition);
           }
 
+          if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
+            formData.append('stock', form.value.stock);
+          }
+
           if (form.value.variants.length > 0) {
             form.value.variants.forEach((variant, index) => {
               formData.append(`variants[${index}][sku]`, variant.sku);
@@ -720,8 +764,12 @@ export default {
                 quantity: initialStock.value[index] || 0,
               }));
             }
+            delete payload.stock;
           } else {
             payload.variants = [];
+            if (payload.stock === undefined || payload.stock === null) {
+              payload.stock = 0;
+            }
           }
 
           if (isEdit.value) {

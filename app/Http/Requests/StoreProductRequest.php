@@ -43,6 +43,7 @@ class StoreProductRequest extends FormRequest
             'variants.*.attributes' => ['nullable'],
             'initial_stock' => ['nullable', 'array'],
             'initial_stock.*.quantity' => ['nullable', 'integer', 'min:0'],
+            'stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

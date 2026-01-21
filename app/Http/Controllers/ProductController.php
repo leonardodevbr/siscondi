@@ -62,7 +62,8 @@ class ProductController extends Controller
             $data = $request->validated();
             $variants = $data['variants'] ?? [];
             $initialStock = $data['initial_stock'] ?? [];
-            unset($data['variants'], $data['initial_stock']);
+            $stock = $data['stock'] ?? 0;
+            unset($data['variants'], $data['initial_stock'], $data['stock']);
 
             if ($request->hasFile('cover_image')) {
                 $image = $request->file('cover_image');
@@ -74,7 +75,7 @@ class ProductController extends Controller
             $mainBranch = \App\Models\Branch::where('is_main', true)->first();
 
             if (empty($variants)) {
-                $this->createDefaultVariant($product, $request);
+                $this->createDefaultVariant($product, $request, (int) $stock);
             } else {
                 foreach ($variants as $index => $variantData) {
                     $variantData = $this->handleVariantImage($request, $variantData, $index);
@@ -123,7 +124,8 @@ class ProductController extends Controller
         return DB::transaction(function () use ($request, $product): JsonResponse {
             $data = $request->validated();
             $variants = $data['variants'] ?? [];
-            unset($data['variants']);
+            $stock = $data['stock'] ?? null;
+            unset($data['variants'], $data['stock']);
 
             if ($request->hasFile('cover_image')) {
                 if ($product->image) {
@@ -137,8 +139,31 @@ class ProductController extends Controller
 
             $product->update($data);
 
+            $mainBranch = \App\Models\Branch::where('is_main', true)->first();
+
+            // Produto simples (sem variações): atualiza estoque da variação padrão
+            if (empty($variants) && $stock !== null) {
+                $defaultVariant = $product->variants()->first();
+                if ($defaultVariant && $mainBranch) {
+                    /** @var \App\Models\Inventory $inventory */
+                    $inventory = \App\Models\Inventory::firstOrCreate(
+                        [
+                            'branch_id' => $mainBranch->id,
+                            'product_variant_id' => $defaultVariant->id,
+                        ],
+                        [
+                            'quantity' => 0,
+                            'min_quantity' => 0,
+                        ]
+                    );
+
+                    $inventory->quantity = (int) $stock;
+                    $inventory->save();
+                }
+            }
+
             // Sincronização inteligente das variações
-            if (is_array($variants)) {
+            if (is_array($variants) && ! empty($variants)) {
                 $existingVariantIds = $product->variants()->pluck('id')->all();
 
                 $submittedIds = collect($variants)
@@ -164,8 +189,6 @@ class ProductController extends Controller
                         ->whereIn('id', $variantsToDelete)
                         ->delete();
                 }
-
-                $mainBranch = \App\Models\Branch::where('is_main', true)->first();
 
                 foreach ($variants as $index => $variantData) {
                     if (! is_array($variantData)) {
@@ -242,7 +265,7 @@ class ProductController extends Controller
     /**
      * Create a default variant for simple products.
      */
-    private function createDefaultVariant(Product $product, Request $request): void
+    private function createDefaultVariant(Product $product, Request $request, int $stock = 0): void
     {
         $generatedSku = $this->skuGeneratorService->generate($product, ['tipo' => 'único']);
 
@@ -268,7 +291,7 @@ class ProductController extends Controller
             \App\Models\Inventory::create([
                 'branch_id' => $mainBranch->id,
                 'product_variant_id' => $variant->id,
-                'quantity' => 0,
+                'quantity' => $stock,
                 'min_quantity' => 0,
             ]);
         }
