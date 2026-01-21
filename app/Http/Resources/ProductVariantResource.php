@@ -21,7 +21,7 @@ class ProductVariantResource extends JsonResource
             'sku' => $this->sku,
             'barcode' => $this->barcode,
             'price' => $this->price,
-            'image' => $this->image,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
             'attributes' => $this->attributes ?? [],
             'description_full' => $this->description_full,
             'effective_price' => $this->getEffectivePrice(),

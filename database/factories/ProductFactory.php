@@ -15,20 +15,6 @@ class ProductFactory extends Factory
     protected $model = Product::class;
 
     /**
-     * URLs de imagens reais de roupas do Unsplash
-     */
-    private array $productImages = [
-        'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=500',
-        'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500',
-        'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500',
-        'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=500',
-        'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=500',
-        'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500',
-        'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=500',
-        'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500',
-    ];
-
-    /**
      * Nomes de produtos de moda
      */
     private array $productNames = [
@@ -74,7 +60,7 @@ class ProductFactory extends Factory
             'name' => $fullName,
             'description' => fake()->randomElement($this->descriptions),
             'has_variants' => true,
-            'image' => fake()->randomElement($this->productImages),
+            'image' => null,
             'cost_price' => fake()->randomFloat(2, 20, 300),
             'sell_price' => fake()->randomFloat(2, 50, 600),
             'composition' => fake()->randomElement([
