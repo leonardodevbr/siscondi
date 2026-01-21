@@ -1,5 +1,5 @@
 <script setup>
-import BranchSwitcher from '@/components/Layout/BranchSwitcher.vue';
+import BranchSwitcher from '@/components/Common/BranchSwitcher.vue';
 
 const props = defineProps({
   userName: {

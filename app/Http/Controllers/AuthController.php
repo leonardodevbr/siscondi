@@ -32,6 +32,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->load('branch');
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -57,8 +59,11 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $user?->load('branch');
+
         return response()->json([
-            'user' => new UserResource($request->user()),
+            'user' => new UserResource($user),
         ]);
     }
 }

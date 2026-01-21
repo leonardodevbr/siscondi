@@ -22,6 +22,10 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'roles' => $this->roles->pluck('name'),
             'permissions' => $this->getAllPermissions()->pluck('name'),
+            'branch' => $this->whenLoaded('branch', fn () => $this->branch ? [
+                'id' => $this->branch->id,
+                'name' => $this->branch->name,
+            ] : null),
         ];
     }
 }

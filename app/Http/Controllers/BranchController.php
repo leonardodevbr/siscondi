@@ -27,6 +27,12 @@ class BranchController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
+        // Se não há paginação solicitada, retorna todas as branches
+        if ($request->boolean('all') || ! $request->has('page')) {
+            $branches = $query->orderBy('is_main', 'desc')->orderBy('name', 'asc')->get();
+            return response()->json(BranchResource::collection($branches));
+        }
+
         $branches = $query->orderBy('is_main', 'desc')->orderBy('name', 'asc')->paginate(15);
 
         return BranchResource::collection($branches)->response();

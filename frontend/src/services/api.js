@@ -4,6 +4,7 @@ import { useAppStore } from '@/stores/app';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
+
 api.interceptors.request.use((config) => {
   const token = window.localStorage.getItem('token');
 
@@ -11,13 +12,22 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  // Header de filial via store (quando Pinia já estiver pronto)
   try {
     const appStore = useAppStore();
     if (appStore.currentBranch?.id) {
       config.headers['X-Branch-ID'] = appStore.currentBranch.id;
     }
   } catch (e) {
-    // se o Pinia ainda não estiver inicializado, ignoramos o header
+    // se o Pinia ainda não estiver inicializado, ignoramos aqui
+  }
+
+  // Fallback: usa o ID salvo no localStorage
+  if (!config.headers['X-Branch-ID']) {
+    const storedBranchId = window.localStorage.getItem('selected_branch_id');
+    if (storedBranchId) {
+      config.headers['X-Branch-ID'] = storedBranchId;
+    }
   }
 
   return config;

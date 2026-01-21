@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
+{
+    public function __construct(
+        private readonly SkuGeneratorService $skuGeneratorService,
+    ) {
+    }
+
     private function currentBranchId(?Request $request = null): ?int
     {
         if (app()->bound('current_branch_id')) {
@@ -32,10 +38,15 @@ class ProductController extends Controller
 
         return $fallback ? (int) $fallback : null;
     }
-{
-    public function __construct(
-        private readonly SkuGeneratorService $skuGeneratorService,
-    ) {
+
+    private function sanitizeBranchId(?int $branchId): ?int
+    {
+        if ($branchId === null) {
+            return null;
+        }
+
+        $exists = \App\Models\Branch::where('id', $branchId)->exists();
+        return $exists ? $branchId : null;
     }
 
     /**

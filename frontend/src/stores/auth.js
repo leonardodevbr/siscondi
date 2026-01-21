@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from '@/services/api';
+import { useAppStore } from '@/stores/app';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -40,6 +41,22 @@ export const useAuthStore = defineStore('auth', {
 
       window.localStorage.removeItem('token');
       window.localStorage.removeItem('user');
+    },
+    setBranch(branch) {
+      const appStore = useAppStore();
+
+      if (branch) {
+        // atualiza a filial no usuário em memória/localStorage
+        if (this.user) {
+          this.user = {
+            ...this.user,
+            branch,
+          };
+          window.localStorage.setItem('user', JSON.stringify(this.user));
+        }
+      }
+
+      appStore.setBranch(branch);
     },
   },
 });

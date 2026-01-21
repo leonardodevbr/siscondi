@@ -1,19 +1,21 @@
 <template>
-  <div class="w-full">
+  <div :class="label ? 'w-full' : ''">
     <label v-if="label" class="block text-sm font-medium text-slate-700 mb-1">
       {{ label }}
     </label>
-    <Multiselect
-      v-model="internalValue"
-      :options="normalizedOptions"
-      mode="single"
-      :searchable="true"
-      :clear-on-select="false"
-      :can-clear="true"
-      :close-on-select="true"
-      :placeholder="placeholder"
-      noOptionsText="Nada encontrado"
-    />
+    <div class="relative">
+      <Multiselect
+        v-model="internalValue"
+        :options="normalizedOptions"
+        mode="single"
+        :searchable="true"
+        :clear-on-select="false"
+        :can-clear="true"
+        :close-on-select="true"
+        :placeholder="placeholder"
+        noOptionsText="Nada encontrado"
+      />
+    </div>
   </div>
 </template>
 
