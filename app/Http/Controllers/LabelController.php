@@ -37,7 +37,11 @@ class LabelController extends Controller
                 continue;
             }
 
-            $barcodeValue = $variant->barcode ?? $variant->sku;
+            $barcodeValue = $variant->barcode;
+            
+            if (empty($barcodeValue)) {
+                $barcodeValue = $variant->sku;
+            }
             $quantity = (int) $item['quantity'];
 
             $barcodeGenerator = new BarcodeGeneratorPNG();
@@ -50,12 +54,12 @@ class LabelController extends Controller
             $barcodeBase64 = base64_encode($barcodeImage);
 
             $price = $variant->getEffectivePrice();
-            $attributesText = $this->formatAttributes($variant->attributes ?? []);
+            $labelDetails = (string) $variant->label_details;
 
             for ($i = 0; $i < $quantity; $i++) {
                 $labelData->push([
                     'product_name' => $variant->product->name,
-                    'variant_description' => $attributesText,
+                    'label_details' => $labelDetails,
                     'barcode_value' => $barcodeValue,
                     'barcode_image' => $barcodeBase64,
                     'price' => $price,
@@ -90,24 +94,5 @@ class LabelController extends Controller
         }
 
         return $pdf->stream('etiquetas.pdf');
-    }
-
-    /**
-     * Format variant attributes as readable text.
-     *
-     * @param array<string, mixed> $attributes
-     */
-    private function formatAttributes(array $attributes): string
-    {
-        if (empty($attributes)) {
-            return '';
-        }
-
-        $parts = [];
-        foreach ($attributes as $key => $value) {
-            $parts[] = ucfirst($key) . ': ' . $value;
-        }
-
-        return implode(' / ', $parts);
     }
 }

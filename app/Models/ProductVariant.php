@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property-read string $description_full
+ * @property-read string $label_details
  */
 
 class ProductVariant extends Model
@@ -90,6 +91,59 @@ class ProductVariant extends Model
                 }
 
                 return $productName . ' - ' . implode(' / ', $attributeParts);
+            }
+        );
+    }
+
+    /**
+     * @return Attribute<string, never>
+     */
+    protected function labelDetails(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                $attributesRaw = $this->getAttribute('attributes');
+                
+                if (empty($attributesRaw)) {
+                    return '';
+                }
+
+                if (is_string($attributesRaw)) {
+                    $attributes = json_decode($attributesRaw, true);
+                    if (json_last_error() !== JSON_ERROR_NONE || !is_array($attributes)) {
+                        return '';
+                    }
+                } elseif (is_array($attributesRaw)) {
+                    $attributes = $attributesRaw;
+                } else {
+                    return '';
+                }
+
+                $values = [];
+                $sizeKeys = ['tamanho', 'size', 'tam'];
+                $colorKeys = ['cor', 'color', 'colour'];
+                
+                foreach ($sizeKeys as $sizeKey) {
+                    foreach ($attributes as $key => $value) {
+                        $keyNormalized = strtolower(trim((string) $key));
+                        if ($keyNormalized === $sizeKey) {
+                            $values[] = strtoupper(trim((string) $value));
+                            break 2;
+                        }
+                    }
+                }
+
+                foreach ($colorKeys as $colorKey) {
+                    foreach ($attributes as $key => $value) {
+                        $keyNormalized = strtolower(trim((string) $key));
+                        if ($keyNormalized === $colorKey) {
+                            $values[] = strtoupper(trim((string) $value));
+                            break 2;
+                        }
+                    }
+                }
+
+                return implode(' - ', $values);
             }
         );
     }

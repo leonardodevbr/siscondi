@@ -177,7 +177,7 @@ class ProductController extends Controller
 
         $variantData = [
             'sku' => $sku,
-            'barcode' => null,
+            'barcode' => $this->generateUniqueBarcode(),
             'price' => null,
             'image' => $product->image,
             'attributes' => ['tipo' => 'único'],
@@ -223,5 +223,29 @@ class ProductController extends Controller
         }
 
         return $variantData;
+    }
+
+    /**
+     * Generate a unique EAN13 barcode (13 digits).
+     */
+    private function generateUniqueBarcode(): string
+    {
+        $maxAttempts = 100;
+        $attempt = 0;
+
+        do {
+            $barcode = \Faker\Factory::create()->ean13();
+            $exists = \App\Models\ProductVariant::where('barcode', $barcode)->exists();
+            $attempt++;
+        } while ($exists && $attempt < $maxAttempts);
+
+        if ($exists) {
+            do {
+                $barcode = (string) \Faker\Factory::create()->unique()->numerify('#############');
+                $exists = \App\Models\ProductVariant::where('barcode', $barcode)->exists();
+            } while ($exists && strlen($barcode) === 13);
+        }
+
+        return $barcode;
     }
 }

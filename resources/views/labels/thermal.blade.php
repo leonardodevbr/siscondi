@@ -33,59 +33,79 @@
             align-items: center;
             text-align: center;
             padding: 2mm;
-            page-break-after: always;
             page-break-inside: avoid;
         }
 
-        .product-name {
-            font-size: 8pt;
-            font-weight: bold;
-            margin-bottom: 1mm;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        .store-name {
+            font-size: 6pt;
+            font-weight: normal;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 0.5mm;
+            letter-spacing: 0.3px;
         }
 
-        .variant-description {
+        .product-name {
             font-size: 7pt;
-            color: #666;
-            margin-bottom: 2mm;
-            max-width: 100%;
+            font-weight: normal;
+            margin-bottom: 0.8mm;
+            line-height: 1.1;
+            max-height: 1.1em;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: #333;
+        }
+
+        .label-details {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 0.8mm;
+            letter-spacing: 0.3px;
         }
 
         .barcode-container {
-            margin: 1mm 0;
+            margin: 0.8mm 0;
         }
 
         .barcode-image {
-            max-width: 100%;
+            max-width: 85%;
+            max-height: 7mm;
             height: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         .barcode-value {
             font-size: 6pt;
+            font-weight: bold;
             font-family: 'Courier New', monospace;
-            margin-top: 1mm;
+            margin-top: 0.3mm;
+            color: #000;
+            letter-spacing: 0.3px;
         }
 
         .price {
-            font-size: 10pt;
+            font-size: 9pt;
             font-weight: bold;
             color: #000;
-            margin-top: 2mm;
+            margin-top: 0.8mm;
+            letter-spacing: 0.3px;
         }
     </style>
 </head>
 <body>
-    @foreach($labels as $label)
-        <div class="label">
-            <div class="product-name">{{ Str::limit($label['product_name'], 25) }}</div>
-            @if($label['variant_description'])
-                <div class="variant-description">{{ Str::limit($label['variant_description'], 30) }}</div>
+    @php
+        $labelsArray = is_array($labels) ? $labels : $labels->toArray();
+        $totalLabels = count($labelsArray);
+    @endphp
+    @foreach($labelsArray as $index => $label)
+        <div class="label" @if($index < $totalLabels - 1) style="page-break-after: always;" @endif>
+            <div class="store-name">{{ Str::upper($storeName) }}</div>
+            <div class="product-name">{{ Str::limit($label['product_name'], 22) }}</div>
+            @if(!empty($label['label_details']))
+                <div class="label-details">{{ $label['label_details'] }}</div>
             @endif
             <div class="barcode-container">
                 <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">

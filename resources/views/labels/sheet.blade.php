@@ -43,58 +43,61 @@
         }
 
         .store-name {
-            font-size: 6pt;
-            font-weight: bold;
+            font-size: 8pt;
+            font-weight: normal;
             text-transform: uppercase;
-            color: #333;
-            margin-bottom: 0.5mm;
+            color: #666;
+            margin-bottom: 1mm;
             letter-spacing: 0.5px;
         }
 
         .product-name {
-            font-size: 8pt;
-            font-weight: bold;
-            margin-bottom: 1mm;
+            font-size: 10pt;
+            font-weight: normal;
+            margin-bottom: 1.5mm;
             line-height: 1.2;
-            max-height: 2.4em;
-            overflow: hidden;
-            word-wrap: break-word;
-        }
-
-        .variant-description {
-            font-size: 7pt;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 1mm;
-            max-width: 100%;
+            max-height: 1.2em;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: #333;
+        }
+
+        .label-details {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 1.5mm;
+            letter-spacing: 0.5px;
         }
 
         .barcode-container {
-            margin: 1mm 0;
+            margin: 1.5mm 0;
         }
 
         .barcode-image {
             max-width: 90%;
-            max-height: 8mm;
+            max-height: 10mm;
             height: auto;
             display: block;
             margin: 0 auto;
         }
 
         .barcode-value {
-            font-size: 6pt;
+            font-size: 9pt;
+            font-weight: bold;
             font-family: 'Courier New', monospace;
             margin-top: 0.5mm;
+            color: #000;
+            letter-spacing: 0.5px;
         }
 
         .price {
-            font-size: 10pt;
+            font-size: 14pt;
             font-weight: bold;
             color: #000;
-            margin-top: 1mm;
+            margin-top: 1.5mm;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -115,10 +118,10 @@
                     @for($col = 0; $col < $labelsPerRow && $currentIndex < $totalLabels; $col++)
                         <td>
                             @php $label = $labelsArray[$currentIndex]; $currentIndex++; @endphp
-                            <div class="store-name">{{ $storeName }}</div>
-                            <div class="product-name">{{ Str::limit($label['product_name'], 35) }}</div>
-                            @if(!empty($label['variant_description']))
-                                <div class="variant-description">{{ Str::limit($label['variant_description'], 40) }}</div>
+                            <div class="store-name">{{ Str::upper($storeName) }}</div>
+                            <div class="product-name">{{ Str::limit($label['product_name'], 30) }}</div>
+                            @if(!empty($label['label_details']))
+                                <div class="label-details">{{ $label['label_details'] }}</div>
                             @endif
                             <div class="barcode-container">
                                 <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">

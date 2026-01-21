@@ -27,7 +27,7 @@ class ProductVariantFactory extends Factory
         return [
             'product_id' => Product::factory(),
             'sku' => strtoupper(fake()->unique()->bothify('VAR-#####')),
-            'barcode' => fake()->ean13(),
+            'barcode' => $this->generateUniqueBarcode(),
             'price' => fake()->boolean(30)
                 ? fake()->randomFloat(2, 10, 1000)
                 : null,
@@ -38,5 +38,29 @@ class ProductVariantFactory extends Factory
                 'tecido' => fake()->randomElement($fabrics),
             ],
         ];
+    }
+
+    /**
+     * Generate a unique EAN13 barcode (13 digits).
+     */
+    private function generateUniqueBarcode(): string
+    {
+        $maxAttempts = 100;
+        $attempt = 0;
+
+        do {
+            $barcode = fake()->ean13();
+            $exists = \App\Models\ProductVariant::where('barcode', $barcode)->exists();
+            $attempt++;
+        } while ($exists && $attempt < $maxAttempts);
+
+        if ($exists) {
+            do {
+                $barcode = (string) fake()->unique()->numerify('#############');
+                $exists = \App\Models\ProductVariant::where('barcode', $barcode)->exists();
+            } while ($exists && strlen($barcode) === 13);
+        }
+
+        return $barcode;
     }
 }
