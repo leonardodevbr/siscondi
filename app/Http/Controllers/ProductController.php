@@ -8,6 +8,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\SkuGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -153,6 +154,59 @@ class ProductController extends Controller
         $product->load(['category', 'supplier', 'variants.inventories']);
 
         return response()->json(new ProductResource($product));
+    }
+
+    /**
+     * Check availability of all variants across all branches.
+     */
+    public function checkAvailability(Product $product): JsonResponse
+    {
+        $this->authorize('products.view');
+
+        $product->load([
+            'variants.inventories.branch',
+        ]);
+
+        $variants = $product->variants;
+
+        /** @var \Illuminate\Support\Collection<int, \App\Models\Branch> $branches */
+        $branches = $variants
+            ->flatMap(static fn (ProductVariant $variant) => $variant->inventories->pluck('branch'))
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $branchesData = $branches
+            ->map(static fn ($branch): array => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ])
+            ->values()
+            ->all();
+
+        $variantsData = $variants
+            ->map(static function (ProductVariant $variant) use ($branches): array {
+                $stockByBranch = [];
+
+                foreach ($branches as $branch) {
+                    $inventory = $variant->inventories->firstWhere('branch_id', $branch->id);
+                    $stockByBranch[(string) $branch->id] = $inventory?->quantity ?? 0;
+                }
+
+                return [
+                    'sku' => $variant->sku,
+                    'attributes' => $variant->attributes ?? [],
+                    'stock_by_branch' => $stockByBranch,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'product_name' => $product->name,
+            'branches' => $branchesData,
+            'variants' => $variantsData,
+        ]);
     }
 
     /**

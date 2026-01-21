@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('products', ProductController::class);
-    
+    Route::get('products/{product}/availability', [ProductController::class, 'checkAvailability']);
+
     Route::get('products/import/template', [ProductImportController::class, 'template']);
     Route::post('products/import', [ProductImportController::class, 'store']);
 });
