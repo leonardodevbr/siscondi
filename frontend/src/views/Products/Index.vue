@@ -88,13 +88,11 @@
           />
         </div>
         <div>
-          <SelectInput
+          <SearchableSelect
             v-model="filters.category_id"
             :options="categoryOptions"
-            mode="single"
-            :searchable="true"
             placeholder="Todas as categorias"
-            @update:model-value="loadProducts"
+            @update:modelValue="loadProducts"
           />
         </div>
       </div>
@@ -238,7 +236,7 @@ import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
-import SelectInput from '@/components/Common/SelectInput.vue';
+import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -257,7 +255,7 @@ export default {
     MenuItems,
     MenuItem,
     ProductThumb,
-    SelectInput,
+    SearchableSelect,
   },
   setup() {
     const router = useRouter();
@@ -397,11 +395,11 @@ export default {
     });
 
     const categoryOptions = computed(() => {
-      const options = [{ value: '', label: 'Todas as categorias' }];
+      const options = [{ id: null, name: 'Todas as categorias' }];
       categories.value.forEach((category) => {
         options.push({
-          value: category.id,
-          label: category.name,
+          id: category.id,
+          name: category.name,
         });
       });
       return options;
