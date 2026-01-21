@@ -23,6 +23,7 @@ class Product extends Model
         'supplier_id',
         'name',
         'description',
+        'has_variants',
         'composition',
         'image',
         'cost_price',
@@ -35,6 +36,7 @@ class Product extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'has_variants' => 'boolean',
         'cost_price' => 'decimal:2',
         'sell_price' => 'decimal:2',
         'promotional_price' => 'decimal:2',

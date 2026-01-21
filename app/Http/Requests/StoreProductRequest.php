@@ -29,6 +29,7 @@ class StoreProductRequest extends FormRequest
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'has_variants' => ['nullable', 'boolean'],
             'composition' => ['nullable', 'string', 'max:255'],
             'cover_image' => ['nullable', 'image', 'max:2048'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],

@@ -30,7 +30,8 @@ class ProductSeeder extends Seeder
         $colors = ['Azul', 'Vermelho', 'Preto', 'Branco', 'Verde', 'Amarelo', 'Rosa', 'Cinza', 'Marrom', 'Bege', 'Laranja', 'Roxo'];
         $sizes = ['P', 'M', 'G'];
 
-        Product::factory(20)->create()->each(function (Product $product) use ($branches, $skuGenerator, $colors, $sizes): void {
+        // Produtos COM variações (15 produtos)
+        Product::factory(15)->create(['has_variants' => true])->each(function (Product $product) use ($branches, $skuGenerator, $colors, $sizes): void {
             foreach ($sizes as $size) {
                 $color = fake()->randomElement($colors);
 
@@ -65,7 +66,37 @@ class ProductSeeder extends Seeder
             }
         });
 
-        $this->command->info("Created 20 products with variants (P, M, G) and inventories for {$branches->count()} branches.");
+        // Produtos SEM variações (5 produtos simples)
+        Product::factory(5)->create(['has_variants' => false])->each(function (Product $product) use ($branches, $skuGenerator): void {
+            // Cria uma variação padrão (invisível ao usuário)
+            $attributes = ['tipo' => 'único'];
+
+            $sku = $skuGenerator->generate($product, $attributes);
+            if ($sku === null) {
+                $baseName = strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 8));
+                $sku = $baseName . '-' . strtoupper(fake()->bothify('####'));
+            }
+
+            $variant = $product->variants()->create([
+                'sku' => $sku,
+                'barcode' => $this->generateUniqueBarcode(),
+                'price' => null,
+                'image' => $product->image,
+                'attributes' => $attributes,
+            ]);
+
+            // Cria estoque para todas as filiais
+            foreach ($branches as $branch) {
+                Inventory::create([
+                    'branch_id' => $branch->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => fake()->numberBetween(10, 100),
+                    'min_quantity' => fake()->numberBetween(5, 20),
+                ]);
+            }
+        });
+
+        $this->command->info("Created 15 products WITH variants (P, M, G) and 5 products WITHOUT variants (simple products) with inventories for {$branches->count()} branches.");
     }
 
     /**

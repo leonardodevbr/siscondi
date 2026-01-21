@@ -73,6 +73,7 @@ class ProductFactory extends Factory
                 : null,
             'name' => $fullName,
             'description' => fake()->randomElement($this->descriptions),
+            'has_variants' => true,
             'image' => fake()->randomElement($this->productImages),
             'cost_price' => fake()->randomFloat(2, 20, 300),
             'sell_price' => fake()->randomFloat(2, 50, 600),

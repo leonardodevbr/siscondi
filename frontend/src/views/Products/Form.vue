@@ -34,6 +34,7 @@
               Dados Gerais
             </button>
             <button
+              v-if="form.has_variants"
               type="button"
               @click="activeTab = 'variants'"
               :class="[
@@ -46,7 +47,7 @@
               Variações ({{ form.variants.length }})
             </button>
             <button
-              v-if="!isEdit"
+              v-if="!isEdit && form.has_variants"
               type="button"
               @click="activeTab = 'stock'"
               :class="[
@@ -109,6 +110,23 @@
             />
           </div>
 
+          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Este produto possui variações (cores, tamanhos)?
+                </label>
+                <p class="text-xs text-slate-500">
+                  Se desativado, o produto terá apenas um SKU e estoque único
+                </p>
+              </div>
+              <Toggle
+                v-model="form.has_variants"
+                label=""
+              />
+            </div>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">
               Composição / Tecido
@@ -119,6 +137,80 @@
               class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ex: 100% Algodão, Seda Pura, Poliéster com Elastano"
             />
+          </div>
+
+          <!-- Produto Simples (sem variações) -->
+          <div v-if="!form.has_variants" class="border border-slate-200 rounded-lg p-4 space-y-4 bg-slate-50">
+            <h3 class="text-sm font-semibold text-slate-700 mb-3">Informações do Produto Simples</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-sm font-medium text-slate-700">
+                    SKU
+                    <span v-if="!settingsStore.skuAutoGeneration" class="text-red-500">*</span>
+                  </label>
+                  <div
+                    v-if="settingsStore.skuAutoGeneration"
+                    class="flex items-center gap-1 text-xs text-slate-500"
+                    title="SKU gerado automaticamente"
+                  >
+                    <SparklesIcon class="h-4 w-4" />
+                    <span>Automático</span>
+                  </div>
+                </div>
+                <div class="relative">
+                  <input
+                    v-model="form.sku"
+                    type="text"
+                    :required="!settingsStore.skuAutoGeneration"
+                    :disabled="settingsStore.skuAutoGeneration"
+                    :class="[
+                      'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                      settingsStore.skuAutoGeneration
+                        ? 'border-slate-200 bg-white text-slate-500 cursor-not-allowed'
+                        : 'border-slate-300',
+                    ]"
+                    :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente ao salvar' : 'Ex: CAM-001'"
+                  />
+                  <LockClosedIcon
+                    v-if="settingsStore.skuAutoGeneration"
+                    class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Código de Barras (EAN)
+                </label>
+                <input
+                  v-model="form.barcode"
+                  type="text"
+                  maxlength="13"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="7891234567890"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Estoque Atual
+                  <span v-if="currentBranchName" class="text-xs font-normal text-slate-500">
+                    ({{ currentBranchName }})
+                  </span>
+                </label>
+                <input
+                  v-model.number="form.stock"
+                  type="number"
+                  min="0"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
+                />
+              </div>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -133,23 +225,7 @@
               />
             </div>
 
-            <div v-if="form.variants.length === 0">
-              <label class="block text-sm font-medium text-slate-700 mb-1">
-                Estoque Atual
-                <span v-if="currentBranchName" class="text-xs font-normal text-slate-500">
-                  ({{ currentBranchName }})
-                </span>
-              </label>
-              <input
-                v-model.number="form.stock"
-                type="number"
-                min="0"
-                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
-              />
-            </div>
-
-            <div v-else>
+            <div v-if="form.has_variants && form.variants.length > 0">
               <label class="block text-sm font-medium text-slate-700 mb-1">
                 Total em Estoque
               </label>
@@ -209,7 +285,7 @@
         </div>
 
         <!-- Tab 2: Variações -->
-        <div v-show="activeTab === 'variants'" class="space-y-4 px-6 py-6">
+        <div v-show="activeTab === 'variants' && form.has_variants" class="space-y-4 px-6 py-6">
           <div class="flex justify-between items-center">
             <p class="text-sm text-slate-600">
               Adicione as variações do produto (cores, tamanhos, etc.)
@@ -372,7 +448,7 @@
         </div>
 
         <!-- Tab 3: Estoque Inicial (apenas criação) -->
-        <div v-if="!isEdit && activeTab === 'stock'" class="space-y-4 px-6 py-6">
+        <div v-if="!isEdit && activeTab === 'stock' && form.has_variants" class="space-y-4 px-6 py-6">
           <p class="text-sm text-slate-600 mb-4">
             Defina a quantidade inicial de cada variação para
             <span v-if="currentBranchName" class="font-semibold">{{ currentBranchName }}</span>
@@ -441,6 +517,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
+import Toggle from '@/components/Common/Toggle.vue';
 import { SparklesIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 import api from '@/services/api';
 
@@ -449,6 +526,7 @@ export default {
   components: {
     SearchableSelect,
     ImageUpload,
+    Toggle,
     SparklesIcon,
     LockClosedIcon,
   },
@@ -472,6 +550,7 @@ export default {
     const form = ref({
       name: '',
       description: '',
+      has_variants: false,
       composition: '',
       category_id: null,
       supplier_id: null,
@@ -481,6 +560,8 @@ export default {
       promotional_expires_at: null,
       cover_image: null,
       stock: 0,
+      sku: '',
+      barcode: '',
       variants: [],
     });
 
@@ -571,17 +652,27 @@ export default {
           };
         });
 
-        const simpleStock = product.current_stock !== undefined 
-          ? product.current_stock 
-          : (
-            loadedVariants.length === 1 && loadedVariants[0]
-              ? loadedVariants[0].stock ?? 0
-              : 0
-          );
+        const hasVariants = product.has_variants ?? (loadedVariants.length > 1);
+        
+        let simpleSku = '';
+        let simpleBarcode = '';
+        let simpleStock = 0;
+
+        if (!hasVariants && loadedVariants.length === 1) {
+          const defaultVariant = loadedVariants[0];
+          simpleSku = defaultVariant.sku || '';
+          simpleBarcode = defaultVariant.barcode || '';
+          simpleStock = defaultVariant.stock ?? 0;
+        } else if (!hasVariants) {
+          simpleStock = product.current_stock ?? 0;
+        } else {
+          simpleStock = product.current_stock ?? 0;
+        }
 
         form.value = {
           name: product.name || '',
           description: product.description || '',
+          has_variants: hasVariants,
           composition: product.composition || '',
           category_id: categoryId,
           supplier_id: supplierId,
@@ -591,7 +682,9 @@ export default {
           promotional_expires_at: product.promotional_expires_at || null,
           cover_image: product.cover_image || null,
           stock: simpleStock,
-          variants: loadedVariants,
+          sku: simpleSku,
+          barcode: simpleBarcode,
+          variants: hasVariants ? loadedVariants : [],
         };
       } catch (error) {
         toast.error('Erro ao carregar produto');
@@ -600,6 +693,10 @@ export default {
     };
 
     const addVariant = async () => {
+      if (!form.value.has_variants) {
+        form.value.has_variants = true;
+      }
+      
       const newVariant = {
         sku: '',
         barcode: '',
@@ -724,6 +821,7 @@ export default {
           
           formData.append('name', form.value.name);
           formData.append('description', form.value.description || '');
+          formData.append('has_variants', form.value.has_variants ? '1' : '0');
           formData.append('category_id', form.value.category_id);
           if (form.value.supplier_id) formData.append('supplier_id', form.value.supplier_id);
           if (form.value.cost_price) formData.append('cost_price', form.value.cost_price);
@@ -739,11 +837,18 @@ export default {
             formData.append('composition', form.value.composition);
           }
 
-          if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
+          // Produto simples: envia SKU, barcode e stock
+          if (!form.value.has_variants) {
+            if (form.value.sku) formData.append('sku', form.value.sku);
+            if (form.value.barcode) formData.append('barcode', form.value.barcode);
+            if (form.value.stock !== undefined && form.value.stock !== null) {
+              formData.append('stock', form.value.stock);
+            }
+          } else if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
             formData.append('stock', form.value.stock);
           }
 
-          if (form.value.variants.length > 0) {
+          if (form.value.has_variants && form.value.variants.length > 0) {
             form.value.variants.forEach((variant, index) => {
               formData.append(`variants[${index}][sku]`, variant.sku);
               if (variant.barcode) formData.append(`variants[${index}][barcode]`, variant.barcode);
@@ -778,7 +883,7 @@ export default {
           const payload = { ...form.value };
           delete payload.cover_image;
           
-          if (form.value.variants.length > 0) {
+          if (form.value.has_variants && form.value.variants.length > 0) {
             payload.variants = form.value.variants.map((v) => ({
               ...v,
               image: v.image instanceof File ? null : v.image,
@@ -791,6 +896,8 @@ export default {
               }));
             }
             delete payload.stock;
+            delete payload.sku;
+            delete payload.barcode;
           } else {
             payload.variants = [];
             if (payload.stock === undefined || payload.stock === null) {
@@ -823,6 +930,25 @@ export default {
           form.value.variants.forEach((variant, index) => {
             generateSku(variant, index);
           });
+        }
+      }
+    );
+
+    watch(
+      () => form.value.has_variants,
+      (newValue) => {
+        if (!newValue) {
+          // Se desligou variações, limpa a lista e volta para aba geral
+          form.value.variants = [];
+          initialStock.value = [];
+          if (activeTab.value === 'variants' || activeTab.value === 'stock') {
+            activeTab.value = 'general';
+          }
+        } else {
+          // Se ligou variações, vai para aba de variações
+          if (form.value.variants.length === 0) {
+            activeTab.value = 'variants';
+          }
         }
       }
     );

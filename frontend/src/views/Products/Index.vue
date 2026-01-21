@@ -294,7 +294,7 @@ export default {
       category_id: '',
     });
 
-    const loadProducts = async () => {
+    const loadProducts = async (page = null) => {
       try {
         const params = {};
         if (filters.value.search) {
@@ -302,6 +302,9 @@ export default {
         }
         if (filters.value.category_id) {
           params.category_id = filters.value.category_id;
+        }
+        if (page !== null) {
+          params.page = page;
         }
         await productStore.fetchAll(params);
       } catch (error) {
@@ -320,12 +323,12 @@ export default {
     const debouncedSearch = () => {
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
-        loadProducts();
+        loadProducts(1);
       }, 500);
     };
 
     const changePage = (page) => {
-      loadProducts({ page });
+      loadProducts(page);
     };
 
     const editProduct = (id) => {
