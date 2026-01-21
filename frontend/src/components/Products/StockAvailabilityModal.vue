@@ -125,11 +125,11 @@ function getQuantityClass(quantity) {
     </div>
 
     <div v-else class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <p class="text-xs text-slate-500">
-          Visualização de estoque de cada variação em todas as filiais.
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <p class="text-xs text-slate-500 whitespace-nowrap">
+          Estoque por variação em todas as filiais
         </p>
-        <div class="flex-1 max-w-xs">
+        <div class="w-full sm:w-auto sm:min-w-[280px]">
           <input
             v-model="searchFilter"
             type="text"
