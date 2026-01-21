@@ -119,10 +119,10 @@
                 Categoria
               </th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Preço Base
+                Preço
               </th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Total em Estoque
+                Estoque
               </th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Variações
