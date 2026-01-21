@@ -26,6 +26,23 @@ export const useAuthStore = defineStore('auth', {
 
         window.localStorage.setItem('token', token);
         window.localStorage.setItem('user', JSON.stringify(user));
+
+        const isAdmin = user?.roles?.some((r) => {
+          if (typeof r === 'string') {
+            return r === 'super-admin';
+          }
+          return r?.name === 'super-admin';
+        });
+
+        if (!isAdmin && user?.branch) {
+          const appStore = useAppStore();
+          appStore.currentBranch = {
+            id: user.branch.id,
+            name: user.branch.name,
+          };
+          window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
+          window.localStorage.setItem('selected_branch_id', String(user.branch.id));
+        }
       } catch (error) {
         const errors = error.response?.data?.errors;
         this.error = errors?.email?.[0] || error.response?.data?.message || 'Não foi possível fazer login.';

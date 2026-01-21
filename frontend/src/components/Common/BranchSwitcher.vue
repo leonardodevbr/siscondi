@@ -20,7 +20,10 @@ const isSuperAdmin = computed(() => {
 });
 
 const currentBranchName = computed(() => {
-  return appStore.currentBranch?.name || auth.user?.branch?.name || 'Sem filial';
+  if (isSuperAdmin.value) {
+    return appStore.currentBranch?.name || 'Sem filial';
+  }
+  return auth.user?.branch?.name || 'Sem filial';
 });
 
 const branches = computed(() => appStore.branches || []);
@@ -48,8 +51,6 @@ onMounted(async () => {
     if (!appStore.currentBranch && appStore.branches.length > 0) {
       appStore.setBranch(appStore.branches[0]);
     }
-  } else if (!appStore.currentBranch && auth.user?.branch) {
-    appStore.setBranch({ id: auth.user.branch.id, name: auth.user.branch.name });
   }
 });
 
