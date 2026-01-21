@@ -166,14 +166,20 @@
                 </div>
               </td>
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                <div v-if="product.has_variants" class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                  {{ product.variants?.length || 0 }} opções
-                </div>
-                <div v-else class="text-sm text-slate-400">
-                  <span v-if="getSimpleVariantAttributes(product)" class="text-slate-600">
-                    {{ getSimpleVariantAttributes(product) }}
+                <span v-if="product.has_variants" class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-600/20">
+                  {{ product.variants?.length || 0 }} variações
+                </span>
+
+                <div v-else>
+                  <span v-if="product.variants?.[0]?.attributes?.cor || product.variants?.[0]?.attributes?.tamanho" class="text-xs text-gray-500 font-medium">
+                    <span v-if="product.variants[0]?.attributes?.cor">{{ product.variants[0].attributes.cor }}</span>
+                    <span v-if="product.variants[0]?.attributes?.cor && product.variants[0]?.attributes?.tamanho" class="mx-1">•</span>
+                    <span v-if="product.variants[0]?.attributes?.tamanho">{{ product.variants[0].attributes.tamanho }}</span>
                   </span>
-                  <span v-else>-</span>
+                  
+                  <span v-else class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                    Item Único
+                  </span>
                 </div>
               </td>
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
