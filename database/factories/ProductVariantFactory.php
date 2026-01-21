@@ -22,7 +22,6 @@ class ProductVariantFactory extends Factory
     {
         $colors = ['Azul', 'Vermelho', 'Preto', 'Branco', 'Verde', 'Amarelo', 'Rosa', 'Cinza', 'Marrom', 'Bege'];
         $sizes = ['PP', 'P', 'M', 'G', 'GG', 'XG'];
-        $fabrics = ['Algodão', 'Poliester', 'Viscose', 'Malha', 'Jeans', 'Seda', 'Linho'];
 
         return [
             'product_id' => Product::factory(),
@@ -34,8 +33,7 @@ class ProductVariantFactory extends Factory
             'image' => null,
             'attributes' => [
                 'cor' => fake()->randomElement($colors),
-                'tamanho' => fake()->randomElement($sizes),
-                'tecido' => fake()->randomElement($fabrics),
+                'tamanho' => fake()->randomElement($sizes)
             ],
         ];
     }

@@ -28,6 +28,7 @@ class UpdateProductRequest extends FormRequest
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'composition' => ['nullable', 'string', 'max:255'],
             'cover_image' => ['nullable', 'image', 'max:2048'],
             'cost_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'sell_price' => ['sometimes', 'required', 'numeric', 'min:0'],

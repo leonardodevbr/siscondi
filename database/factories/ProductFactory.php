@@ -28,6 +28,7 @@ class ProductFactory extends Factory
             'description' => fake()->optional()->sentence(10),
             'cost_price' => fake()->randomFloat(2, 1, 500),
             'sell_price' => fake()->randomFloat(2, 1, 800),
+            'composition' => fake()->randomElement(['Algodão', 'Poliester', 'Viscose', 'Malha', 'Jeans', 'Seda', 'Linho']),
         ];
     }
 }
