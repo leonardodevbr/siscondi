@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useToast } from 'vue-toastification';
+import { useAuthStore } from '@/stores/auth';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import HomeView from '@/views/Dashboard/Home.vue';
@@ -78,31 +80,37 @@ const routes = [
         path: 'suppliers',
         name: 'suppliers',
         component: SuppliersIndex,
+        meta: { roles: ['super-admin', 'manager'] },
       },
       {
         path: 'expenses',
         name: 'expenses',
         component: ExpensesIndex,
+        meta: { roles: ['super-admin', 'manager'] },
       },
       {
         path: 'reports',
         name: 'reports',
         component: ReportsIndex,
+        meta: { roles: ['super-admin', 'manager'] },
       },
       {
         path: 'coupons',
         name: 'coupons',
         component: CouponsIndex,
+        meta: { roles: ['super-admin', 'manager'] },
       },
       {
         path: 'branches',
         name: 'branches.index',
         component: BranchesIndex,
+        meta: { roles: ['super-admin'] },
       },
       {
         path: 'settings',
         name: 'settings',
         component: SettingsIndex,
+        meta: { roles: ['super-admin'] },
       },
     ],
   },
@@ -115,6 +123,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = window.localStorage.getItem('token');
+  const toast = useToast();
 
   if (to.meta.requiresAuth && !token) {
     next({ name: 'login' });
@@ -124,6 +133,37 @@ router.beforeEach((to, from, next) => {
   if (to.meta.guestOnly && token) {
     next({ name: 'dashboard' });
     return;
+  }
+
+  if (to.meta.roles && token) {
+    const authStore = useAuthStore();
+    const user = authStore.user;
+
+    if (!user) {
+      next({ name: 'login' });
+      return;
+    }
+
+    const userRoles = user.roles || [];
+    const requiredRoles = to.meta.roles;
+
+    const hasAccess = requiredRoles.some((requiredRole) => {
+      if (requiredRole === '*') {
+        return true;
+      }
+      return userRoles.some((userRole) => {
+        if (typeof userRole === 'string') {
+          return userRole === requiredRole;
+        }
+        return userRole?.name === requiredRole;
+      });
+    });
+
+    if (!hasAccess) {
+      toast.error('Você não tem permissão para acessar esta página.');
+      next({ name: 'dashboard' });
+      return;
+    }
   }
 
   next();
