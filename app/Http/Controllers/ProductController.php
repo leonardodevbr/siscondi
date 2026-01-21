@@ -216,7 +216,9 @@ class ProductController extends Controller
     {
         return DB::transaction(function () use ($request, $product): JsonResponse {
             $data = $request->validated();
-            $variants = $data['variants'] ?? [];
+            
+            // Pega variants do validated ou do input direto (para garantir que stock venha)
+            $variants = $data['variants'] ?? $request->input('variants', []);
             $stock = $data['stock'] ?? null;
             unset($data['variants'], $data['stock']);
 
@@ -299,12 +301,34 @@ class ProductController extends Controller
                     }
 
                     // Extrai informações de estoque da variação (se vierem)
-                    $stockValue = $variantData['stock'] ?? $variantData['quantity'] ?? null;
+                    $stockValue = null;
+                    if (isset($variantData['stock'])) {
+                        $stockValue = $variantData['stock'] !== null && $variantData['stock'] !== '' 
+                            ? (int) $variantData['stock'] 
+                            : null;
+                    } elseif (isset($variantData['quantity'])) {
+                        $stockValue = $variantData['quantity'] !== null && $variantData['quantity'] !== '' 
+                            ? (int) $variantData['quantity'] 
+                            : null;
+                    }
                     unset($variantData['stock'], $variantData['quantity']);
+
+                    // Garante que attributes seja um array
+                    if (isset($variantData['attributes'])) {
+                        if (is_string($variantData['attributes'])) {
+                            $variantData['attributes'] = json_decode($variantData['attributes'], true) ?? [];
+                        }
+                        if (! is_array($variantData['attributes'])) {
+                            $variantData['attributes'] = [];
+                        }
+                    } else {
+                        $variantData['attributes'] = [];
+                    }
 
                     $variantId = isset($variantData['id']) ? (int) $variantData['id'] : null;
                     unset($variantData['id']);
 
+                    // Atualiza ou cria a variação
                     if ($variantId && in_array($variantId, $existingVariantIds, true)) {
                         $variant = $product->variants()->findOrFail($variantId);
 
@@ -317,22 +341,18 @@ class ProductController extends Controller
                         $variant = $product->variants()->create($variantData);
                     }
 
-                    // Atualização de estoque: só mexe se veio explicitamente quantidade
+                    // Atualização de estoque: sempre atualiza se veio explicitamente (mesmo que seja 0)
                     if ($currentBranchId && $stockValue !== null) {
-                        /** @var \App\Models\Inventory $inventory */
-                        $inventory = \App\Models\Inventory::firstOrCreate(
+                        \App\Models\Inventory::updateOrCreate(
                             [
                                 'branch_id' => $currentBranchId,
                                 'product_variant_id' => $variant->id,
                             ],
                             [
-                                'quantity' => 0,
+                                'quantity' => $stockValue,
                                 'min_quantity' => 0,
                             ]
                         );
-
-                        $inventory->quantity = (int) $stockValue;
-                        $inventory->save();
                     }
                 }
             }
