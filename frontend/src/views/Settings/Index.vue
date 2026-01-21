@@ -9,65 +9,129 @@
     </div>
 
     <div v-else class="space-y-6">
-      <div class="card">
-        <div class="border-b border-slate-200 pb-4 mb-4">
-          <h2 class="text-lg font-semibold text-slate-800">Produtos & Estoque</h2>
-          <p class="text-sm text-slate-600 mt-1">
-            Configure a geração automática de SKUs para produtos e variações.
-          </p>
-        </div>
+      <!-- Tabs -->
+      <div class="border-b border-slate-200 overflow-x-auto">
+        <nav class="flex gap-6 px-6 min-w-max">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            type="button"
+            @click="activeTab = tab.id"
+            :class="[
+              'whitespace-nowrap outline-none focus:outline-none focus:ring-0',
+              activeTab === tab.id
+                ? 'text-blue-600 border-b-2 border-blue-600 py-4 font-semibold'
+                : 'text-slate-500 hover:text-slate-700 py-4 font-medium transition-colors',
+            ]"
+          >
+            {{ tab.label }}
+          </button>
+        </nav>
+      </div>
 
-        <div class="space-y-6">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-slate-700">
-                Gerar SKUs Automaticamente
-              </label>
-              <Toggle
-                v-model="form.skuAutoGeneration"
-                label=""
-              />
-            </div>
-            <p class="text-xs text-slate-500">
-              Quando ativado, os SKUs serão gerados automaticamente ao criar produtos/variações.
+      <!-- Tab Content -->
+      <div class="p-6 sm:p-8 space-y-6">
+        <!-- Geral -->
+        <template v-if="activeTab === 'general'">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6">
+            <h2 class="text-base font-semibold text-slate-800 mb-4">
+              Dados da Loja
+            </h2>
+            <p class="text-sm text-slate-500">
+              Configurações gerais da loja serão configuradas aqui (nome, logo, dados da empresa).
             </p>
           </div>
+        </template>
 
-          <div v-if="form.skuAutoGeneration">
-            <label class="block text-sm font-medium text-slate-700 mb-2">
-              Padrão do SKU
-            </label>
-            <input
-              v-model="form.skuPattern"
-              type="text"
-              class="input-base"
-              placeholder="{CATEGORY}-{NAME}-{SEQ}"
-            />
-            <div class="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-xs font-medium text-slate-700 mb-2">Tags disponíveis:</p>
-              <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                <div>
-                  <code class="bg-white px-1 py-0.5 rounded text-blue-600">{CATEGORY}</code>
-                  <span class="ml-2">3 primeiras letras da categoria</span>
-                </div>
-                <div>
-                  <code class="bg-white px-1 py-0.5 rounded text-blue-600">{NAME}</code>
-                  <span class="ml-2">3 primeiras letras do nome</span>
-                </div>
-                <div>
-                  <code class="bg-white px-1 py-0.5 rounded text-blue-600">{VARIANTS}</code>
-                  <span class="ml-2">Iniciais dos atributos (ex: G-B)</span>
-                </div>
-                <div>
-                  <code class="bg-white px-1 py-0.5 rounded text-blue-600">{SEQ}</code>
-                  <span class="ml-2">Número sequencial</span>
+        <!-- Produtos & Estoque -->
+        <template v-else-if="activeTab === 'products'">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="mb-2">
+              <h2 class="text-base font-semibold text-slate-800">
+                Produtos & Estoque
+              </h2>
+              <p class="text-sm text-slate-600 mt-1">
+                Configure a geração automática de SKUs para produtos e variações.
+              </p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-slate-700">
+                  Gerar SKUs Automaticamente
+                </label>
+                <Toggle
+                  v-model="form.skuAutoGeneration"
+                  label=""
+                />
+              </div>
+              <p class="text-xs text-slate-500">
+                Quando ativado, os SKUs serão gerados automaticamente ao criar produtos/variações.
+              </p>
+            </div>
+
+            <div v-if="form.skuAutoGeneration" class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Padrão do SKU
+                </label>
+                <input
+                  v-model="form.skuPattern"
+                  type="text"
+                  class="input-base"
+                  placeholder="{CATEGORY}-{NAME}-{SEQ}"
+                />
+              </div>
+              <div class="mt-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <p class="text-xs font-medium text-slate-700 mb-2">Tags disponíveis:</p>
+                <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  <div>
+                    <code class="bg-white px-1 py-0.5 rounded text-blue-600">{CATEGORY}</code>
+                    <span class="ml-2">3 primeiras letras da categoria</span>
+                  </div>
+                  <div>
+                    <code class="bg-white px-1 py-0.5 rounded text-blue-600">{NAME}</code>
+                    <span class="ml-2">3 primeiras letras do nome</span>
+                  </div>
+                  <div>
+                    <code class="bg-white px-1 py-0.5 rounded text-blue-600">{VARIANTS}</code>
+                    <span class="ml-2">Iniciais dos atributos (ex: G-B)</span>
+                  </div>
+                  <div>
+                    <code class="bg-white px-1 py-0.5 rounded text-blue-600">{SEQ}</code>
+                    <span class="ml-2">Número sequencial</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
-        <div class="mt-6 flex justify-end">
+        <!-- Vendas & PDV -->
+        <template v-else-if="activeTab === 'sales'">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6">
+            <h2 class="text-base font-semibold text-slate-800 mb-2">
+              Vendas & PDV
+            </h2>
+            <p class="text-sm text-slate-600">
+              Configurações de recibo, abertura de caixa e fluxo do PDV serão configuradas aqui.
+            </p>
+          </div>
+        </template>
+
+        <!-- Financeiro -->
+        <template v-else-if="activeTab === 'finance'">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6">
+            <h2 class="text-base font-semibold text-slate-800 mb-2">
+              Financeiro
+            </h2>
+            <p class="text-sm text-slate-600">
+              Configurações financeiras (integrações bancárias, centros de custo, etc.) serão configuradas aqui.
+            </p>
+          </div>
+        </template>
+
+        <div class="mt-2 flex justify-end">
           <button
             @click="handleSave"
             :disabled="saving"
@@ -98,6 +162,15 @@ export default {
     const settingsStore = useSettingsStore();
     const loading = ref(false);
     const saving = ref(false);
+
+    const activeTab = ref('products');
+
+    const tabs = [
+      { id: 'general', label: 'Geral' },
+      { id: 'products', label: 'Produtos & Estoque' },
+      { id: 'sales', label: 'Vendas & PDV' },
+      { id: 'finance', label: 'Financeiro' },
+    ];
 
     const form = ref({
       skuAutoGeneration: false,
@@ -152,6 +225,8 @@ export default {
     return {
       loading,
       saving,
+      activeTab,
+      tabs,
       form,
       handleSave,
     };
