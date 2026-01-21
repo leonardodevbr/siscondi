@@ -23,6 +23,86 @@ export const useProductStore = defineStore('product', {
     },
   },
   actions: {
+    toFormData(form) {
+      const formData = new FormData();
+
+      const appendValue = (key, value) => {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? 1 : 0);
+          return;
+        }
+
+        formData.append(key, value);
+      };
+
+      const imageKeys = ['cover_image', 'image'];
+
+      Object.entries(form || {}).forEach(([key, value]) => {
+        if (key === 'variants' && Array.isArray(value)) {
+          value.forEach((variant, index) => {
+            if (!variant || typeof variant !== 'object') return;
+
+            Object.entries(variant).forEach(([vKey, vValue]) => {
+              const field = `variants[${index}][${vKey}]`;
+
+              if (vKey === 'image') {
+                if (vValue instanceof File) {
+                  formData.append(field, vValue);
+                }
+                return;
+              }
+
+              if (vKey === 'attributes') {
+                if (vValue && typeof vValue === 'object') {
+                  formData.append(field, JSON.stringify(vValue));
+                }
+                return;
+              }
+
+              if (vValue === undefined || vValue === null || vValue === '') {
+                return;
+              }
+
+              if (typeof vValue === 'boolean') {
+                formData.append(field, vValue ? 1 : 0);
+                return;
+              }
+
+              formData.append(field, vValue);
+            });
+          });
+          return;
+        }
+
+        if (key === 'initial_stock' && Array.isArray(value)) {
+          value.forEach((stock, index) => {
+            if (stock && typeof stock === 'object') {
+              Object.entries(stock).forEach(([sKey, sValue]) => {
+                const field = `initial_stock[${index}][${sKey}]`;
+                appendValue(field, sValue);
+              });
+            }
+          });
+          return;
+        }
+
+        if (imageKeys.includes(key)) {
+          if (value instanceof File) {
+            formData.append(key, value);
+          }
+          return;
+        }
+
+        appendValue(key, value);
+      });
+
+      return formData;
+    },
+
     async fetchAll(params = {}) {
       this.loading = true;
       this.error = null;
@@ -59,16 +139,13 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
-        const isFormData = productData instanceof FormData;
-        const config = isFormData
-          ? {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            }
-          : {};
+        const payload = productData instanceof FormData ? productData : this.toFormData(productData);
 
-        const response = await api.post('/products', productData, config);
+        const response = await api.post('/products', payload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         const newProduct = response.data;
         this.products.unshift(newProduct);
         return newProduct;
@@ -84,16 +161,17 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
-        const isFormData = productData instanceof FormData;
-        const config = isFormData
-          ? {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            }
-          : {};
+        const payload = productData instanceof FormData ? productData : this.toFormData(productData);
 
-        const response = await api.put(`/products/${id}`, productData, config);
+        if (typeof payload.append === 'function' && !payload.has('_method')) {
+          payload.append('_method', 'PUT');
+        }
+
+        const response = await api.post(`/products/${id}`, payload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         const updatedProduct = response.data;
         const index = this.products.findIndex((p) => p.id === id);
         if (index !== -1) {
