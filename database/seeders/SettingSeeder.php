@@ -14,6 +14,9 @@ class SettingSeeder extends Seeder
         Settings::set('store_name', 'Adonai Boutique', 'string', 'general');
         Settings::set('payment_gateway', 'pix_dev', 'string', 'payment');
         Settings::set('enable_cash_register', true, 'boolean', 'general');
+        
+        Settings::set('sku_auto_generation', false, 'boolean', 'products');
+        Settings::set('sku_pattern', '{CATEGORY}-{NAME}-{SEQ}', 'string', 'products');
     }
 }
 

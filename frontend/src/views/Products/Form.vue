@@ -240,8 +240,14 @@
                     v-model="variant.sku"
                     type="text"
                     required
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: CAM-AZUL-P"
+                    :disabled="settingsStore.skuAutoGeneration"
+                    :class="[
+                      'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                      settingsStore.skuAutoGeneration
+                        ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
+                        : 'border-slate-300',
+                    ]"
+                    :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente' : 'Ex: CAM-AZUL-P'"
                     @blur="generateSkuIfEmpty(variant, index)"
                   />
                 </div>
@@ -271,7 +277,7 @@
                     type="text"
                     class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: Azul"
-                    @input="updateVariantAttributes(variant)"
+                    @input="handleAttributeChange(variant, index)"
                   />
                 </div>
 
@@ -284,7 +290,7 @@
                     type="text"
                     class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: P, M, G"
-                    @input="updateVariantAttributes(variant)"
+                    @input="handleAttributeChange(variant, index)"
                   />
                 </div>
               </div>
@@ -366,10 +372,11 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
+import { useSettingsStore } from '@/stores/settings';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
 import api from '@/services/api';
 
@@ -383,6 +390,7 @@ export default {
     const router = useRouter();
     const toast = useToast();
     const productStore = useProductStore();
+    const settingsStore = useSettingsStore();
 
     const isEdit = computed(() => !!route.params.id);
     const activeTab = ref('general');
@@ -461,7 +469,7 @@ export default {
     };
 
     const addVariant = async () => {
-      form.value.variants.unshift({
+      const newVariant = {
         sku: '',
         barcode: '',
         price: null,
@@ -470,10 +478,14 @@ export default {
           cor: '',
           tamanho: '',
         },
-      });
+      };
+      form.value.variants.unshift(newVariant);
       initialStock.value.unshift(0);
 
       await nextTick();
+      if (settingsStore.skuAutoGeneration) {
+        generateSku(newVariant, 0);
+      }
       if (variantRefs.value[0]) {
         variantRefs.value[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
@@ -484,20 +496,71 @@ export default {
       initialStock.value.splice(index, 1);
     };
 
-    const generateSkuIfEmpty = (variant, index) => {
-      if (variant.sku) return;
+    const generateSku = (variant, index) => {
+      if (!settingsStore.skuAutoGeneration) {
+        return;
+      }
 
-      const baseName = form.value.name
+      const pattern = settingsStore.skuPattern || '{CATEGORY}-{NAME}-{SEQ}';
+      let sku = pattern;
+
+      const category = categories.value.find((c) => c.id === form.value.category_id);
+      const categoryCode = category
+        ? category.name
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '')
+            .substring(0, 3)
+        : 'PRO';
+
+      const nameCode = form.value.name
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, '')
-        .substring(0, 6);
-      const cor = variant.attributes.cor
-        ? variant.attributes.cor.toUpperCase().substring(0, 3)
-        : 'DEF';
-      const tamanho = variant.attributes.tamanho
-        ? variant.attributes.tamanho.toUpperCase()
-        : 'UN';
-      variant.sku = `${baseName}-${cor}-${tamanho}`;
+        .substring(0, 3);
+
+      const variantAttrs = [];
+      if (variant.attributes.cor) {
+        variantAttrs.push(variant.attributes.cor.toUpperCase().substring(0, 1));
+      }
+      if (variant.attributes.tamanho) {
+        variantAttrs.push(variant.attributes.tamanho.toUpperCase().substring(0, 1));
+      }
+      const variantsCode = variantAttrs.length > 0 ? variantAttrs.join('-') : 'UN';
+
+      const seq = String(index + 1).padStart(3, '0');
+
+      sku = sku.replace(/{CATEGORY}/g, categoryCode);
+      sku = sku.replace(/{NAME}/g, nameCode);
+      sku = sku.replace(/{VARIANTS}/g, variantsCode);
+      sku = sku.replace(/{SEQ}/g, seq);
+
+      variant.sku = sku;
+    };
+
+    const generateSkuIfEmpty = (variant, index) => {
+      if (variant.sku && !settingsStore.skuAutoGeneration) return;
+      
+      if (settingsStore.skuAutoGeneration) {
+        generateSku(variant, index);
+      } else {
+        const baseName = form.value.name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+          .substring(0, 6);
+        const cor = variant.attributes.cor
+          ? variant.attributes.cor.toUpperCase().substring(0, 3)
+          : 'DEF';
+        const tamanho = variant.attributes.tamanho
+          ? variant.attributes.tamanho.toUpperCase()
+          : 'UN';
+        variant.sku = `${baseName}-${cor}-${tamanho}`;
+      }
+    };
+
+    const handleAttributeChange = (variant, index) => {
+      updateVariantAttributes(variant);
+      if (settingsStore.skuAutoGeneration) {
+        generateSku(variant, index);
+      }
     };
 
     const updateVariantAttributes = (variant) => {
@@ -606,6 +669,17 @@ export default {
       }
     };
 
+    watch(
+      [() => form.value.category_id, () => form.value.name],
+      () => {
+        if (settingsStore.skuAutoGeneration) {
+          form.value.variants.forEach((variant, index) => {
+            generateSku(variant, index);
+          });
+        }
+      }
+    );
+
     onMounted(async () => {
       await loadCategories();
       await loadSuppliers();
@@ -620,9 +694,12 @@ export default {
       categories,
       suppliers,
       initialStock,
+      settingsStore,
       addVariant,
       removeVariant,
       generateSkuIfEmpty,
+      generateSku,
+      handleAttributeChange,
       updateVariantAttributes,
       getVariantDescription,
       handleSubmit,

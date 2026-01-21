@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
+const settingsStore = useSettingsStore();
 
 const isSidebarOpen = ref(false);
 
@@ -16,6 +18,16 @@ function handleLogout() {
   auth.logout();
   router.push({ name: 'login' });
 }
+
+onMounted(async () => {
+  if (auth.user) {
+    try {
+      await settingsStore.fetchSettings();
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+    }
+  }
+});
 </script>
 
 <template>

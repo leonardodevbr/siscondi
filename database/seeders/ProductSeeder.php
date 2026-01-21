@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\SkuGeneratorService;
 use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
@@ -21,13 +22,22 @@ class ProductSeeder extends Seeder
             return;
         }
 
+        /** @var SkuGeneratorService $skuGenerator */
+        $skuGenerator = app(SkuGeneratorService::class);
+
         Product::factory(10)->create()->each(function (Product $product) use ($mainBranch): void {
             $variantsCount = fake()->numberBetween(3, 5);
 
             ProductVariant::factory($variantsCount)
                 ->for($product)
                 ->create()
-                ->each(function (ProductVariant $variant) use ($mainBranch): void {
+                ->each(function (ProductVariant $variant) use ($mainBranch, $skuGenerator, $product): void {
+                    if (! $variant->sku) {
+                        $generated = $skuGenerator->generate($product, $variant->attributes ?? []);
+                        $variant->sku = $generated ?? strtoupper(fake()->unique()->bothify('VAR-#####'));
+                        $variant->save();
+                    }
+
                     Inventory::create([
                         'branch_id' => $mainBranch->id,
                         'product_variant_id' => $variant->id,

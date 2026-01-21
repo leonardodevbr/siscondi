@@ -8,6 +8,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\SkuGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,11 @@ use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    public function __construct(
+        private readonly SkuGeneratorService $skuGeneratorService,
+    ) {
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -60,6 +66,9 @@ class ProductController extends Controller
             } else {
                 foreach ($variants as $index => $variantData) {
                     $variantData = $this->handleVariantImage($request, $variantData, $index);
+                    $variantData['sku'] = $variantData['sku']
+                        ?? $this->skuGeneratorService->generate($product, $variantData['attributes'] ?? []);
+
                     $variant = $product->variants()->create($variantData);
 
                     if (! empty($initialStock)) {
@@ -122,6 +131,13 @@ class ProductController extends Controller
                 foreach ($variants as $index => $variantData) {
                     $variantData = $this->handleVariantImage($request, $variantData, $index, $product->id);
 
+                    if (empty($variantData['sku'])) {
+                        $generatedSku = $this->skuGeneratorService->generate($product, $variantData['attributes'] ?? []);
+                        if ($generatedSku !== null) {
+                            $variantData['sku'] = $generatedSku;
+                        }
+                    }
+
                     if (isset($variantData['id']) && in_array($variantData['id'], $existingVariantIds)) {
                         $variant = $product->variants()->find($variantData['id']);
                         
@@ -172,8 +188,14 @@ class ProductController extends Controller
      */
     private function createDefaultVariant(Product $product, Request $request): void
     {
-        $baseName = Str::upper(Str::substr(Str::slug($product->name), 0, 8));
-        $sku = $baseName . '-' . Str::upper(Str::random(4));
+        $generatedSku = $this->skuGeneratorService->generate($product, ['tipo' => 'único']);
+
+        if ($generatedSku !== null) {
+            $sku = $generatedSku;
+        } else {
+            $baseName = Str::upper(Str::substr(Str::slug($product->name), 0, 8));
+            $sku = $baseName . '-' . Str::upper(Str::random(4));
+        }
 
         $variantData = [
             'sku' => $sku,
