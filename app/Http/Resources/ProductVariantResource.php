@@ -25,6 +25,7 @@ class ProductVariantResource extends JsonResource
             'attributes' => $this->attributes ?? [],
             'description_full' => $this->description_full,
             'effective_price' => $this->getEffectivePrice(),
+            'current_stock' => $this->when(isset($this->current_stock), fn () => $this->current_stock),
             'inventories' => $this->whenLoaded('inventories', fn () => $this->inventories->map(function ($inventory) {
                 return [
                     'id' => $inventory->id,

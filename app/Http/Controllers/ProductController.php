@@ -112,10 +112,10 @@ class ProductController extends Controller
             }
 
             $product = Product::create($data);
-            $mainBranch = \App\Models\Branch::where('is_main', true)->first();
+            $currentBranchId = $this->currentBranchId($request);
 
             if (empty($variants)) {
-                $this->createDefaultVariant($product, $request, (int) $stock);
+                $this->createDefaultVariant($product, $request, (int) $stock, $currentBranchId);
             } else {
                 foreach ($variants as $index => $variantData) {
                     $variantData = $this->handleVariantImage($request, $variantData, $index);
@@ -126,9 +126,9 @@ class ProductController extends Controller
 
                     if (! empty($initialStock)) {
                         $stockQuantity = $initialStock[$index]['quantity'] ?? 0;
-                        if ($stockQuantity > 0 && $mainBranch) {
+                        if ($stockQuantity > 0 && $currentBranchId) {
                             \App\Models\Inventory::create([
-                                'branch_id' => $mainBranch->id,
+                                'branch_id' => $currentBranchId,
                                 'product_variant_id' => $variant->id,
                                 'quantity' => $stockQuantity,
                                 'min_quantity' => 0,
@@ -138,7 +138,7 @@ class ProductController extends Controller
                 }
             }
 
-            $product->load(['category', 'supplier', 'variants.inventories']);
+            $this->loadProductWithCurrentBranchStock($product, $request);
 
             return response()->json(new ProductResource($product), 201);
         });
@@ -147,11 +147,11 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product): JsonResponse
+    public function show(Product $product, Request $request): JsonResponse
     {
         $this->authorize('products.view');
 
-        $product->load(['category', 'supplier', 'variants.inventories']);
+        $this->loadProductWithCurrentBranchStock($product, $request);
 
         return response()->json(new ProductResource($product));
     }
@@ -232,16 +232,16 @@ class ProductController extends Controller
 
             $product->update($data);
 
-            $mainBranch = \App\Models\Branch::where('is_main', true)->first();
+            $currentBranchId = $this->currentBranchId($request);
 
             // Produto simples (sem variações): atualiza estoque da variação padrão
-            if (empty($variants) && $stock !== null) {
+            if (empty($variants) && $stock !== null && $currentBranchId) {
                 $defaultVariant = $product->variants()->first();
-                if ($defaultVariant && $mainBranch) {
+                if ($defaultVariant) {
                     /** @var \App\Models\Inventory $inventory */
                     $inventory = \App\Models\Inventory::firstOrCreate(
                         [
-                            'branch_id' => $mainBranch->id,
+                            'branch_id' => $currentBranchId,
                             'product_variant_id' => $defaultVariant->id,
                         ],
                         [
@@ -318,11 +318,11 @@ class ProductController extends Controller
                     }
 
                     // Atualização de estoque: só mexe se veio explicitamente quantidade
-                    if ($mainBranch && $stockValue !== null) {
+                    if ($currentBranchId && $stockValue !== null) {
                         /** @var \App\Models\Inventory $inventory */
                         $inventory = \App\Models\Inventory::firstOrCreate(
                             [
-                                'branch_id' => $mainBranch->id,
+                                'branch_id' => $currentBranchId,
                                 'product_variant_id' => $variant->id,
                             ],
                             [
@@ -337,7 +337,8 @@ class ProductController extends Controller
                 }
             }
 
-            $product->refresh()->load(['category', 'supplier', 'variants.inventories']);
+            $product->refresh();
+            $this->loadProductWithCurrentBranchStock($product, $request);
 
             return response()->json(new ProductResource($product));
         });
@@ -358,7 +359,7 @@ class ProductController extends Controller
     /**
      * Create a default variant for simple products.
      */
-    private function createDefaultVariant(Product $product, Request $request, int $stock = 0): void
+    private function createDefaultVariant(Product $product, Request $request, int $stock = 0, ?int $branchId = null): void
     {
         $generatedSku = $this->skuGeneratorService->generate($product, ['tipo' => 'único']);
 
@@ -379,10 +380,9 @@ class ProductController extends Controller
 
         $variant = $product->variants()->create($variantData);
 
-        $mainBranch = \App\Models\Branch::where('is_main', true)->first();
-        if ($mainBranch) {
+        if ($branchId) {
             \App\Models\Inventory::create([
-                'branch_id' => $mainBranch->id,
+                'branch_id' => $branchId,
                 'product_variant_id' => $variant->id,
                 'quantity' => $stock,
                 'min_quantity' => 0,
@@ -441,5 +441,38 @@ class ProductController extends Controller
         }
 
         return $barcode;
+    }
+
+    /**
+     * Load product with inventories filtered by current branch and add virtual attributes.
+     */
+    private function loadProductWithCurrentBranchStock(Product $product, Request $request): void
+    {
+        $currentBranchId = $this->currentBranchId($request);
+
+        $product->load([
+            'category',
+            'supplier',
+            'variants' => function ($query) use ($currentBranchId): void {
+                $query->with(['inventories' => function ($inventoryQuery) use ($currentBranchId): void {
+                    if ($currentBranchId !== null) {
+                        $inventoryQuery->where('branch_id', $this->sanitizeBranchId($currentBranchId));
+                    }
+                }]);
+            },
+        ]);
+
+        // Adiciona atributo virtual current_stock para o produto (se for simples)
+        if ($product->variants->count() === 1) {
+            $variant = $product->variants->first();
+            $inventory = $variant->inventories->firstWhere('branch_id', $currentBranchId);
+            $product->setAttribute('current_stock', $inventory?->quantity ?? 0);
+        }
+
+        // Adiciona atributo virtual current_stock para cada variação
+        foreach ($product->variants as $variant) {
+            $inventory = $variant->inventories->firstWhere('branch_id', $currentBranchId);
+            $variant->setAttribute('current_stock', $inventory?->quantity ?? 0);
+        }
     }
 }
