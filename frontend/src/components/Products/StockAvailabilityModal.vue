@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 import Modal from '@/components/Common/Modal.vue';
 import api from '@/services/api';
 
@@ -47,9 +48,14 @@ watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen) {
+      loading.value = true;
+      error.value = '';
+      availability.value = null;
+      searchFilter.value = '';
       fetchAvailability();
     }
   },
+  { immediate: true },
 );
 
 const close = () => {
@@ -103,15 +109,18 @@ function getQuantityClass(quantity) {
     :title="title"
     @close="close"
   >
-    <div v-if="loading" class="py-6 text-center text-sm text-slate-500">
-      Carregando disponibilidade de estoque...
+    <div v-if="loading" class="py-12 flex flex-col items-center justify-center gap-3">
+      <ArrowPathIcon class="h-8 w-8 text-blue-500 animate-spin" />
+      <p class="text-sm text-slate-500">
+        Buscando disponibilidade nas filiais...
+      </p>
     </div>
 
     <div v-else-if="error" class="py-4 text-sm text-red-600">
       {{ error }}
     </div>
 
-    <div v-else-if="!availability" class="py-4 text-sm text-slate-500">
+    <div v-else-if="!availability" class="py-4 text-sm text-slate-500 text-center">
       Nenhuma informação de estoque encontrada para este produto.
     </div>
 
