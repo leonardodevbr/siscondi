@@ -16,6 +16,22 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
+    private function currentBranchId(?Request $request = null): ?int
+    {
+        if (app()->bound('current_branch_id')) {
+            return (int) app('current_branch_id');
+        }
+
+        $user = ($request?->user()) ?? auth()->user();
+        if ($user && $user->branch_id) {
+            return (int) $user->branch_id;
+        }
+
+        $fallback = \App\Models\Branch::where('is_main', true)->value('id')
+            ?? \App\Models\Branch::query()->min('id');
+
+        return $fallback ? (int) $fallback : null;
+    }
 {
     public function __construct(
         private readonly SkuGeneratorService $skuGeneratorService,
@@ -29,7 +45,19 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $query = Product::with(['category', 'supplier', 'variants.inventories']);
+        $branchId = app()->bound('current_branch_id') ? (int) app('current_branch_id') : null;
+
+        $query = Product::with([
+            'category',
+            'supplier',
+            'variants' => function ($query) use ($branchId): void {
+                $query->with(['inventories' => function ($inventoryQuery) use ($branchId): void {
+                    if ($branchId !== null) {
+                        $inventoryQuery->where('branch_id', $this->sanitizeBranchId($branchId));
+                    }
+                }]);
+            },
+        ]);
 
         // 1. Filtro por Texto (Nome, SKU ou Barcode)
         if ($request->has('search') && $request->search != '') {

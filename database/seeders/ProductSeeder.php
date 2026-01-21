@@ -10,47 +10,47 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\SkuGeneratorService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 class ProductSeeder extends Seeder
 {
     public function run(): void
     {
-        $mainBranch = Branch::where('is_main', true)->first();
+        /** @var Collection<int, Branch> $branches */
+        $branches = Branch::all();
 
-        if (! $mainBranch) {
-            $this->command->error('Main branch not found. Please run BranchSeeder first.');
+        if ($branches->isEmpty()) {
+            $this->command->error('No branches found. Please run BranchSeeder first.');
             return;
         }
 
         /** @var SkuGeneratorService $skuGenerator */
         $skuGenerator = app(SkuGeneratorService::class);
 
-        Product::factory(10)->create()->each(function (Product $product) use ($mainBranch, $skuGenerator): void {
+        Product::factory(10)->create()->each(function (Product $product) use ($branches, $skuGenerator): void {
             $variantsCount = fake()->numberBetween(3, 5);
 
-            // ALTERAÇÃO AQUI: Usamos make() para gerar em memória, iteramos, definimos o SKU e salvamos manualmente.
             $variants = ProductVariant::factory($variantsCount)->make();
 
             foreach ($variants as $variant) {
-                // Associa ao produto pai
                 $variant->product_id = $product->id;
 
-                // Gera o SKU antes de salvar
                 $generated = $skuGenerator->generate($product, $variant->attributes ?? []);
                 $variant->sku = $generated ?? strtoupper(fake()->unique()->bothify('VAR-#####'));
 
-                // Agora sim salva no banco
                 $variant->save();
 
-                Inventory::create([
-                    'branch_id' => $mainBranch->id,
-                    'product_variant_id' => $variant->id,
-                    'quantity' => fake()->numberBetween(10, 100),
-                    'min_quantity' => fake()->numberBetween(5, 20),
-                ]);
+                foreach ($branches as $branch) {
+                    Inventory::create([
+                        'branch_id' => $branch->id,
+                        'product_variant_id' => $variant->id,
+                        'quantity' => fake()->numberBetween(10, 100),
+                        'min_quantity' => fake()->numberBetween(5, 20),
+                    ]);
+                }
             }
         });
 
-        $this->command->info('Created 10 products with variants and inventories.');
+        $this->command->info("Created 10 products with variants and inventories for {$branches->count()} branches.");
     }
 }

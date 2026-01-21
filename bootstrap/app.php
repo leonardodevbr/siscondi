@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return route('login');
         });
+
+        $middleware->appendToGroup('api', [\App\Http\Middleware\SetTenantBranch::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request): bool {

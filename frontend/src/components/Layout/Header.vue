@@ -1,4 +1,6 @@
 <script setup>
+import BranchSwitcher from '@/components/Layout/BranchSwitcher.vue';
+
 const props = defineProps({
   userName: {
     type: String,
@@ -41,8 +43,9 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
     </div>
 
     <div class="flex items-center gap-4">
+      <BranchSwitcher class="hidden sm:block" />
       <span class="hidden text-sm text-slate-700 sm:inline">
-        {{ userName }}
+        {{ props.userName }}
       </span>
       <button
         type="button"
@@ -55,13 +58,3 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
   </header>
 </template>
 
-{
-  "cells": [],
-  "metadata": {
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "nbformat": 4,
-  "nbformat_minor": 2
-}

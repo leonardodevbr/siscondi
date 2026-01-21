@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -16,41 +17,49 @@ class UserSeeder extends Seeder
         $superAdminRole = Role::findByName('super-admin');
         $managerRole = Role::findByName('manager');
         $sellerRole = Role::findByName('seller');
-        $stockistRole = Role::findByName('stockist');
 
-        $superAdmin = User::factory()->create([
-            'name' => 'Super Admin',
-            'email' => 'superadmin@test.com',
+        $matriz = Branch::where('is_main', true)->first();
+        $filialShopping = Branch::where('name', 'Filial Shopping')->first();
+
+        $admin = User::factory()->global()->create([
+            'name' => 'Administrador',
+            'email' => 'admin@adonai.com',
             'password' => Hash::make('password'),
         ]);
-        $superAdmin->assignRole($superAdminRole);
+        $admin->assignRole($superAdminRole);
 
-        $manager = User::factory()->create([
-            'name' => 'Manager',
-            'email' => 'manager@test.com',
-            'password' => Hash::make('password'),
-        ]);
-        $manager->assignRole($managerRole);
+        if ($matriz) {
+            $gerenteMatriz = User::factory()->forBranch($matriz)->create([
+                'name' => 'Gerente Matriz',
+                'email' => 'gerente_matriz@adonai.com',
+                'password' => Hash::make('password'),
+            ]);
+            $gerenteMatriz->assignRole($managerRole);
 
-        $seller = User::factory()->create([
-            'name' => 'Seller',
-            'email' => 'seller@test.com',
-            'password' => Hash::make('password'),
-        ]);
-        $seller->assignRole($sellerRole);
+            $vendedorMatriz = User::factory()->forBranch($matriz)->create([
+                'name' => 'Vendedor Matriz',
+                'email' => 'vendedor_matriz@adonai.com',
+                'password' => Hash::make('password'),
+            ]);
+            $vendedorMatriz->assignRole($sellerRole);
+        }
 
-        $stockist = User::factory()->create([
-            'name' => 'Stockist',
-            'email' => 'stockist@test.com',
-            'password' => Hash::make('password'),
-        ]);
-        $stockist->assignRole($stockistRole);
+        if ($filialShopping) {
+            $gerenteShopping = User::factory()->forBranch($filialShopping)->create([
+                'name' => 'Gerente Shopping',
+                'email' => 'gerente_shopping@adonai.com',
+                'password' => Hash::make('password'),
+            ]);
+            $gerenteShopping->assignRole($managerRole);
 
-        User::factory(6)->create()->each(function (User $user): void {
-            $roles = Role::all()->random(rand(0, 2));
-            if ($roles->isNotEmpty()) {
-                $user->assignRole($roles);
-            }
-        });
+            $vendedorShopping = User::factory()->forBranch($filialShopping)->create([
+                'name' => 'Vendedor Shopping',
+                'email' => 'vendedor_shopping@adonai.com',
+                'password' => Hash::make('password'),
+            ]);
+            $vendedorShopping->assignRole($sellerRole);
+        }
+
+        $this->command->info('Created 5 users: 1 Admin (global), 2 Matriz (Gerente + Vendedor), 2 Shopping (Gerente + Vendedor)');
     }
 }
