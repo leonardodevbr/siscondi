@@ -219,7 +219,8 @@ class ProductController extends Controller
             
             // Pega variants do validated ou do input direto (para garantir que stock venha)
             $variants = $data['variants'] ?? $request->input('variants', []);
-            $stock = $data['stock'] ?? null;
+            // Pega stock do validated ou do input direto
+            $stock = $data['stock'] ?? $request->input('stock');
             unset($data['variants'], $data['stock']);
 
             if ($request->hasFile('cover_image')) {
@@ -236,29 +237,10 @@ class ProductController extends Controller
 
             $currentBranchId = $this->currentBranchId($request);
 
-            // Produto simples (sem variações): atualiza estoque da variação padrão
-            if (empty($variants) && $stock !== null && $currentBranchId) {
-                $defaultVariant = $product->variants()->first();
-                if ($defaultVariant) {
-                    /** @var \App\Models\Inventory $inventory */
-                    $inventory = \App\Models\Inventory::firstOrCreate(
-                        [
-                            'branch_id' => $currentBranchId,
-                            'product_variant_id' => $defaultVariant->id,
-                        ],
-                        [
-                            'quantity' => 0,
-                            'min_quantity' => 0,
-                        ]
-                    );
-
-                    $inventory->quantity = (int) $stock;
-                    $inventory->save();
-                }
-            }
-
             // Sincronização inteligente das variações
-            if (is_array($variants) && ! empty($variants)) {
+            $hasVariants = is_array($variants) && count($variants) > 0;
+            
+            if ($hasVariants) {
                 $existingVariantIds = $product->variants()->pluck('id')->all();
 
                 $submittedIds = collect($variants)
@@ -350,6 +332,41 @@ class ProductController extends Controller
                             ],
                             [
                                 'quantity' => $stockValue,
+                                'min_quantity' => 0,
+                            ]
+                        );
+                    }
+                }
+            } else {
+                // Produto simples (sem variações): atualiza estoque da variação padrão
+                // Se todas as variações foram removidas, deleta as antigas
+                $existingVariants = $product->variants()->get();
+                if ($existingVariants->isNotEmpty()) {
+                    // Se havia variações mas não veio nenhuma no request, deleta todas
+                    foreach ($existingVariants as $variantToDelete) {
+                        if ($variantToDelete->image) {
+                            Storage::disk('public')->delete($variantToDelete->image);
+                        }
+                    }
+                    $product->variants()->delete();
+                }
+                
+                // Atualiza ou cria estoque na variação padrão (se stock foi enviado)
+                $hasStock = $stock !== null && $stock !== '';
+                if ($hasStock && $currentBranchId) {
+                    $defaultVariant = $product->variants()->first();
+                    if (! $defaultVariant) {
+                        // Se não tem variação padrão, cria uma
+                        $this->createDefaultVariant($product, $request, (int) $stock, $currentBranchId);
+                    } else {
+                        // Atualiza estoque da variação padrão existente
+                        \App\Models\Inventory::updateOrCreate(
+                            [
+                                'branch_id' => $currentBranchId,
+                                'product_variant_id' => $defaultVariant->id,
+                            ],
+                            [
+                                'quantity' => (int) $stock,
                                 'min_quantity' => 0,
                             ]
                         );
