@@ -16,6 +16,8 @@ class ConfigController extends Controller
     {
         return response()->json([
             'enable_global_stock_search' => Settings::get('enable_global_stock_search', false),
+            'sku_auto_generation' => Settings::get('sku_auto_generation', true),
+            'sku_pattern' => Settings::get('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}'),
         ]);
     }
 }

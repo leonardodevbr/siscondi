@@ -802,10 +802,8 @@ export default {
     );
 
     onMounted(async () => {
-      // Garante que as configurações estejam carregadas
-      if (!settingsStore.settings || Object.keys(settingsStore.settings).length === 0) {
-        await settingsStore.fetchSettings();
-      }
+      // Carrega configurações públicas (SKU generation, etc)
+      await settingsStore.fetchPublicConfig();
 
       await loadCategories();
       await supplierStore.fetchAll();

@@ -5,14 +5,16 @@ export const useSettingsStore = defineStore('settings', {
   state: () => ({
     settings: {},
     publicConfig: {
-      enable_global_stock_search: true,
+      enable_global_stock_search: false,
+      sku_auto_generation: true,
+      sku_pattern: '{NAME}-{VARIANTS}-{SEQ}',
     },
     loading: false,
   }),
   
   getters: {
-    skuAutoGeneration: (state) => state.settings['sku_auto_generation'] ?? false,
-    skuPattern: (state) => state.settings['sku_pattern'] ?? '{NAME}-{VARIANTS}-{SEQ}',
+    skuAutoGeneration: (state) => state.publicConfig.sku_auto_generation ?? state.settings['sku_auto_generation'] ?? true,
+    skuPattern: (state) => state.publicConfig.sku_pattern ?? state.settings['sku_pattern'] ?? '{NAME}-{VARIANTS}-{SEQ}',
     enableGlobalStockSearch: (state) => state.publicConfig.enable_global_stock_search ?? false,
     
     getSetting: (state) => (key) => {
@@ -26,11 +28,15 @@ export const useSettingsStore = defineStore('settings', {
         const response = await api.get('/config');
         this.publicConfig = {
           enable_global_stock_search: response.data.enable_global_stock_search ?? false,
+          sku_auto_generation: response.data.sku_auto_generation ?? true,
+          sku_pattern: response.data.sku_pattern ?? '{NAME}-{VARIANTS}-{SEQ}',
         };
       } catch (error) {
         console.error('Erro ao carregar configurações públicas:', error);
         this.publicConfig = {
           enable_global_stock_search: false,
+          sku_auto_generation: true,
+          sku_pattern: '{NAME}-{VARIANTS}-{SEQ}',
         };
       }
     },
