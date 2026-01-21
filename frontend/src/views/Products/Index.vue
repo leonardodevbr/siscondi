@@ -178,7 +178,7 @@
                     class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
                     title="Pesquisar estoque em outras filiais"
                   >
-                    <MagnifyingGlassCircleIcon class="h-5 w-5" />
+                    <MagnifyingGlassIcon class="h-5 w-5" />
                   </button>
                   <button
                     @click="editProduct(product.id)"
@@ -250,7 +250,7 @@ import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
 import { useSettingsStore } from '@/stores/settings';
 import { useAuthStore } from '@/stores/auth';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassCircleIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
@@ -269,7 +269,7 @@ export default {
     EllipsisVerticalIcon,
     QrCodeIcon,
     ArrowUpTrayIcon,
-    MagnifyingGlassCircleIcon,
+    MagnifyingGlassIcon,
     Menu,
     MenuButton,
     MenuItems,
