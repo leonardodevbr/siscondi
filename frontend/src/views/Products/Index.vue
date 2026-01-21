@@ -173,11 +173,12 @@
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
                   <button
+                    v-if="canViewGlobalStock"
                     @click="openAvailability(product.id)"
                     class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                    title="Consultar estoque em outras filiais"
+                    title="Pesquisar estoque em outras filiais"
                   >
-                    <BuildingStorefrontIcon class="h-5 w-5" />
+                    <MagnifyingGlassCircleIcon class="h-5 w-5" />
                   </button>
                   <button
                     @click="editProduct(product.id)"
@@ -247,7 +248,9 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, BuildingStorefrontIcon } from '@heroicons/vue/24/outline';
+import { useSettingsStore } from '@/stores/settings';
+import { useAuthStore } from '@/stores/auth';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassCircleIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
@@ -266,7 +269,7 @@ export default {
     EllipsisVerticalIcon,
     QrCodeIcon,
     ArrowUpTrayIcon,
-    BuildingStorefrontIcon,
+    MagnifyingGlassCircleIcon,
     Menu,
     MenuButton,
     MenuItems,
@@ -281,6 +284,8 @@ export default {
     const { confirm } = useAlert();
     const productStore = useProductStore();
     const categoryStore = useCategoryStore();
+    const settingsStore = useSettingsStore();
+    const authStore = useAuthStore();
     const fileInput = ref(null);
     const isAvailabilityOpen = ref(false);
     const selectedProductId = ref(null);
@@ -413,7 +418,8 @@ export default {
       }
     };
 
-    onMounted(() => {
+    onMounted(async () => {
+      await settingsStore.fetchPublicConfig();
       loadProducts();
       loadCategories();
     });
@@ -431,6 +437,22 @@ export default {
       return options;
     });
 
+    const canViewGlobalStock = computed(() => {
+      const user = authStore.user;
+      if (!user) return false;
+
+      const isAdmin = user?.is_admin || user?.roles?.some((r) => {
+        if (typeof r === 'string') {
+          return r === 'super-admin';
+        }
+        return r?.name === 'super-admin';
+      });
+
+      if (isAdmin) return true;
+
+      return settingsStore.enableGlobalStockSearch === true;
+    });
+
     return {
       productStore,
       categoryStore,
@@ -439,6 +461,7 @@ export default {
       fileInput,
       isAvailabilityOpen,
       selectedProductId,
+      canViewGlobalStock,
       loadProducts,
       debouncedSearch,
       changePage,
