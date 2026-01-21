@@ -45,6 +45,64 @@
         </div>
       </div>
     </div>
+
+    <!-- Botão de câmera separado para captura via webcam -->
+    <button
+      type="button"
+      class="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+      @click.stop="openCamera"
+    >
+      <CameraIcon class="h-4 w-4" />
+      <span>Usar câmera</span>
+    </button>
+
+    <!-- Modal simples para captura da câmera -->
+    <div
+      v-if="showCameraModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-slate-800">Capturar foto</h3>
+          <button
+            type="button"
+            class="text-slate-400 hover:text-slate-600"
+            @click="closeCamera"
+          >
+            <XMarkIcon class="h-5 w-5" />
+          </button>
+        </div>
+
+        <div class="aspect-video bg-black rounded-lg overflow-hidden mb-3 flex items-center justify-center">
+          <video
+            ref="videoRef"
+            autoplay
+            playsinline
+            class="w-full h-full object-contain bg-black"
+          ></video>
+        </div>
+
+        <!-- Canvas oculto apenas para captura do frame -->
+        <canvas ref="canvasRef" class="hidden"></canvas>
+
+        <div class="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+            @click="closeCamera"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700"
+            @click="capturePhoto"
+          >
+            Capturar foto
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -75,6 +133,10 @@ export default {
     const fileInput = ref(null);
     const imagePreview = ref(null);
     const imageError = ref(false);
+    const showCameraModal = ref(false);
+    const videoRef = ref(null);
+    const canvasRef = ref(null);
+    const mediaStream = ref(null);
 
     const sizeClass = computed(() => {
       const sizes = {
@@ -162,6 +224,74 @@ export default {
       }
     };
 
+    const stopStream = () => {
+      if (mediaStream.value) {
+        mediaStream.value.getTracks().forEach((track) => track.stop());
+        mediaStream.value = null;
+      }
+    };
+
+    const closeCamera = () => {
+      stopStream();
+      showCameraModal.value = false;
+    };
+
+    const openCamera = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Aqui idealmente usamos um toast global; por enquanto, fallback simples
+        // eslint-disable-next-line no-alert
+        alert('Captura de câmera não é suportada neste dispositivo/navegador.');
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        mediaStream.value = stream;
+        showCameraModal.value = true;
+
+        // Aguarda o modal montar o vídeo
+        requestAnimationFrame(() => {
+          if (videoRef.value) {
+            videoRef.value.srcObject = stream;
+          }
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Erro ao acessar a câmera', error);
+        // eslint-disable-next-line no-alert
+        alert('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
+      }
+    };
+
+    const capturePhoto = () => {
+      const video = videoRef.value;
+      const canvas = canvasRef.value;
+      if (!video || !canvas) return;
+
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 480;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          emit('update:modelValue', file);
+          stopStream();
+          showCameraModal.value = false;
+        },
+        'image/jpeg',
+        0.9,
+      );
+    };
+
     return {
       fileInput,
       imagePreview,
@@ -171,6 +301,12 @@ export default {
       handleFileSelect,
       removeImage,
       handleImageError,
+      showCameraModal,
+      videoRef,
+      canvasRef,
+      openCamera,
+      closeCamera,
+      capturePhoto,
     };
   },
 };
