@@ -438,19 +438,8 @@ export default {
     });
 
     const canViewGlobalStock = computed(() => {
-      const user = authStore.user;
-      if (!user) return false;
-
-      const isAdmin = user?.is_admin || user?.roles?.some((r) => {
-        if (typeof r === 'string') {
-          return r === 'super-admin';
-        }
-        return r?.name === 'super-admin';
-      });
-
-      if (isAdmin) return true;
-
-      return settingsStore.enableGlobalStockSearch === true;
+      const value = settingsStore.enableGlobalStockSearch;
+      return value === true || value === 'true' || value === 1;
     });
 
     return {
