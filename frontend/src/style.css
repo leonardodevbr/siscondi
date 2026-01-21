@@ -1,3 +1,23 @@
+/* Multiselect overrides para alinhar com inputs Tailwind e remover verde/borda grossa */
+:root {
+  /* estados de item selecionado (sempre azul) */
+  --ms-option-bg-selected: #2563EB;          /* blue-600 */
+  --ms-option-bg-selected-pointed: #1D4ED8;  /* blue-700 */
+  --ms-option-color-selected: #ffffff;
+  --ms-option-color-selected-pointed: #ffffff;
+
+  /* item não selecionado em hover: cinza claro */
+  --ms-option-bg-pointed: #F1F5F9;           /* slate-100 */
+
+  /* desativa ring padrão da lib (usamos nosso próprio) */
+  --ms-ring-width: 0px;
+  --ms-ring-color: transparent;
+}
+
+.multiselect.is-active {
+  border-color: #3B82F6;                     /* blue-500 */
+  box-shadow: 0 0 0 1px #3B82F6;             /* ring fino */
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
