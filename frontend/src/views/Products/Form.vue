@@ -233,23 +233,40 @@
                 </div>
                 <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">
-                    SKU *
-                  </label>
-                  <input
-                    v-model="variant.sku"
-                    type="text"
-                    required
-                    :disabled="settingsStore.skuAutoGeneration"
-                    :class="[
-                      'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      settingsStore.skuAutoGeneration
-                        ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
-                        : 'border-slate-300',
-                    ]"
-                    :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente' : 'Ex: CAM-AZUL-P'"
-                    @blur="generateSkuIfEmpty(variant, index)"
-                  />
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-medium text-slate-700">
+                      SKU
+                      <span v-if="!settingsStore.skuAutoGeneration" class="text-red-500">*</span>
+                    </label>
+                    <div
+                      v-if="settingsStore.skuAutoGeneration"
+                      class="flex items-center gap-1 text-xs text-slate-500"
+                      title="SKU gerado automaticamente com base nas configurações do sistema"
+                    >
+                      <SparklesIcon class="h-4 w-4" />
+                      <span>Automático</span>
+                    </div>
+                  </div>
+                  <div class="relative">
+                    <input
+                      v-model="variant.sku"
+                      type="text"
+                      :required="!settingsStore.skuAutoGeneration"
+                      :disabled="settingsStore.skuAutoGeneration"
+                      :class="[
+                        'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-9',
+                        settingsStore.skuAutoGeneration
+                          ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
+                          : 'border-slate-300',
+                      ]"
+                      :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente ao salvar' : 'Ex: CAM-AZUL-P'"
+                      @blur="generateSkuIfEmpty(variant, index)"
+                    />
+                    <LockClosedIcon
+                      v-if="settingsStore.skuAutoGeneration"
+                      class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -378,12 +395,15 @@ import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { useSettingsStore } from '@/stores/settings';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
+import { SparklesIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 import api from '@/services/api';
 
 export default {
   name: 'ProductForm',
   components: {
     ImageUpload,
+    SparklesIcon,
+    LockClosedIcon,
   },
   setup() {
     const route = useRoute();
@@ -681,6 +701,11 @@ export default {
     );
 
     onMounted(async () => {
+      // Garante que as configurações estejam carregadas
+      if (!settingsStore.settings || Object.keys(settingsStore.settings).length === 0) {
+        await settingsStore.fetchSettings();
+      }
+
       await loadCategories();
       await loadSuppliers();
       await loadProduct();
