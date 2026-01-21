@@ -114,7 +114,72 @@ class ProductController extends Controller
             $product = Product::create($data);
             $currentBranchId = $this->currentBranchId($request);
 
-            if (empty($variants)) {
+            $hasVariants = $data['has_variants'] ?? false;
+
+            if (empty($variants) && ! $hasVariants) {
+                // Produto simples: cria variação única com dados do formulário
+                $simpleAttributes = [];
+                if ($request->has('simple_attributes')) {
+                    $simpleAttributesJson = $request->input('simple_attributes');
+                    if (is_string($simpleAttributesJson)) {
+                        $simpleAttributes = json_decode($simpleAttributesJson, true) ?? [];
+                    } elseif (is_array($simpleAttributesJson)) {
+                        $simpleAttributes = $simpleAttributesJson;
+                    }
+                }
+
+                // Monta atributos (remove valores vazios)
+                $attributes = array_filter([
+                    'cor' => $simpleAttributes['cor'] ?? null,
+                    'tamanho' => $simpleAttributes['tamanho'] ?? null,
+                ], fn ($value) => $value !== null && $value !== '');
+
+                // Se não tem atributos, usa padrão
+                if (empty($attributes)) {
+                    $attributes = ['tipo' => 'único'];
+                }
+
+                // Gera SKU se não fornecido
+                $sku = $request->input('sku');
+                if (empty($sku)) {
+                    $generatedSku = $this->skuGeneratorService->generate($product, $attributes);
+                    $sku = $generatedSku ?? strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 8)) . '-' . strtoupper(Str::random(4));
+                }
+
+                // Gera barcode se não fornecido
+                $barcode = $request->input('barcode');
+                if (empty($barcode)) {
+                    $barcode = $this->generateUniqueBarcode();
+                }
+
+                // Para produto simples, sempre deve haver apenas uma variação
+                // Deleta todas as variações existentes primeiro
+                $product->variants()->delete();
+
+                // Cria a variação única
+                $variant = $product->variants()->create([
+                    'sku' => $sku,
+                    'barcode' => $barcode,
+                    'price' => null,
+                    'image' => $product->image,
+                    'attributes' => $attributes,
+                ]);
+
+                // Cria estoque na filial atual
+                if ($currentBranchId) {
+                    \App\Models\Inventory::updateOrCreate(
+                        [
+                            'branch_id' => $currentBranchId,
+                            'product_variant_id' => $variant->id,
+                        ],
+                        [
+                            'quantity' => (int) $stock,
+                            'min_quantity' => 0,
+                        ]
+                    );
+                }
+            } elseif (empty($variants)) {
+                // Produto com variações mas sem variações enviadas (criação inicial)
                 $this->createDefaultVariant($product, $request, (int) $stock, $currentBranchId);
             } else {
                 foreach ($variants as $index => $variantData) {
@@ -237,10 +302,12 @@ class ProductController extends Controller
 
             $currentBranchId = $this->currentBranchId($request);
 
+            $hasVariants = $data['has_variants'] ?? false;
+
             // Sincronização inteligente das variações
-            $hasVariants = is_array($variants) && count($variants) > 0;
+            $hasVariantsInRequest = is_array($variants) && count($variants) > 0;
             
-            if ($hasVariants) {
+            if ($hasVariants && $hasVariantsInRequest) {
                 $existingVariantIds = $product->variants()->pluck('id')->all();
 
                 $submittedIds = collect($variants)
@@ -338,39 +405,103 @@ class ProductController extends Controller
                     }
                 }
             } else {
-                // Produto simples (sem variações): atualiza estoque da variação padrão
-                // Se todas as variações foram removidas, deleta as antigas
+                // Produto simples (sem variações): atualiza/cria variação única com dados do formulário
                 $existingVariants = $product->variants()->get();
-                if ($existingVariants->isNotEmpty()) {
-                    // Se havia variações mas não veio nenhuma no request, deleta todas
+                
+                // Se havia múltiplas variações mas agora é produto simples, deleta todas
+                if ($existingVariants->count() > 1) {
                     foreach ($existingVariants as $variantToDelete) {
-                        if ($variantToDelete->image) {
+                        if ($variantToDelete->image && $variantToDelete->image !== $product->image) {
                             Storage::disk('public')->delete($variantToDelete->image);
                         }
                     }
                     $product->variants()->delete();
                 }
                 
-                // Atualiza ou cria estoque na variação padrão (se stock foi enviado)
-                $hasStock = $stock !== null && $stock !== '';
-                if ($hasStock && $currentBranchId) {
-                    $defaultVariant = $product->variants()->first();
-                    if (! $defaultVariant) {
-                        // Se não tem variação padrão, cria uma
-                        $this->createDefaultVariant($product, $request, (int) $stock, $currentBranchId);
-                    } else {
-                        // Atualiza estoque da variação padrão existente
-                        \App\Models\Inventory::updateOrCreate(
-                            [
-                                'branch_id' => $currentBranchId,
-                                'product_variant_id' => $defaultVariant->id,
-                            ],
-                            [
-                                'quantity' => (int) $stock,
-                                'min_quantity' => 0,
-                            ]
-                        );
+                // Processa atributos simples
+                $simpleAttributes = [];
+                if ($request->has('simple_attributes')) {
+                    $simpleAttributesJson = $request->input('simple_attributes');
+                    if (is_string($simpleAttributesJson)) {
+                        $simpleAttributes = json_decode($simpleAttributesJson, true) ?? [];
+                    } elseif (is_array($simpleAttributesJson)) {
+                        $simpleAttributes = $simpleAttributesJson;
                     }
+                }
+
+                // Monta atributos (remove valores vazios)
+                $attributes = array_filter([
+                    'cor' => $simpleAttributes['cor'] ?? null,
+                    'tamanho' => $simpleAttributes['tamanho'] ?? null,
+                ], fn ($value) => $value !== null && $value !== '');
+
+                // Se não tem atributos, usa padrão
+                if (empty($attributes)) {
+                    $attributes = ['tipo' => 'único'];
+                }
+
+                // Pega SKU e barcode do request
+                $sku = $request->input('sku');
+                $barcode = $request->input('barcode');
+
+                // Se SKU não foi fornecido, tenta gerar ou usar da variação existente
+                if (empty($sku)) {
+                    $existingVariant = $product->variants()->first();
+                    if ($existingVariant && $existingVariant->sku) {
+                        $sku = $existingVariant->sku;
+                    } else {
+                        $generatedSku = $this->skuGeneratorService->generate($product, $attributes);
+                        $sku = $generatedSku ?? strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 8)) . '-' . strtoupper(Str::random(4));
+                    }
+                }
+
+                // Se barcode não foi fornecido, tenta usar da variação existente ou gera
+                if (empty($barcode)) {
+                    $existingVariant = $product->variants()->first();
+                    if ($existingVariant && $existingVariant->barcode) {
+                        $barcode = $existingVariant->barcode;
+                    } else {
+                        $barcode = $this->generateUniqueBarcode();
+                    }
+                }
+
+                // Para produto simples, sempre deve haver apenas uma variação
+                // Se já existe uma variação, atualiza; senão, cria
+                $existingVariant = $product->variants()->first();
+                
+                if ($existingVariant) {
+                    // Atualiza a variação existente
+                    $existingVariant->update([
+                        'sku' => $sku,
+                        'barcode' => $barcode,
+                        'price' => null,
+                        'image' => $product->image,
+                        'attributes' => $attributes,
+                    ]);
+                    $variant = $existingVariant;
+                } else {
+                    // Cria nova variação
+                    $variant = $product->variants()->create([
+                        'sku' => $sku,
+                        'barcode' => $barcode,
+                        'price' => null,
+                        'image' => $product->image,
+                        'attributes' => $attributes,
+                    ]);
+                }
+
+                // Atualiza estoque na filial atual
+                if ($stock !== null && $stock !== '' && $currentBranchId) {
+                    \App\Models\Inventory::updateOrCreate(
+                        [
+                            'branch_id' => $currentBranchId,
+                            'product_variant_id' => $variant->id,
+                        ],
+                        [
+                            'quantity' => (int) $stock,
+                            'min_quantity' => 0,
+                        ]
+                    );
                 }
             }
 

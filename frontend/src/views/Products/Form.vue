@@ -197,10 +197,35 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">
-                  Estoque Atual
-                  <span v-if="currentBranchName" class="text-xs font-normal text-slate-500">
-                    ({{ currentBranchName }})
-                  </span>
+                  Cor
+                </label>
+                <input
+                  v-model="form.simple_attributes.cor"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Preto, Azul, Vermelho"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Tamanho
+                </label>
+                <input
+                  v-model="form.simple_attributes.tamanho"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Único, P, M, G"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Estoque em
+                  <span v-if="currentBranchName" class="font-normal">{{ currentBranchName }}</span>
+                  <span v-else class="font-normal">filial atual</span>
                 </label>
                 <input
                   v-model.number="form.stock"
@@ -562,6 +587,10 @@ export default {
       stock: 0,
       sku: '',
       barcode: '',
+      simple_attributes: {
+        cor: '',
+        tamanho: '',
+      },
       variants: [],
     });
 
@@ -657,12 +686,24 @@ export default {
         let simpleSku = '';
         let simpleBarcode = '';
         let simpleStock = 0;
+        let simpleAttributes = {
+          cor: '',
+          tamanho: '',
+        };
 
         if (!hasVariants && loadedVariants.length === 1) {
           const defaultVariant = loadedVariants[0];
           simpleSku = defaultVariant.sku || '';
           simpleBarcode = defaultVariant.barcode || '';
           simpleStock = defaultVariant.stock ?? 0;
+          
+          // Preenche atributos da variação padrão
+          if (defaultVariant.attributes) {
+            simpleAttributes = {
+              cor: defaultVariant.attributes.cor || '',
+              tamanho: defaultVariant.attributes.tamanho || '',
+            };
+          }
         } else if (!hasVariants) {
           simpleStock = product.current_stock ?? 0;
         } else {
@@ -684,6 +725,7 @@ export default {
           stock: simpleStock,
           sku: simpleSku,
           barcode: simpleBarcode,
+          simple_attributes: simpleAttributes,
           variants: hasVariants ? loadedVariants : [],
         };
       } catch (error) {
@@ -837,12 +879,16 @@ export default {
             formData.append('composition', form.value.composition);
           }
 
-          // Produto simples: envia SKU, barcode e stock
+          // Produto simples: envia SKU, barcode, stock e atributos
           if (!form.value.has_variants) {
             if (form.value.sku) formData.append('sku', form.value.sku);
             if (form.value.barcode) formData.append('barcode', form.value.barcode);
             if (form.value.stock !== undefined && form.value.stock !== null) {
               formData.append('stock', form.value.stock);
+            }
+            // Envia atributos simples para criar a variação padrão
+            if (form.value.simple_attributes) {
+              formData.append('simple_attributes', JSON.stringify(form.value.simple_attributes));
             }
           } else if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
             formData.append('stock', form.value.stock);
@@ -902,6 +948,10 @@ export default {
             payload.variants = [];
             if (payload.stock === undefined || payload.stock === null) {
               payload.stock = 0;
+            }
+            // Inclui atributos simples para produto sem variações
+            if (form.value.simple_attributes) {
+              payload.simple_attributes = form.value.simple_attributes;
             }
           }
 
