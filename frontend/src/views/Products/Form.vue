@@ -172,6 +172,7 @@
                         : 'border-slate-300',
                     ]"
                     :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente ao salvar' : 'Ex: CAM-001'"
+                    @keydown.enter.prevent
                   />
                   <LockClosedIcon
                     v-if="settingsStore.skuAutoGeneration"
@@ -190,6 +191,7 @@
                   maxlength="13"
                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="7891234567890"
+                  @keydown.enter.prevent
                 />
               </div>
             </div>
@@ -233,6 +235,7 @@
                   min="0"
                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
+                  @keydown.enter.prevent
                 />
               </div>
             </div>
@@ -385,6 +388,7 @@
                       ]"
                       :placeholder="settingsStore.skuAutoGeneration ? 'Gerado automaticamente ao salvar' : 'Ex: CAM-AZUL-P'"
                       @blur="generateSkuIfEmpty(variant, index)"
+                      @keydown.enter.prevent
                     />
                     <LockClosedIcon
                       v-if="settingsStore.skuAutoGeneration"
@@ -403,6 +407,7 @@
                     maxlength="13"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="7891234567890"
+                    @keydown.enter.prevent
                   />
                 </div>
                 </div>
