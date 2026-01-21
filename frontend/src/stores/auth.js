@@ -26,7 +26,8 @@ export const useAuthStore = defineStore('auth', {
         window.localStorage.setItem('token', token);
         window.localStorage.setItem('user', JSON.stringify(user));
       } catch (error) {
-        this.error = error.response?.data?.message || 'Não foi possível fazer login.';
+        const errors = error.response?.data?.errors;
+        this.error = errors?.email?.[0] || error.response?.data?.message || 'Não foi possível fazer login.';
         throw error;
       } finally {
         this.loading = false;

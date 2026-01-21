@@ -10,8 +10,8 @@ const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
 
-const email = ref('manager@test.com');
-const password = ref('password');
+const email = ref('');
+const password = ref('');
 const formErrors = ref({});
 
 async function handleSubmit() {
@@ -33,7 +33,8 @@ async function handleSubmit() {
     toast.success('Login realizado com sucesso.');
     router.push({ name: 'dashboard' });
   } catch (error) {
-    const message = error.response?.data?.message || 'Falha ao autenticar.';
+    const errors = error.response?.data?.errors;
+    const message = errors?.email?.[0] || error.response?.data?.message || 'Falha ao autenticar.';
     toast.error(message);
   }
 }
