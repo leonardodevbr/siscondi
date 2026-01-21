@@ -17,7 +17,7 @@
       </button>
     </div>
 
-    <form @submit.prevent="handleSubmit" class="space-y-6">
+    <form @submit.prevent="handleSubmit" novalidate class="space-y-6">
       <div class="card">
         <div class="border-b border-slate-200 px-6 pt-6 pb-4">
           <nav class="flex space-x-4">
@@ -368,6 +368,11 @@
         </button>
       </div>
     </form>
+
+    <!-- Debug temporário do estado do formulário -->
+    <pre class="mt-4 text-xs text-slate-500 bg-slate-50 p-2 rounded overflow-auto">
+{{ form }}
+    </pre>
   </div>
 </template>
 
@@ -403,13 +408,13 @@ export default {
     const activeTab = ref('general');
     const saving = ref(false);
     const categories = ref([]);
-    const suppliers = computed(() => supplierStore.items || []);
+    const suppliers = computed(() => supplierStore.suppliers || []);
     const initialStock = ref([]);
 
     const form = ref({
       name: '',
       description: '',
-      category_id: '',
+      category_id: null,
       supplier_id: null,
       cost_price: null,
       sell_price: '',
@@ -437,7 +442,7 @@ export default {
     };
 
     const supplierOptions = computed(() =>
-      suppliers.value.map((supplier) => ({
+      (suppliers.value || []).map((supplier) => ({
         id: supplier.id,
         name: supplier.trade_name || supplier.name || `Fornecedor #${supplier.id}`,
       })),
@@ -458,7 +463,7 @@ export default {
         form.value = {
           name: product.name || '',
           description: product.description || '',
-          category_id: product.category_id || '',
+          category_id: product.category_id ?? null,
           supplier_id: product.supplier_id || null,
           cost_price: product.cost_price || null,
           sell_price: product.sell_price || '',
