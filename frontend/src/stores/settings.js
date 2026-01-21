@@ -4,12 +4,16 @@ import api from '@/services/api';
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     settings: {},
+    publicConfig: {
+      enable_global_stock_search: true,
+    },
     loading: false,
   }),
   
   getters: {
     skuAutoGeneration: (state) => state.settings['sku_auto_generation'] ?? false,
-    skuPattern: (state) => state.settings['sku_pattern'] ?? '{CATEGORY}-{NAME}-{SEQ}',
+    skuPattern: (state) => state.settings['sku_pattern'] ?? '{NAME}-{VARIANTS}-{SEQ}',
+    enableGlobalStockSearch: (state) => state.publicConfig.enable_global_stock_search ?? false,
     
     getSetting: (state) => (key) => {
       return state.settings[key];
@@ -17,6 +21,20 @@ export const useSettingsStore = defineStore('settings', {
   },
   
   actions: {
+    async fetchPublicConfig() {
+      try {
+        const response = await api.get('/config');
+        this.publicConfig = {
+          enable_global_stock_search: response.data.enable_global_stock_search ?? false,
+        };
+      } catch (error) {
+        console.error('Erro ao carregar configurações públicas:', error);
+        this.publicConfig = {
+          enable_global_stock_search: false,
+        };
+      }
+    },
+
     async fetchSettings() {
       this.loading = true;
       try {

@@ -22,9 +22,9 @@ function handleLogout() {
 onMounted(async () => {
   if (auth.user) {
     try {
-      await settingsStore.fetchSettings();
+      await settingsStore.fetchPublicConfig();
     } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
+      console.error('Erro ao carregar configurações públicas:', error);
     }
   }
 });
