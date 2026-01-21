@@ -129,7 +129,7 @@ function getQuantityClass(quantity) {
         <p class="text-xs text-slate-500 whitespace-nowrap">
           Estoque por variação em todas as filiais
         </p>
-        <div class="w-full sm:w-auto sm:min-w-[280px]">
+        <div class="w-full sm:w-auto sm:min-w-[210px]">
           <input
             v-model="searchFilter"
             type="text"
