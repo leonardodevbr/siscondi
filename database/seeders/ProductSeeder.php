@@ -27,7 +27,10 @@ class ProductSeeder extends Seeder
         /** @var SkuGeneratorService $skuGenerator */
         $skuGenerator = app(SkuGeneratorService::class);
 
-        Product::factory(10)->create()->each(function (Product $product) use ($branches, $skuGenerator): void {
+        $colors = ['Azul', 'Vermelho', 'Preto', 'Branco', 'Verde', 'Amarelo', 'Rosa', 'Cinza', 'Marrom', 'Bege'];
+        $sizes = ['P', 'M', 'G', 'GG'];
+
+        Product::factory(10)->create()->each(function (Product $product) use ($branches, $skuGenerator, $colors, $sizes): void {
             $variantsCount = fake()->numberBetween(3, 5);
 
             $variants = ProductVariant::factory($variantsCount)->make();
@@ -35,8 +38,16 @@ class ProductSeeder extends Seeder
             foreach ($variants as $variant) {
                 $variant->product_id = $product->id;
 
-                $generated = $skuGenerator->generate($product, $variant->attributes ?? []);
-                $variant->sku = $generated ?? strtoupper(fake()->unique()->bothify('VAR-#####'));
+                $attributes = [
+                    'cor' => fake()->randomElement($colors),
+                    'tamanho' => fake()->randomElement($sizes),
+                ];
+
+                $variant->attributes = $attributes;
+
+                $sku = $skuGenerator->generate($product, $attributes);
+
+                $variant->sku = $sku ?? strtoupper(fake()->unique()->bothify('??-#####'));
 
                 $variant->save();
 

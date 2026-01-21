@@ -18,13 +18,15 @@ class SkuGeneratorService
      */
     public function generate(Product $product, array $attributes = []): ?string
     {
-        $autoGeneration = Settings::get('sku_auto_generation', false);
+        // Habilita geração automática por padrão caso a configuração ainda não exista
+        $autoGeneration = Settings::get('sku_auto_generation', true);
 
         if (! $autoGeneration) {
             return null;
         }
 
-        $pattern = (string) Settings::get('sku_pattern', '{CATEGORY}-{NAME}-{SEQ}');
+        // Padrão default: {NAME}-{VARIANTS}-{SEQ}
+        $pattern = (string) Settings::get('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}');
 
         $categoryCode = $this->buildCategoryCode($product);
         $nameCode = $this->buildNameCode($product);
