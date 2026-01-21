@@ -173,6 +173,13 @@
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
                   <button
+                    @click="openAvailability(product.id)"
+                    class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                    title="Consultar estoque em outras filiais"
+                  >
+                    <BuildingStorefrontIcon class="h-5 w-5" />
+                  </button>
+                  <button
                     @click="editProduct(product.id)"
                     class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
                     title="Editar"
@@ -217,6 +224,13 @@
       </div>
     </div>
 
+    <StockAvailabilityModal
+      v-if="selectedProductId"
+      :product-id="selectedProductId"
+      :is-open="isAvailabilityOpen"
+      @close="isAvailabilityOpen = false"
+    />
+
     <input
       ref="fileInput"
       type="file"
@@ -233,11 +247,12 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, BuildingStorefrontIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
+import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -251,12 +266,14 @@ export default {
     EllipsisVerticalIcon,
     QrCodeIcon,
     ArrowUpTrayIcon,
+    BuildingStorefrontIcon,
     Menu,
     MenuButton,
     MenuItems,
     MenuItem,
     ProductThumb,
     SearchableSelect,
+    StockAvailabilityModal,
   },
   setup() {
     const router = useRouter();
@@ -265,6 +282,8 @@ export default {
     const productStore = useProductStore();
     const categoryStore = useCategoryStore();
     const fileInput = ref(null);
+    const isAvailabilityOpen = ref(false);
+    const selectedProductId = ref(null);
     const filters = ref({
       search: '',
       category_id: '',
@@ -306,6 +325,11 @@ export default {
 
     const editProduct = (id) => {
       router.push({ name: 'products.form.edit', params: { id } });
+    };
+
+    const openAvailability = (id) => {
+      selectedProductId.value = id;
+      isAvailabilityOpen.value = true;
     };
 
     const deleteProduct = async (product) => {
@@ -413,10 +437,13 @@ export default {
       categoryOptions,
       filters,
       fileInput,
+      isAvailabilityOpen,
+      selectedProductId,
       loadProducts,
       debouncedSearch,
       changePage,
       editProduct,
+      openAvailability,
       deleteProduct,
       handleImport,
       handleFileSelect,
