@@ -29,11 +29,23 @@ class ProductController extends Controller
     {
         $this->authorize('products.view');
 
-        $query = Product::query()->with(['category', 'supplier', 'variants.inventories']);
+        $query = Product::with(['category', 'supplier', 'variants.inventories']);
 
-        if ($request->has('search')) {
-            $search = $request->string('search');
-            $query->where('name', 'like', "%{$search}%");
+        // 1. Filtro por Texto (Nome, SKU ou Barcode)
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhereHas('variants', function ($q2) use ($search) {
+                      $q2->where('sku', 'like', "%{$search}%")
+                         ->orWhere('barcode', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // 2. Filtro por Categoria (CORREÇÃO AQUI)
+        if ($request->has('category_id') && $request->category_id != '') {
+            $query->where('category_id', $request->category_id);
         }
 
         $products = $query->paginate(15);
