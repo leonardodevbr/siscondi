@@ -105,6 +105,34 @@
               </div>
             </div>
           </div>
+
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="mb-2">
+              <h2 class="text-base font-semibold text-slate-800">
+                Estoque e Filiais
+              </h2>
+              <p class="text-sm text-slate-600 mt-1">
+                Configure permissões de consulta de estoque entre filiais.
+              </p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <label class="text-sm font-medium text-slate-700">
+                    Permitir consulta de estoque global
+                  </label>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Se ativado, vendedores poderão consultar a disponibilidade de produtos em outras filiais.
+                  </p>
+                </div>
+                <Toggle
+                  v-model="form.enableGlobalStockSearch"
+                  label=""
+                />
+              </div>
+            </div>
+          </div>
         </template>
 
         <!-- Vendas & PDV -->
@@ -175,6 +203,7 @@ export default {
     const form = ref({
       skuAutoGeneration: false,
       skuPattern: '{CATEGORY}-{NAME}-{SEQ}',
+      enableGlobalStockSearch: false,
     });
 
     const loadSettings = async () => {
@@ -183,6 +212,8 @@ export default {
         await settingsStore.fetchSettings();
         form.value.skuAutoGeneration = settingsStore.skuAutoGeneration;
         form.value.skuPattern = settingsStore.skuPattern;
+        const stockSearchSetting = settingsStore.getSetting('enable_global_stock_search');
+        form.value.enableGlobalStockSearch = stockSearchSetting !== undefined ? stockSearchSetting : settingsStore.enableGlobalStockSearch;
       } catch (error) {
         toast.error('Erro ao carregar configurações');
       } finally {
@@ -206,9 +237,16 @@ export default {
             type: 'string',
             group: 'products',
           },
+          {
+            key: 'enable_global_stock_search',
+            value: form.value.enableGlobalStockSearch,
+            type: 'boolean',
+            group: 'products',
+          },
         ];
 
         await settingsStore.updateSettings(settingsArray);
+        await settingsStore.fetchPublicConfig();
         toast.success('Configurações salvas com sucesso!');
       } catch (error) {
         const message = error.response?.data?.message || 'Erro ao salvar configurações';
