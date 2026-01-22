@@ -1,9 +1,13 @@
 <template>
   <Modal :is-open="show" title="Ajustar Estoque" @close="handleClose">
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <div v-if="productName" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
-        <p class="font-semibold text-slate-900">{{ productName }}</p>
-        <p class="mt-1 text-xs text-slate-600">Estoque atual: {{ currentStock }}</p>
+      <div v-if="productName" class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center">
+        <p class="text-lg font-bold text-blue-900">{{ productName }}</p>
+        <div class="mt-2 flex items-center justify-center gap-2">
+          <span class="text-sm text-blue-700">Estoque Atual:</span>
+          <span class="text-2xl font-bold text-blue-900">{{ currentStock }}</span>
+          <span class="text-sm text-blue-700">un.</span>
+        </div>
       </div>
 
       <div>
@@ -158,7 +162,7 @@ const form = ref({
 watch(() => props.show, (newVal) => {
   if (newVal) {
     form.value = {
-      type: props.autoFocusQuantity ? 'adjustment' : '', // Pre-select adjustment if autoFocus is on
+      type: props.autoFocusQuantity ? 'adjustment' : '',
       operation: 'add',
       quantity: 1,
       reason: '',
@@ -167,10 +171,11 @@ watch(() => props.show, (newVal) => {
     if (props.autoFocusQuantity) {
       nextTick(() => {
         quantityInput.value?.focus()
+        quantityInput.value?.select()
       })
     }
   }
-})
+}, { immediate: true })
 
 watch(() => form.value.type, (newType) => {
   if (newType === 'entry' || newType === 'return') {
