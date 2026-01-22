@@ -703,13 +703,21 @@ export default {
           simpleStock = defaultVariant.stock ?? 0;
           
           // Preenche atributos da variação padrão
-          if (defaultVariant.attributes) {
+          // Garante que sempre tenta pegar cor e tamanho, mesmo se não existirem
+          if (defaultVariant.attributes && typeof defaultVariant.attributes === 'object') {
             simpleAttributes = {
-              cor: defaultVariant.attributes.cor || '',
-              tamanho: defaultVariant.attributes.tamanho || '',
+              cor: defaultVariant.attributes.cor ?? '',
+              tamanho: defaultVariant.attributes.tamanho ?? '',
+            };
+          } else {
+            // Se attributes não existir ou for inválido, mantém vazio
+            simpleAttributes = {
+              cor: '',
+              tamanho: '',
             };
           }
-        } else if (!hasVariants) {
+        } else if (!hasVariants && loadedVariants.length === 0) {
+          // Produto sem variações e sem variação criada ainda
           simpleStock = product.current_stock ?? 0;
         } else {
           simpleStock = product.current_stock ?? 0;
@@ -892,8 +900,17 @@ export default {
               formData.append('stock', form.value.stock);
             }
             // Envia atributos simples para criar a variação padrão
-            if (form.value.simple_attributes) {
-              formData.append('simple_attributes', JSON.stringify(form.value.simple_attributes));
+            // Sempre envia, mesmo se vazio, para garantir que o backend processe corretamente
+            const attributesToSend = form.value.simple_attributes || { cor: '', tamanho: '' };
+            if (typeof attributesToSend === 'object' && !Array.isArray(attributesToSend)) {
+              try {
+                const attributesJson = JSON.stringify(attributesToSend);
+                formData.append('simple_attributes', attributesJson);
+              } catch (error) {
+                console.error('Erro ao serializar simple_attributes:', error);
+                // Fallback: envia objeto vazio
+                formData.append('simple_attributes', JSON.stringify({ cor: '', tamanho: '' }));
+              }
             }
           } else if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
             formData.append('stock', form.value.stock);
@@ -954,7 +971,7 @@ export default {
               payload.stock = 0;
             }
             // Inclui atributos simples para produto sem variações
-            if (form.value.simple_attributes) {
+            if (form.value.simple_attributes && typeof form.value.simple_attributes === 'object') {
               payload.simple_attributes = form.value.simple_attributes;
             }
           }

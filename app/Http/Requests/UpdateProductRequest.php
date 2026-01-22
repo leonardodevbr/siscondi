@@ -45,6 +45,7 @@ class UpdateProductRequest extends FormRequest
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.quantity' => ['nullable', 'integer', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
+            'simple_attributes' => ['nullable'],
         ];
     }
 }

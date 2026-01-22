@@ -120,21 +120,32 @@ class ProductController extends Controller
                 // Produto simples: cria variação única com dados do formulário
                 $simpleAttributes = [];
                 if ($request->has('simple_attributes')) {
-                    $simpleAttributesJson = $request->input('simple_attributes');
-                    if (is_string($simpleAttributesJson)) {
-                        $simpleAttributes = json_decode($simpleAttributesJson, true) ?? [];
-                    } elseif (is_array($simpleAttributesJson)) {
-                        $simpleAttributes = $simpleAttributesJson;
+                    $simpleAttributesInput = $request->input('simple_attributes');
+                    
+                    // Se for string, tenta decodificar JSON
+                    if (is_string($simpleAttributesInput)) {
+                        // Ignora se for "[object Object]" (erro de serialização do frontend)
+                        if ($simpleAttributesInput === '[object Object]') {
+                            $simpleAttributes = [];
+                        } else {
+                            $decoded = json_decode($simpleAttributesInput, true);
+                            $simpleAttributes = is_array($decoded) ? $decoded : [];
+                        }
+                    } elseif (is_array($simpleAttributesInput)) {
+                        $simpleAttributes = $simpleAttributesInput;
                     }
                 }
 
-                // Monta atributos (remove valores vazios)
-                $attributes = array_filter([
-                    'cor' => $simpleAttributes['cor'] ?? null,
-                    'tamanho' => $simpleAttributes['tamanho'] ?? null,
-                ], fn ($value) => $value !== null && $value !== '');
+                // Monta atributos (preserva cor e tamanho se preenchidos)
+                $attributes = [];
+                if (isset($simpleAttributes['cor']) && trim((string) $simpleAttributes['cor']) !== '') {
+                    $attributes['cor'] = trim((string) $simpleAttributes['cor']);
+                }
+                if (isset($simpleAttributes['tamanho']) && trim((string) $simpleAttributes['tamanho']) !== '') {
+                    $attributes['tamanho'] = trim((string) $simpleAttributes['tamanho']);
+                }
 
-                // Se não tem atributos, usa padrão
+                // Se não tem atributos preenchidos, usa padrão
                 if (empty($attributes)) {
                     $attributes = ['tipo' => 'único'];
                 }
@@ -421,21 +432,32 @@ class ProductController extends Controller
                 // Processa atributos simples
                 $simpleAttributes = [];
                 if ($request->has('simple_attributes')) {
-                    $simpleAttributesJson = $request->input('simple_attributes');
-                    if (is_string($simpleAttributesJson)) {
-                        $simpleAttributes = json_decode($simpleAttributesJson, true) ?? [];
-                    } elseif (is_array($simpleAttributesJson)) {
-                        $simpleAttributes = $simpleAttributesJson;
+                    $simpleAttributesInput = $request->input('simple_attributes');
+                    
+                    // Se for string, tenta decodificar JSON
+                    if (is_string($simpleAttributesInput)) {
+                        // Ignora se for "[object Object]" (erro de serialização do frontend)
+                        if ($simpleAttributesInput === '[object Object]') {
+                            $simpleAttributes = [];
+                        } else {
+                            $decoded = json_decode($simpleAttributesInput, true);
+                            $simpleAttributes = is_array($decoded) ? $decoded : [];
+                        }
+                    } elseif (is_array($simpleAttributesInput)) {
+                        $simpleAttributes = $simpleAttributesInput;
                     }
                 }
 
-                // Monta atributos (remove valores vazios)
-                $attributes = array_filter([
-                    'cor' => $simpleAttributes['cor'] ?? null,
-                    'tamanho' => $simpleAttributes['tamanho'] ?? null,
-                ], fn ($value) => $value !== null && $value !== '');
+                // Monta atributos (preserva cor e tamanho se preenchidos)
+                $attributes = [];
+                if (isset($simpleAttributes['cor']) && trim((string) $simpleAttributes['cor']) !== '') {
+                    $attributes['cor'] = trim((string) $simpleAttributes['cor']);
+                }
+                if (isset($simpleAttributes['tamanho']) && trim((string) $simpleAttributes['tamanho']) !== '') {
+                    $attributes['tamanho'] = trim((string) $simpleAttributes['tamanho']);
+                }
 
-                // Se não tem atributos, usa padrão
+                // Se não tem atributos preenchidos, usa padrão
                 if (empty($attributes)) {
                     $attributes = ['tipo' => 'único'];
                 }
