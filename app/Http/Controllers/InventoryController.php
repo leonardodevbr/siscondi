@@ -165,8 +165,8 @@ class InventoryController extends Controller
                         $variantParts[] = $attrs['tamanho'];
                     }
                     $variantInfo = count($variantParts) > 0 
-                        ? ' - ' . implode('/', $variantParts) 
-                        : ' - ' . ($movement->variation->sku ?? '');
+                        ? implode('/', $variantParts) 
+                        : ($movement->variation->sku ?? '');
                 }
 
                 return [
