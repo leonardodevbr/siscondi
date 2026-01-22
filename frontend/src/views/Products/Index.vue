@@ -21,7 +21,7 @@
           :to="{ name: 'products.labels' }"
           class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
         >
-          <BarcodeIcon class="h-5 w-5" />
+          <RectangleGroupIcon class="h-5 w-5" />
           Gerar Etiquetas
         </router-link>
         <button
@@ -64,7 +64,7 @@
                     'flex items-center gap-2 px-4 py-2 text-sm text-slate-700',
                   ]"
                 >
-                  <BarcodeIcon class="h-5 w-5" />
+                  <RectangleGroupIcon class="h-5 w-5" />
                   Gerar Etiquetas
                 </router-link>
               </MenuItem>
@@ -213,7 +213,7 @@
                     class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
                     title="Gerar Etiquetas"
                   >
-                    <BarcodeIcon class="h-5 w-5" />
+                    <RectangleGroupIcon class="h-5 w-5" />
                   </button>
                   <button
                     @click="editProduct(product.id)"
@@ -290,8 +290,7 @@ import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
 import { useSettingsStore } from '@/stores/settings';
 import { useAuthStore } from '@/stores/auth';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, MagnifyingGlassIcon, BoltIcon } from '@heroicons/vue/24/outline';
-import BarcodeIcon from '@/components/icons/BarcodeIcon.vue';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, MagnifyingGlassIcon, BoltIcon, RectangleGroupIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
@@ -309,7 +308,7 @@ export default {
     TrashIcon,
     PlusIcon,
     EllipsisVerticalIcon,
-    BarcodeIcon,
+    RectangleGroupIcon,
     ArrowUpTrayIcon,
     MagnifyingGlassIcon,
     BoltIcon,

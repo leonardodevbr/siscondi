@@ -15,8 +15,8 @@ import {
   Cog6ToothIcon,
   BuildingStorefrontIcon,
   ClipboardDocumentListIcon,
+  RectangleGroupIcon,
 } from '@heroicons/vue/24/outline';
-import BarcodeIcon from '@/components/icons/BarcodeIcon.vue';
 
 const props = defineProps({
   isOpen: {
@@ -61,7 +61,7 @@ const menuGroups = computed(() => {
       items: [
         { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon, roles: ['*'] },
         { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon, roles: ['*'] },
-        { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: BarcodeIcon, roles: ['*'] },
+        { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: RectangleGroupIcon, roles: ['*'] },
         { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, roles: ['super-admin', 'manager', 'stockist'] },
         { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon, roles: ['*'] },
         { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon, roles: ['super-admin', 'manager'] },
