@@ -229,7 +229,7 @@
                     >
                       <EllipsisVerticalIcon class="h-5 w-5" />
                     </MenuButton>
-                    <MenuItems class="absolute right-0 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-50">
+                    <MenuItems class="absolute right-0 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white shadow-sm focus:outline-none z-50">
                       <div class="py-1">
                         <MenuItem v-slot="{ active }">
                           <button
