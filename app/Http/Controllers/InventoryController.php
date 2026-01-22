@@ -395,6 +395,14 @@ class InventoryController extends Controller
         if ($variation) {
             $product = $variation->product;
             $inventory = $variation->inventories()->where('branch_id', $branchId)->first();
+            $qty = $inventory?->quantity ?? 0;
+
+            if ($qty < 1) {
+                return response()->json([
+                    'message' => 'Sem estoque nesta filial.',
+                ], 422);
+            }
+
             $attrs = $variation->attributes ?? [];
             $attrString = implode(' / ', array_values(array_filter($attrs)));
             $name = $product->name . ($attrString ? ' - ' . $attrString : '');
@@ -403,7 +411,7 @@ class InventoryController extends Controller
                 'product_id' => $product->id,
                 'variation_id' => $variation->id,
                 'name' => $name,
-                'current_stock' => $inventory?->quantity ?? 0,
+                'current_stock' => $qty,
                 'price' => $variation->getEffectivePrice(),
             ]);
         }
@@ -424,6 +432,14 @@ class InventoryController extends Controller
             }
 
             $inventory = $defaultVariation->inventories()->where('branch_id', $branchId)->first();
+            $qty = $inventory?->quantity ?? 0;
+
+            if ($qty < 1) {
+                return response()->json([
+                    'message' => 'Sem estoque nesta filial.',
+                ], 422);
+            }
+
             $attrs = $defaultVariation->attributes ?? [];
             $attrString = implode(' / ', array_values(array_filter($attrs)));
             $name = $product->name . ($attrString ? ' - ' . $attrString : '');
@@ -432,7 +448,7 @@ class InventoryController extends Controller
                 'product_id' => $product->id,
                 'variation_id' => $defaultVariation->id,
                 'name' => $name,
-                'current_stock' => $inventory?->quantity ?? 0,
+                'current_stock' => $qty,
                 'price' => $defaultVariation->getEffectivePrice(),
             ]);
         }

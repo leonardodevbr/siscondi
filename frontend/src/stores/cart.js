@@ -17,33 +17,40 @@ export const useCartStore = defineStore('cart', {
     },
   },
   actions: {
-    addItem(product, quantity = 1) {
-      if (!product.stock_quantity || product.stock_quantity < quantity) {
-        throw new Error(`Estoque insuficiente. Disponível: ${product.stock_quantity || 0}`);
+    addItem(product, quantity = 1, productVariantId = null) {
+      const variantId = productVariantId ?? product.variants?.[0]?.id;
+      if (!variantId) {
+        throw new Error('Produto sem variação válida.');
       }
 
-      const existingIndex = this.items.findIndex((i) => i.product.id === product.id);
+      const stock = product.stock_quantity ?? product.current_stock ?? 0;
+      if (!stock || stock < quantity) {
+        throw new Error(`Estoque insuficiente. Disponível: ${stock || 0}`);
+      }
+
+      const existingIndex = this.items.findIndex((i) => i.product_variant_id === variantId);
 
       if (existingIndex !== -1) {
         const existing = this.items[existingIndex];
         const newQuantity = existing.quantity + quantity;
 
-        if (product.stock_quantity < newQuantity) {
-          throw new Error(`Estoque insuficiente. Disponível: ${product.stock_quantity}`);
+        if (existing.product.stock_quantity < newQuantity) {
+          throw new Error(`Estoque insuficiente. Disponível: ${existing.product.stock_quantity}`);
         }
 
         existing.quantity = newQuantity;
         existing.total = currency(existing.unit_price).multiply(existing.quantity).value;
       } else {
-        const unitPrice = parseFloat(product.effective_price ?? product.sell_price);
+        const unitPrice = parseFloat(product.effective_price ?? product.price ?? product.sell_price ?? 0);
         this.items.push({
           product: {
             id: product.id,
             name: product.name,
             sku: product.sku,
             barcode: product.barcode,
-            stock_quantity: product.stock_quantity,
+            stock_quantity: stock,
           },
+          product_variant_id: variantId,
           quantity,
           unit_price: unitPrice,
           total: currency(unitPrice).multiply(quantity).value,
@@ -77,4 +84,3 @@ export const useCartStore = defineStore('cart', {
     },
   },
 });
-

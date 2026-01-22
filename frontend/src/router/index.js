@@ -3,6 +3,7 @@ import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
+import PosLayout from '@/layouts/PosLayout.vue';
 import HomeView from '@/views/Dashboard/Home.vue';
 import LoginView from '@/views/Auth/Login.vue';
 import PosView from '@/views/POS/Pos.vue';
@@ -33,6 +34,18 @@ const routes = [
     meta: { guestOnly: true },
   },
   {
+    path: '/pos',
+    component: PosLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'pos',
+        component: PosView,
+      },
+    ],
+  },
+  {
     path: '/',
     component: DefaultLayout,
     meta: { requiresAuth: true },
@@ -41,11 +54,6 @@ const routes = [
         path: '',
         name: 'dashboard',
         component: HomeView,
-      },
-      {
-        path: 'pos',
-        name: 'pos',
-        component: PosView,
       },
       {
         path: 'sales',
