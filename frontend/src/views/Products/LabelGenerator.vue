@@ -130,7 +130,7 @@
                 v-model="selectedLayout"
                 class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="thermal">Térmica (40mm x 40mm)</option>
+                <option value="thermal_40x25">Térmica (40mm x 25mm)</option>
                 <option value="pimaco_6181">Pimaco 6181 (3 Colunas)</option>
                 <option value="a4_compact">A4 Econômico (4 Colunas)</option>
               </select>
@@ -172,7 +172,7 @@ export default {
     const products = ref([]);
     const loading = ref(true);
     const quantities = ref({});
-    const selectedLayout = ref('pimaco_6181');
+    const selectedLayout = ref('thermal_40x25');
     const generating = ref(false);
     const filters = ref({
       search: '',

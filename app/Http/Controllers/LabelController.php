@@ -19,7 +19,7 @@ class LabelController extends Controller
     public function generate(GenerateLabelRequest $request): mixed
     {
         $items = $request->input('items', []);
-        $layout = $request->input('layout', 'thermal');
+        $layout = $request->input('layout', 'thermal_40x25');
 
         $variantIds = array_column($items, 'variant_id');
         $variants = ProductVariant::query()
@@ -72,7 +72,7 @@ class LabelController extends Controller
         
         // Define qual view usar baseado no layout
         $view = match ($layout) {
-            'thermal' => 'labels.thermal',
+            'thermal_40x25' => 'labels.thermal',
             'pimaco_6181' => 'labels.pimaco_6181',
             'a4_compact' => 'labels.sheet',
             default => 'labels.sheet',
@@ -83,8 +83,8 @@ class LabelController extends Controller
             'storeName' => $storeName,
         ]);
 
-        if ($layout === 'thermal') {
-            $pdf->setPaper([0, 0, 113.386, 113.386], 'portrait');
+        if ($layout === 'thermal_40x25') {
+            $pdf->setPaper([0, 0, 113.386, 70.866], 'portrait');
             $pdf->setOption('margin-top', 0);
             $pdf->setOption('margin-bottom', 0);
             $pdf->setOption('margin-left', 0);
