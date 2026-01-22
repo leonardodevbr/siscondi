@@ -20,6 +20,7 @@ class InventoryMovement extends Model
         'variation_id',
         'user_id',
         'type',
+        'operation',
         'quantity',
         'reason',
     ];

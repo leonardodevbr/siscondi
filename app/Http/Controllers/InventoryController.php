@@ -74,13 +74,9 @@ class InventoryController extends Controller
         $operation = $request->operation ?? $this->getDefaultOperation($request->type);
         
         $finalType = $request->type;
-        if ($request->type === 'adjustment') {
-            $finalType = $operation === 'add' ? 'entry' : 'adjustment';
-        }
-        
-        $willSubtract = $operation === 'sub' || $finalType === 'exit' || $finalType === 'adjustment';
+        $operation = $request->operation ?? $this->getDefaultOperation($request->type);
 
-        if ($willSubtract && $currentStock < $quantity) {
+        if ($operation === 'sub' && $currentStock < $quantity) {
             return response()->json([
                 'message' => "Saldo insuficiente para realizar esta baixa. Estoque atual: {$currentStock}",
             ], 422);
@@ -91,6 +87,7 @@ class InventoryController extends Controller
             'variation_id' => $request->variation_id,
             'user_id' => auth()->id(),
             'type' => $finalType,
+            'operation' => $operation,
             'quantity' => $quantity,
             'reason' => $request->reason,
         ]);
@@ -130,7 +127,8 @@ class InventoryController extends Controller
     {
         return match ($type) {
             'entry', 'return' => 'add',
-            'exit', 'adjustment' => 'sub',
+            'exit' => 'sub',
+            'adjustment' => 'sub',
             default => 'add',
         };
     }
