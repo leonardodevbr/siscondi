@@ -48,7 +48,12 @@
               :key="product.id"
               class="border border-slate-200 rounded-lg p-4"
             >
-              <div class="font-semibold text-slate-800 mb-3">{{ product.name }}</div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-semibold text-slate-800">{{ product.name }}</div>
+                <div v-if="product.category" class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                  {{ product.category.name }}
+                </div>
+              </div>
               
               <div v-if="product.variants && product.variants.length > 0" class="space-y-2">
                 <div
