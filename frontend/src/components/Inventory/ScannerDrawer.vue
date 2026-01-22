@@ -5,7 +5,6 @@
         <div
           class="drawer-overlay fixed inset-0 bg-black/50 z-40"
           aria-hidden="true"
-          @click="handleClose"
         />
         <div
           class="drawer-panel fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"

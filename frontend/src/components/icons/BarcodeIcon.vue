@@ -11,7 +11,7 @@
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
-      d="M4 4.5v15M8 4.5v15M10 4.5v15M14 4.5v15M16 4.5v15M20 4.5v15"
+      d="M5 4v16h14M8 4v16M12 4v16M16 4v16"
     />
   </svg>
 </template>
