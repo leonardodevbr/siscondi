@@ -112,18 +112,21 @@ class InventoryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryMovement::with(['user:id,name', 'product:id,name', 'variation:id,sku,attributes'])
+        $query = InventoryMovement::with(['user:id,name', 'product:id,name'])
+            ->with('variation')
             ->orderBy('created_at', 'desc');
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->whereHas('product', function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhereHas('variants', function ($q2) use ($search): void {
-                      $q2->where('sku', 'like', "%{$search}%");
-                  });
-            })->orWhereHas('variation', function ($q) use ($search): void {
-                $q->where('sku', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search): void {
+                $q->whereHas('product', function ($q2) use ($search): void {
+                    $q2->where('name', 'like', "%{$search}%");
+                });
+            })->orWhere(function ($q) use ($search): void {
+                $q->whereNotNull('variation_id')
+                    ->whereHas('variation', function ($q2) use ($search): void {
+                        $q2->where('sku', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -147,7 +150,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'data' => $movements->map(function ($movement) {
-                $productName = $movement->product->name ?? 'N/A';
+                $productName = $movement->product?->name ?? 'N/A';
                 $variantInfo = '';
                 
                 if ($movement->variation) {
@@ -159,7 +162,7 @@ class InventoryController extends Controller
                     if (isset($attrs['tamanho'])) {
                         $variantParts[] = $attrs['tamanho'];
                     }
-                    $variantInfo = count($variantParts) > 0 ? ' - ' . implode('/', $variantParts) : ' - ' . $movement->variation->sku;
+                    $variantInfo = count($variantParts) > 0 ? ' - ' . implode('/', $variantParts) : ' - ' . ($movement->variation->sku ?? '');
                 }
 
                 return [
