@@ -25,24 +25,30 @@
         }
 
         .label {
-            width: 40mm;
-            height: 25mm;
+            width: 40mm !important;
+            height: 25mm !important;
+            max-height: 25mm !important;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             text-align: center;
-            padding: 1mm;
+            padding: 1mm 2mm;
             page-break-inside: avoid;
             overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .label-header {
+            width: 100%;
+            text-align: center;
         }
 
         .product-name {
             font-size: 8pt;
             font-weight: bold;
-            margin-bottom: 0.5mm;
             line-height: 1;
-            max-height: 1em;
+            margin-bottom: 0.5mm;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -54,9 +60,9 @@
             font-size: 7pt;
             font-weight: normal;
             color: #666;
-            margin-bottom: 0.5mm;
             line-height: 1;
-            max-height: 1em;
+            margin-top: -0.5mm;
+            margin-bottom: 0.5mm;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -64,27 +70,18 @@
         }
 
         .barcode-container {
-            margin: 0.5mm 0;
             width: 100%;
+            margin: 0.5mm 0;
         }
 
         .barcode-image {
             max-width: 100%;
-            max-height: 12mm;
-            height: 12mm;
+            max-height: 8mm !important;
+            height: 8mm !important;
             width: auto;
             display: block;
             margin: 0 auto;
             object-fit: contain;
-        }
-
-        .barcode-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            width: 100%;
-            padding: 0 1mm;
-            margin-top: -1mm;
         }
 
         .barcode-value {
@@ -93,13 +90,15 @@
             font-family: 'Courier New', monospace;
             color: #000;
             line-height: 1;
+            margin-top: 0.5mm;
         }
 
         .price {
-            font-size: 10pt;
+            font-size: 11pt;
             font-weight: 900;
             color: #000;
             line-height: 1;
+            margin-top: 0.5mm;
         }
     </style>
 </head>
@@ -109,18 +108,20 @@
         $totalLabels = count($labelsArray);
     @endphp
     @foreach($labelsArray as $index => $label)
-        <div class="label" @if($index < $totalLabels - 1) style="page-break-after: always;" @endif>
-            <div class="product-name">{{ Str::limit($label['product_name'], 25) }}</div>
-            @if(!empty($label['label_details']))
-                <div class="label-details">{{ $label['label_details'] }}</div>
-            @endif
+        <div class="label" @if($index < $totalLabels - 1) style="page-break-after: always !important;" @endif>
+            <div class="label-header">
+                <div class="product-name">{{ Str::limit($label['product_name'], 25) }}</div>
+                @if(!empty($label['label_details']))
+                    <div class="label-details">{{ $label['label_details'] }}</div>
+                @endif
+            </div>
+
             <div class="barcode-container">
                 <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">
+                <div class="barcode-value">{{ $label['barcode_value'] }}</div>
             </div>
-            <div class="barcode-footer">
-                <span class="barcode-value">{{ $label['barcode_value'] }}</span>
-                <span class="price">R$ {{ number_format($label['price'], 2, ',', '.') }}</span>
-            </div>
+
+            <div class="price">R$ {{ number_format($label['price'], 2, ',', '.') }}</div>
         </div>
     @endforeach
 </body>
