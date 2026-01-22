@@ -14,17 +14,38 @@
         <div class="card p-6">
           <h3 class="text-md font-semibold text-slate-800 mb-4">Seleção de Produtos</h3>
 
+          <!-- Barra de Filtros -->
+          <div class="mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+              <input
+                v-model="filters.search"
+                type="text"
+                placeholder="Buscar por nome, SKU ou código de barras"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                @input="handleSearchInput"
+              />
+            </div>
+            <div class="sm:w-64">
+              <SearchableSelect
+                v-model="filters.category_id"
+                :options="categoryOptions"
+                placeholder="Todas as categorias"
+                @update:modelValue="handleCategoryChange"
+              />
+            </div>
+          </div>
+
           <div v-if="loading" class="text-center py-8">
             <p class="text-slate-500">Carregando produtos...</p>
           </div>
 
-          <div v-else-if="products.length === 0" class="text-center py-8">
+          <div v-else-if="filteredProducts.length === 0" class="text-center py-8">
             <p class="text-slate-500">Nenhum produto encontrado</p>
           </div>
 
           <div v-else class="space-y-4">
             <div
-              v-for="product in products"
+              v-for="product in filteredProducts"
               :key="product.id"
               class="border border-slate-200 rounded-lg p-4"
             >
@@ -52,12 +73,12 @@
                   <div class="flex items-center gap-2 ml-4">
                     <label class="text-sm text-slate-600">Qtd:</label>
                     <input
-                      v-model.number="quantities[variant.id]"
+                      :value="quantities[variant.id] || 0"
+                      @input="updateQuantity(variant.id, $event.target.value)"
                       type="number"
                       min="0"
                       max="1000"
                       class="w-20 px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      @input="updateCart"
                     />
                   </div>
                 </div>
@@ -126,48 +147,257 @@
 </template>
 
 <script>
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { useToast } from 'vue-toastification';
+import { useCategoryStore } from '@/stores/category';
+import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import api from '@/services/api';
 
 export default {
   name: 'LabelGenerator',
-  data() {
-    return {
-      products: [],
-      loading: true,
-      quantities: {},
-      selectedLayout: 'thermal',
-      generating: false,
-    };
+  components: {
+    SearchableSelect,
   },
-  computed: {
-    cartItems() {
+  setup() {
+    const route = useRoute();
+    const toast = useToast();
+    const categoryStore = useCategoryStore();
+
+    const products = ref([]);
+    const loading = ref(true);
+    const quantities = ref({});
+    const selectedLayout = ref('thermal');
+    const generating = ref(false);
+    const filters = ref({
+      search: '',
+      category_id: null,
+    });
+
+    let searchTimeout = null;
+
+    const categoryOptions = computed(() => {
+      const categories = categoryStore.items || [];
+      return [
+        { id: null, name: 'Todas as categorias' },
+        ...categories.map((cat) => ({
+          id: cat.id,
+          name: cat.name,
+        })),
+      ];
+    });
+
+    const filteredProducts = computed(() => {
+      let result = products.value;
+
+      // Filtro por busca (nome, SKU, código de barras)
+      if (filters.value.search) {
+        const searchLower = filters.value.search.toLowerCase();
+        result = result.filter((product) => {
+          // Busca no nome do produto
+          if (product.name?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+
+          // Busca no SKU ou código de barras das variações
+          if (product.variants) {
+            return product.variants.some(
+              (variant) =>
+                variant.sku?.toLowerCase().includes(searchLower) ||
+                variant.barcode?.toLowerCase().includes(searchLower)
+            );
+          }
+
+          return false;
+        });
+      }
+
+      // Filtro por categoria
+      if (filters.value.category_id) {
+        result = result.filter(
+          (product) => product.category_id === filters.value.category_id
+        );
+      }
+
+      return result;
+    });
+
+    const cartItems = computed(() => {
       const items = [];
-      
-      for (const product of this.products) {
+
+      for (const product of products.value) {
         if (!product.variants) continue;
-        
+
         for (const variant of product.variants) {
-          const quantity = this.quantities[variant.id] || 0;
-          
+          const quantity = quantities.value[variant.id] || 0;
+
           if (quantity > 0) {
             items.push({
               variant_id: variant.id,
               quantity: quantity,
               product_name: product.name,
-              variant_description: this.formatVariantDescription(variant),
+              variant_description: formatVariantDescription(variant),
             });
           }
         }
       }
-      
+
       return items;
-    },
-    totalLabels() {
-      return this.cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    },
-  },
-  mounted() {
-    this.loadProducts();
+    });
+
+    const totalLabels = computed(() => {
+      return cartItems.value.reduce((sum, item) => sum + item.quantity, 0);
+    });
+
+    const handleSearchInput = () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      // Debounce de 300ms para não fazer muitas requisições
+      searchTimeout = setTimeout(() => {
+        // A filtragem é feita via computed, não precisa fazer nada aqui
+      }, 300);
+    };
+
+    const handleCategoryChange = () => {
+      // A filtragem é feita via computed
+    };
+
+    const updateQuantity = (variantId, value) => {
+      quantities.value[variantId] = parseInt(value) || 0;
+    };
+
+    const loadProducts = async () => {
+      try {
+        loading.value = true;
+        const response = await api.get('/products', {
+          params: {
+            per_page: 100,
+          },
+        });
+
+        products.value = response.data.data || response.data || [];
+        initializeQuantities();
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        toast.error('Erro ao carregar produtos');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const initializeQuantities = () => {
+      quantities.value = {};
+      for (const product of products.value) {
+        if (product.variants) {
+          for (const variant of product.variants) {
+            quantities.value[variant.id] = 0;
+          }
+        }
+      }
+    };
+
+    const formatVariantDescription = (variant) => {
+      if (!variant.attributes || Object.keys(variant.attributes).length === 0) {
+        return 'Padrão';
+      }
+
+      const parts = [];
+      for (const [key, value] of Object.entries(variant.attributes)) {
+        if (key === 'tipo' && value === 'único') {
+          continue;
+        }
+        parts.push(`${capitalize(key)}: ${value}`);
+      }
+
+      return parts.length > 0 ? parts.join(' / ') : 'Padrão';
+    };
+
+    const capitalize = (str) => {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+
+    const formatPrice = (price) => {
+      if (!price) return '0,00';
+      return parseFloat(price).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    };
+
+    const generateLabels = async () => {
+      if (cartItems.value.length === 0) {
+        return;
+      }
+
+      try {
+        generating.value = true;
+
+        const payload = {
+          items: cartItems.value.map((item) => ({
+            variant_id: item.variant_id,
+            quantity: item.quantity,
+          })),
+          layout: selectedLayout.value,
+        };
+
+        const response = await api.post('/labels/generate', payload, {
+          responseType: 'blob',
+        });
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'etiquetas.pdf');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        toast.success('Etiquetas geradas com sucesso!');
+      } catch (error) {
+        console.error('Erro ao gerar etiquetas:', error);
+        toast.error('Erro ao gerar etiquetas');
+      } finally {
+        generating.value = false;
+      }
+    };
+
+    onMounted(async () => {
+      // Carrega categorias
+      await categoryStore.fetchAll();
+
+      // Verifica se há parâmetros na URL
+      if (route.query.search) {
+        filters.value.search = route.query.search;
+      }
+      if (route.query.category_id) {
+        filters.value.category_id = parseInt(route.query.category_id);
+      }
+
+      // Carrega produtos
+      await loadProducts();
+    });
+
+    return {
+      products,
+      loading,
+      quantities,
+      selectedLayout,
+      generating,
+      filters,
+      categoryOptions,
+      filteredProducts,
+      cartItems,
+      totalLabels,
+      handleSearchInput,
+      handleCategoryChange,
+      updateQuantity,
+      formatVariantDescription,
+      formatPrice,
+      generateLabels,
+    };
   },
   methods: {
     async loadProducts() {

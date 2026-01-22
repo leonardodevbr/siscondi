@@ -97,6 +97,12 @@ export const useProductStore = defineStore('product', {
           return;
         }
 
+        // Trata objetos complexos (como simple_attributes) que precisam ser serializados
+        if (key === 'simple_attributes' && value && typeof value === 'object' && !Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+          return;
+        }
+
         appendValue(key, value);
       });
 

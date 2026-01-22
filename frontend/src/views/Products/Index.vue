@@ -171,13 +171,7 @@
                 </span>
 
                 <div v-else>
-                  <span v-if="product.variants?.[0]?.attributes?.cor || product.variants?.[0]?.attributes?.tamanho" class="text-xs text-gray-500 font-medium">
-                    <span v-if="product.variants[0]?.attributes?.cor">{{ product.variants[0].attributes.cor }}</span>
-                    <span v-if="product.variants[0]?.attributes?.cor && product.variants[0]?.attributes?.tamanho" class="mx-1">•</span>
-                    <span v-if="product.variants[0]?.attributes?.tamanho">{{ product.variants[0].attributes.tamanho }}</span>
-                  </span>
-                  
-                  <span v-else class="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                  <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
                     Item Único
                   </span>
                 </div>

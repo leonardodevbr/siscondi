@@ -900,18 +900,15 @@ export default {
               formData.append('stock', form.value.stock);
             }
             // Envia atributos simples para criar a variação padrão
-            // Sempre envia, mesmo se vazio, para garantir que o backend processe corretamente
+            // CRÍTICO: FormData converte objetos para "[object Object]", então SEMPRE serializa ANTES
             const attributesToSend = form.value.simple_attributes || { cor: '', tamanho: '' };
-            if (typeof attributesToSend === 'object' && !Array.isArray(attributesToSend)) {
-              try {
-                const attributesJson = JSON.stringify(attributesToSend);
-                formData.append('simple_attributes', attributesJson);
-              } catch (error) {
-                console.error('Erro ao serializar simple_attributes:', error);
-                // Fallback: envia objeto vazio
-                formData.append('simple_attributes', JSON.stringify({ cor: '', tamanho: '' }));
-              }
-            }
+            
+            // Garante que é um objeto válido e serializa como JSON string
+            // NUNCA passe o objeto diretamente para formData.append()!
+            const attributesJson = JSON.stringify(attributesToSend);
+            
+            // Adiciona como string JSON (nunca como objeto)
+            formData.append('simple_attributes', attributesJson);
           } else if (form.value.variants.length === 0 && form.value.stock !== undefined && form.value.stock !== null) {
             formData.append('stock', form.value.stock);
           }
