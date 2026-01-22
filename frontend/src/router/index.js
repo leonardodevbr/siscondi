@@ -17,6 +17,7 @@ import ReportsIndex from '@/views/Reports/Index.vue';
 import CouponsIndex from '@/views/Coupons/Index.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
+import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
 
 const routes = [
   {
@@ -70,6 +71,12 @@ const routes = [
         path: 'products/labels',
         name: 'products.labels',
         component: LabelGenerator,
+      },
+      {
+        path: 'inventory/movements',
+        name: 'inventory.movements',
+        component: MovementsIndex,
+        meta: { title: 'Histórico de Movimentações' },
       },
       {
         path: 'customers',

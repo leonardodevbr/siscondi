@@ -59,6 +59,19 @@
             >
               Estoque Inicial
             </button>
+            <button
+              v-if="isEdit"
+              type="button"
+              @click="activeTab = 'history'"
+              :class="[
+                'py-2 px-4 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'history'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700',
+              ]"
+            >
+              Histórico (Kardex)
+            </button>
           </nav>
         </div>
 
@@ -229,14 +242,33 @@
                   <span v-if="currentBranchName" class="font-normal">{{ currentBranchName }}</span>
                   <span v-else class="font-normal">filial atual</span>
                 </label>
-                <input
-                  v-model.number="form.stock"
-                  type="number"
-                  min="0"
-                  class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
-                  @keydown.enter.prevent
-                />
+                <div class="flex gap-2">
+                  <input
+                    v-model.number="form.stock"
+                    type="number"
+                    min="0"
+                    :disabled="isEdit"
+                    :readonly="isEdit"
+                    :class="[
+                      'flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                      isEdit ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''
+                    ]"
+                    :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
+                    @keydown.enter.prevent
+                  />
+                  <button
+                    v-if="isEdit"
+                    type="button"
+                    @click="openStockModal(null)"
+                    class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-1"
+                    title="Ajustar Estoque"
+                  >
+                    <AdjustmentsHorizontalIcon class="w-5 h-5" />
+                  </button>
+                </div>
+                <p v-if="isEdit" class="text-xs text-slate-500 mt-1">
+                  O estoque só pode ser alterado através de movimentações
+                </p>
               </div>
             </div>
           </div>
@@ -513,9 +545,79 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab 4: Histórico (Kardex) -->
+        <div v-if="isEdit && activeTab === 'history'" class="space-y-4 px-6 py-6">
+          <div class="mb-4">
+            <h3 class="text-md font-semibold text-slate-800 mb-2">Histórico de Movimentações</h3>
+            <p class="text-sm text-slate-600">
+              Registro completo de todas as movimentações de estoque deste produto
+            </p>
+          </div>
+
+          <div v-if="loadingHistory" class="text-center py-8 text-slate-500">
+            Carregando histórico...
+          </div>
+
+          <div v-else-if="historyMovements.length === 0" class="text-center py-8 text-slate-500">
+            Nenhuma movimentação registrada ainda
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Usuário
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Quantidade
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Motivo
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-slate-200">
+                <tr v-for="movement in historyMovements" :key="movement.id">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                    {{ movement.created_at }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                    {{ movement.user?.name || 'N/A' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <span
+                      :class="[
+                        'px-2 py-1 text-xs font-medium rounded-full',
+                        movement.type === 'entry' || movement.type === 'return'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800',
+                      ]"
+                    >
+                      {{ movement.type_label }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
+                    {{ movement.quantity }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-slate-600">
+                    {{ movement.reason || '-' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      <div class="flex justify-end gap-2">
+      <div class="flex justify-end gap-2 mt-6 px-6 pb-6">
         <button
           type="button"
           @click="$router.push({ name: 'products.index' })"
@@ -533,6 +635,16 @@
         </button>
       </div>
     </form>
+
+    <!-- Stock Adjustment Modal -->
+    <StockAdjustmentModal
+      :show="showStockModal"
+      :product-id="productId"
+      :variation-id="selectedVariationId"
+      :current-stock="currentStockForModal"
+      @close="closeStockModal"
+      @success="handleStockSuccess"
+    />
   </div>
 </template>
 
@@ -548,7 +660,8 @@ import { useAppStore } from '@/stores/app';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import ImageUpload from '@/components/Common/ImageUpload.vue';
 import Toggle from '@/components/Common/Toggle.vue';
-import { SparklesIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
+import StockAdjustmentModal from '@/components/Products/StockAdjustmentModal.vue';
+import { SparklesIcon, LockClosedIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline';
 import api from '@/services/api';
 
 export default {
@@ -557,8 +670,10 @@ export default {
     SearchableSelect,
     ImageUpload,
     Toggle,
+    StockAdjustmentModal,
     SparklesIcon,
     LockClosedIcon,
+    AdjustmentsHorizontalIcon,
   },
   setup() {
     const route = useRoute();
@@ -576,6 +691,12 @@ export default {
     const categories = ref([]);
     const suppliers = computed(() => supplierStore.suppliers || []);
     const initialStock = ref([]);
+    const showStockModal = ref(false);
+    const selectedVariationId = ref(null);
+    const currentStockForModal = ref(0);
+    const historyMovements = ref([]);
+    const loadingHistory = ref(false);
+    const productId = computed(() => isEdit.value ? parseInt(route.params.id) : null);
 
     const form = ref({
       name: '',
@@ -1021,6 +1142,66 @@ export default {
       }
     );
 
+    watch(
+      () => activeTab.value,
+      (newTab) => {
+        if (newTab === 'history' && isEdit.value && productId.value) {
+          loadHistory();
+        }
+      }
+    );
+
+    const openStockModal = (variationId) => {
+      selectedVariationId.value = variationId;
+      if (variationId) {
+        const variant = form.value.variants.find(v => v.id === variationId);
+        currentStockForModal.value = variant?.stock || 0;
+      } else {
+        currentStockForModal.value = form.value.stock || 0;
+      }
+      showStockModal.value = true;
+    };
+
+    const closeStockModal = () => {
+      showStockModal.value = false;
+      selectedVariationId.value = null;
+      currentStockForModal.value = 0;
+    };
+
+    const handleStockSuccess = async (newStock) => {
+      if (selectedVariationId.value) {
+        const variant = form.value.variants.find(v => v.id === selectedVariationId.value);
+        if (variant) {
+          variant.stock = newStock;
+        }
+      } else {
+        form.value.stock = newStock;
+      }
+      await loadProduct();
+      if (activeTab.value === 'history') {
+        await loadHistory();
+      }
+    };
+
+    const loadHistory = async () => {
+      if (!productId.value) return;
+
+      try {
+        loadingHistory.value = true;
+        const response = await api.get(`/inventory/${productId.value}/history`, {
+          params: {
+            variation_id: selectedVariationId.value || null,
+          },
+        });
+        historyMovements.value = response.data.data || [];
+      } catch (error) {
+        toast.error('Erro ao carregar histórico');
+        historyMovements.value = [];
+      } finally {
+        loadingHistory.value = false;
+      }
+    };
+
     onMounted(async () => {
       // Carrega configurações públicas (SKU generation, etc)
       await settingsStore.fetchPublicConfig();
@@ -1041,6 +1222,16 @@ export default {
       supplierOptions,
       initialStock,
       settingsStore,
+      showStockModal,
+      selectedVariationId,
+      currentStockForModal,
+      historyMovements,
+      loadingHistory,
+      productId,
+      openStockModal,
+      closeStockModal,
+      handleStockSuccess,
+      loadHistory,
       currentBranchName,
       totalStock,
       addVariant,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\InventoryMovement;
+use App\Observers\InventoryMovementObserver;
 use App\Services\Payment\PaymentGatewayInterface;
 use App\Services\Payment\Providers\DevPixProvider;
 use Illuminate\Support\Facades\Gate;
@@ -27,5 +29,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super-admin') ? true : null;
         });
+
+        InventoryMovement::observe(InventoryMovementObserver::class);
     }
 }
