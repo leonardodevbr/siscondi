@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="drawer">
+    <Transition name="drawer" :duration="{ enter: 280, leave: 280 }">
       <div v-if="show" class="fixed inset-0 z-50 flex">
         <div
           class="drawer-overlay fixed inset-0 bg-black/50 z-40"
@@ -220,7 +220,7 @@ watch(
 <style scoped>
 .drawer-enter-active .drawer-overlay,
 .drawer-leave-active .drawer-overlay {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.28s ease-out;
 }
 .drawer-enter-from .drawer-overlay,
 .drawer-leave-to .drawer-overlay {
@@ -228,7 +228,7 @@ watch(
 }
 .drawer-enter-active .drawer-panel,
 .drawer-leave-active .drawer-panel {
-  transition: transform 0.25s ease;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .drawer-enter-from .drawer-panel,
 .drawer-leave-to .drawer-panel {
