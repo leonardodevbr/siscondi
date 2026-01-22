@@ -495,14 +495,33 @@
                       ({{ currentBranchName }})
                     </span>
                   </label>
-                  <input
-                    v-model.number="variant.stock"
-                    type="number"
-                    min="0"
-                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
-                    :title="currentBranchName ? `Estoque na filial ${currentBranchName}` : 'Estoque atual'"
-                  />
+                  <div class="flex gap-2">
+                    <input
+                      v-model.number="variant.stock"
+                      type="number"
+                      min="0"
+                      :disabled="isEdit"
+                      :readonly="isEdit"
+                      :class="[
+                        'flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                        isEdit ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''
+                      ]"
+                      :placeholder="`Quantidade em estoque${currentBranchName ? ' - ' + currentBranchName : ''}`"
+                      :title="currentBranchName ? `Estoque na filial ${currentBranchName}` : 'Estoque atual'"
+                    />
+                    <button
+                      v-if="isEdit"
+                      type="button"
+                      @click="openStockModal(variant.id)"
+                      class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-1"
+                      title="Ajustar Estoque"
+                    >
+                      <AdjustmentsHorizontalIcon class="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p v-if="isEdit" class="text-xs text-slate-500 mt-1">
+                    O estoque só pode ser alterado através de movimentações
+                  </p>
                 </div>
               </div>
             </div>
@@ -1152,6 +1171,10 @@ export default {
     );
 
     const openStockModal = (variationId) => {
+      if (!productId.value) {
+        toast.error('Erro: ID do produto não encontrado');
+        return;
+      }
       selectedVariationId.value = variationId;
       if (variationId) {
         const variant = form.value.variants.find(v => v.id === variationId);

@@ -1,63 +1,55 @@
 <template>
-  <Modal :show="show" @close="handleClose" size="md">
-    <template #header>
-      <h3 class="text-lg font-semibold text-slate-800">Ajustar Estoque</h3>
-    </template>
+  <Modal :is-open="show" title="Ajustar Estoque" @close="handleClose">
+    <form @submit.prevent="handleSubmit" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+          Tipo de Movimentação *
+        </label>
+        <select
+          v-model="form.type"
+          required
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Selecione o tipo</option>
+          <option value="entry">Entrada</option>
+          <option value="exit">Saída/Perda</option>
+          <option value="adjustment">Ajuste</option>
+          <option value="return">Devolução</option>
+        </select>
+      </div>
 
-    <template #body>
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">
-            Tipo de Movimentação *
-          </label>
-          <select
-            v-model="form.type"
-            required
-            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecione o tipo</option>
-            <option value="entry">Entrada</option>
-            <option value="exit">Saída/Perda</option>
-            <option value="adjustment">Ajuste</option>
-            <option value="return">Devolução</option>
-          </select>
-        </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+          Quantidade *
+        </label>
+        <input
+          v-model.number="form.quantity"
+          type="number"
+          min="1"
+          required
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Digite a quantidade"
+        />
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">
-            Quantidade *
-          </label>
-          <input
-            v-model.number="form.quantity"
-            type="number"
-            min="1"
-            required
-            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Digite a quantidade"
-          />
-        </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+          Motivo
+          <span v-if="form.type === 'exit' || form.type === 'adjustment'" class="text-red-500">*</span>
+        </label>
+        <textarea
+          v-model="form.reason"
+          :required="form.type === 'exit' || form.type === 'adjustment'"
+          rows="3"
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Descreva o motivo da movimentação"
+        ></textarea>
+        <p v-if="form.type === 'exit' || form.type === 'adjustment'" class="text-xs text-slate-500 mt-1">
+          Obrigatório para saídas e ajustes
+        </p>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">
-            Motivo
-            <span v-if="form.type === 'exit' || form.type === 'adjustment'" class="text-red-500">*</span>
-          </label>
-          <textarea
-            v-model="form.reason"
-            :required="form.type === 'exit' || form.type === 'adjustment'"
-            rows="3"
-            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Descreva o motivo da movimentação"
-          ></textarea>
-          <p v-if="form.type === 'exit' || form.type === 'adjustment'" class="text-xs text-slate-500 mt-1">
-            Obrigatório para saídas e ajustes
-          </p>
-        </div>
-      </form>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-3">
+      <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
         <button
           type="button"
           @click="handleClose"
@@ -75,7 +67,7 @@
           <span v-else>Salvar</span>
         </button>
       </div>
-    </template>
+    </form>
   </Modal>
 </template>
 
