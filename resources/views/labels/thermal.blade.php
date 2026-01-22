@@ -38,7 +38,7 @@
         }
 
         .spacer {
-            height: 1mm;
+            height: 0.5mm;
             display: block;
         }
 
@@ -52,7 +52,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             color: #000;
-            margin-bottom: 1px;
+            margin-bottom: 0.5px;
             padding: 0 1mm;
         }
 
@@ -73,8 +73,8 @@
         .barcode-image {
             display: block;
             width: 35mm;
-            height: 6mm;
-            margin: 0.5mm auto;
+            height: 7.5mm;
+            margin: 0.3mm auto;
             object-fit: contain;
         }
 
@@ -88,7 +88,7 @@
             line-height: 1;
             letter-spacing: -0.5px;
             text-align: center;
-            margin-bottom: 1px;
+            margin-bottom: 0.5px;
         }
 
         .price {
