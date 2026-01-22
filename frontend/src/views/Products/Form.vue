@@ -678,6 +678,7 @@
       :show="showStockModal"
       :product-id="productId"
       :variation-id="selectedVariationId"
+      :product-name="productNameForModal"
       :current-stock="currentStockForModal"
       @close="closeStockModal"
       @success="handleStockSuccess"
@@ -731,6 +732,7 @@ export default {
     const showStockModal = ref(false);
     const selectedVariationId = ref(null);
     const currentStockForModal = ref(0);
+    const productNameForModal = ref('');
     const historyMovements = ref([]);
     const loadingHistory = ref(false);
     const productId = computed(() => isEdit.value ? parseInt(route.params.id) : null);
@@ -1194,12 +1196,18 @@ export default {
         return;
       }
       selectedVariationId.value = variationId;
+      let name = form.value.name || '';
       if (variationId) {
         const variant = form.value.variants.find(v => v.id === variationId);
         currentStockForModal.value = variant?.stock || 0;
+        if (variant?.attributes && typeof variant.attributes === 'object') {
+          const parts = Object.values(variant.attributes).filter(Boolean);
+          if (parts.length) name += ' - ' + parts.join(' / ');
+        }
       } else {
         currentStockForModal.value = form.value.stock || 0;
       }
+      productNameForModal.value = name;
       showStockModal.value = true;
     };
 
@@ -1207,6 +1215,7 @@ export default {
       showStockModal.value = false;
       selectedVariationId.value = null;
       currentStockForModal.value = 0;
+      productNameForModal.value = '';
     };
 
     const handleStockSuccess = async (newStock) => {
@@ -1266,6 +1275,7 @@ export default {
       showStockModal,
       selectedVariationId,
       currentStockForModal,
+      productNameForModal,
       historyMovements,
       loadingHistory,
       productId,

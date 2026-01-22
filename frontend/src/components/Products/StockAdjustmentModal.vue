@@ -1,6 +1,11 @@
 <template>
   <Modal :is-open="show" title="Ajustar Estoque" @close="handleClose">
     <form @submit.prevent="handleSubmit" class="space-y-4">
+      <div v-if="productName" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+        <p class="font-semibold text-slate-900">{{ productName }}</p>
+        <p class="mt-1 text-xs text-slate-600">Estoque atual: {{ currentStock }}</p>
+      </div>
+
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">
           Tipo de Movimentação *
@@ -126,6 +131,10 @@ const props = defineProps({
   currentStock: {
     type: Number,
     default: 0,
+  },
+  productName: {
+    type: String,
+    default: '',
   },
   autoFocusQuantity: {
     type: Boolean,

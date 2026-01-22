@@ -86,19 +86,18 @@ const handleScan = async () => {
       name: data.name,
       current_stock: data.current_stock,
     };
-    showAdjustmentModal.value = true;
+
+    scanCode.value = '';
     productNotFound.value = false;
+    showAdjustmentModal.value = true;
   } catch (error) {
-    console.error('Erro ao buscar produto/variação:', error);
+    console.error('Erro ao buscar:', error);
     productNotFound.value = true;
     toast.error('Produto não encontrado!');
-  } finally {
+
     scanCode.value = '';
-    // Mantenha o foco no input mesmo se der erro, para tentar de novo rápido
     nextTick(() => {
-        if (!showAdjustmentModal.value) {
-            barcodeInput.value.focus();
-        }
+      barcodeInput.value?.focus();
     });
   }
 };
