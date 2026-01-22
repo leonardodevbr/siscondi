@@ -414,6 +414,7 @@ class InventoryController extends Controller
                 'current_stock' => $qty,
                 'price' => $variation->getEffectivePrice(),
                 'variation_attributes' => $attrs,
+                'image' => $variation->image ? asset('storage/' . $variation->image) : ($product->image ? asset('storage/' . $product->image) : null),
             ]);
         }
 
@@ -452,6 +453,7 @@ class InventoryController extends Controller
                 'current_stock' => $qty,
                 'price' => $defaultVariation->getEffectivePrice(),
                 'variation_attributes' => $attrs,
+                'image' => $defaultVariation->image ? asset('storage/' . $defaultVariation->image) : ($product->image ? asset('storage/' . $product->image) : null),
             ]);
         }
 

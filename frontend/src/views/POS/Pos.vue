@@ -164,6 +164,27 @@ function viaScan(code) {
   return /^\d+$/.test(code) || code.length >= 8;
 }
 
+function parseQuantityMultiplier(input) {
+  const trimmed = String(input).trim();
+  const patterns = [
+    /^x(\d+)\s*(.+)$/i,
+    /^(\d+)x\s*(.+)$/i,
+    /^(\d+)\*\s*(.+)$/i,
+    /^x(\d+)(.+)$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) {
+      const qty = parseInt(match[1] || match[2], 10);
+      const code = (match[2] || match[3] || '').trim();
+      if (qty > 0 && qty <= 999 && code) {
+        return { quantity: qty, code };
+      }
+    }
+  }
+  return { quantity: 1, code: trimmed };
+}
+
 async function processScanApi(code) {
   const { data } = await api.get('/inventory/scan', { params: { code } });
   const stock = data.current_stock ?? 0;
@@ -187,7 +208,7 @@ async function processScanApi(code) {
   toast.success(`${data.name} adicionado.`);
 }
 
-async function runProductSearchAndAdd(code) {
+async function runProductSearchAndAdd(code, quantity = 1) {
   try {
     const { data } = await api.get('/products', { params: { search: code } });
     const list = data.data ?? [];
@@ -205,13 +226,19 @@ async function runProductSearchAndAdd(code) {
       toast.error('Produto sem variação.');
       return;
     }
-    const stock = product.current_stock ?? variant.current_stock ?? 0;
-    if (!stock || stock < 1) {
-      toast.error('Sem estoque nesta filial.');
+    const stock = variant.current_stock ?? product.current_stock ?? 0;
+    if (stock < quantity) {
+      toast.error(`Estoque insuficiente. Disponível: ${stock}`);
       return;
     }
-    cartStore.addItem(product, 1, variant.id);
-    toast.success(`${product.name} adicionado.`);
+    lastScannedProduct.value = {
+      ...product,
+      variant_id: variant.id,
+      quantity_added: quantity,
+      variant_stock: stock,
+      image: variant.image ?? product.image ?? null,
+    };
+    cartStore.addItem(product, quantity, variant.id);
   } catch {
     toast.error('Erro ao buscar produto.');
   }
@@ -220,20 +247,27 @@ async function runProductSearchAndAdd(code) {
 async function handleScannedCode(code) {
   const c = String(code).trim();
   if (!c) return;
-  lastScannedCode.value = c;
+  
+  const parsed = parseQuantityMultiplier(c);
+  quantityMultiplier.value = parsed.quantity;
+  lastScannedCode.value = parsed.code;
 
   try {
-    if (viaScan(c)) {
+    if (viaScan(parsed.code)) {
       try {
-        await processScanApi(c);
+        await processScanApi(parsed.code, parsed.quantity);
       } catch (err) {
         const msg = err.response?.data?.message ?? 'Produto não encontrado.';
         toast.error(msg);
+        lastScannedProduct.value = null;
       }
     } else {
-      await runProductSearchAndAdd(c);
+      await runProductSearchAndAdd(parsed.code, parsed.quantity);
     }
   } finally {
+    setTimeout(() => {
+      quantityMultiplier.value = 1;
+    }, 2000);
     clearScanAndFocus();
   }
 }
@@ -278,8 +312,8 @@ function handleScanBufferKeydown(e) {
 function handleAddProduct(product) {
   try {
     const v = product.variants?.[0];
-    const stock = product.current_stock ?? product.stock_quantity ?? v?.current_stock ?? 0;
-    if (!stock || stock < 1) {
+    const stock = v?.current_stock ?? product.current_stock ?? product.stock_quantity ?? 0;
+    if (stock < 1) {
       toast.error('Sem estoque nesta filial.');
       return;
     }
@@ -287,8 +321,14 @@ function handleAddProduct(product) {
       toast.error('Produto sem variação.');
       return;
     }
+    lastScannedProduct.value = {
+      ...product,
+      variant_id: v.id,
+      quantity_added: 1,
+      variant_stock: stock,
+      image: v.image ?? product.image ?? null,
+    };
     cartStore.addItem(product, 1, v.id);
-    toast.success(`${product.name} adicionado.`);
   } catch (err) {
     toast.error(err.message ?? 'Erro ao adicionar.');
   }
@@ -692,17 +732,39 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
           <div class="flex flex-col space-y-4 lg:col-span-2">
             <div>
-              <label v-if="lastScannedCode" class="mb-1 block text-xs text-slate-500">
-                Último código: {{ lastScannedCode }}
-              </label>
+              <div v-if="quantityMultiplier > 1 || lastScannedProduct" class="mb-2 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                <div v-if="quantityMultiplier > 1" class="flex items-center gap-2 rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+                  <span>Multiplicador: {{ quantityMultiplier }}x</span>
+                </div>
+                <div v-if="lastScannedProduct" class="flex flex-1 items-center gap-3">
+                  <img
+                    v-if="lastScannedProduct.image"
+                    :src="lastScannedProduct.image"
+                    :alt="lastScannedProduct.name"
+                    class="h-12 w-12 rounded object-cover"
+                  >
+                  <div v-else class="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-xs text-slate-400">
+                    Sem imagem
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-800">{{ lastScannedProduct.name }}</p>
+                    <p class="text-xs text-slate-500">
+                      Estoque: {{ lastScannedProduct.variant_stock ?? lastScannedProduct.current_stock ?? 0 }}
+                      <span v-if="lastScannedProduct.quantity_added > 1" class="ml-2 text-blue-600">
+                        +{{ lastScannedProduct.quantity_added }} itens
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
               <input
                 id="product-search"
                 v-model="searchQuery"
                 type="text"
-                placeholder="Bipar ou digitar produto..."
+                placeholder="Bipar ou digitar produto... (ex: x3 7891234567890)"
                 class="input-base w-full text-lg"
                 autocomplete="off"
                 autofocus
@@ -721,20 +783,20 @@ onUnmounted(() => {
               <div v-else-if="products.length === 0" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Digite para buscar.</p>
               </div>
-              <div v-else class="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div v-else class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
                 <button
                   v-for="product in products"
                   :key="product.id"
                   type="button"
-                  class="flex flex-col rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                  class="flex flex-col rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
                   :class="{
                     'cursor-not-allowed opacity-50': (product.current_stock ?? product.stock_quantity) === 0,
                   }"
                   :disabled="(product.current_stock ?? product.stock_quantity) === 0"
                   @click="handleAddProduct(product)"
                 >
-                  <p class="text-sm font-semibold text-slate-800">{{ formatProductNameWithVariant(product) }}</p>
-                  <p class="mt-1 text-xs text-slate-500">{{ product.variants?.[0]?.sku ?? product.sku ?? '-' }}</p>
+                  <p class="text-sm font-semibold leading-tight text-slate-800" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ formatProductNameWithVariant(product) }}</p>
+                  <p class="mt-1.5 text-xs text-slate-500">{{ product.variants?.[0]?.sku ?? product.sku ?? '-' }}</p>
                   <p class="mt-2 text-sm font-bold text-blue-600">
                     {{ formatCurrency(product.effective_price ?? product.sell_price) }}
                   </p>
@@ -818,17 +880,17 @@ onUnmounted(() => {
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
               </div>
-              <div class="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" class="border-slate-300 text-slate-700 hover:bg-slate-50" @click="showHelpModal = true">
+              <div class="flex flex-nowrap justify-end gap-1.5">
+                <Button variant="outline" class="border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50" @click="showHelpModal = true">
                   F1 - Ajuda
                 </Button>
-                <Button variant="outline" class="border-slate-300 text-slate-700 hover:bg-slate-50" @click="showPriceCheckModal = true">
-                  F2 - Consultar Preço
+                <Button variant="outline" class="border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50" @click="showPriceCheckModal = true">
+                  F2 - Consultar
                 </Button>
-                <Button variant="outline" class="border-red-300 text-red-600 hover:bg-red-50" @click="handleCancelSale">
+                <Button variant="outline" class="border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50" @click="handleCancelSale">
                   F4 - Cancelar
                 </Button>
-                <Button variant="primary" @click="showCheckoutModal = true">
+                <Button variant="primary" class="px-3 py-1.5 text-sm" @click="showCheckoutModal = true">
                   F10 - Finalizar
                 </Button>
               </div>
