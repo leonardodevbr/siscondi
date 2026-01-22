@@ -3,7 +3,10 @@
     <label v-if="label" class="block text-sm font-medium text-slate-700 mb-1">
       {{ label }}
     </label>
-    <div class="relative">
+    <div
+      class="relative"
+      :class="filterStyle ? 'filter-select-wrapper' : ''"
+    >
       <Multiselect
         v-model="internalValue"
         :options="normalizedOptions"
@@ -39,6 +42,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Selecione...',
+  },
+  filterStyle: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -80,4 +87,13 @@ watch(internalValue, (val) => {
   emit('update:modelValue', val);
 });
 </script>
+
+<style scoped>
+.filter-select-wrapper :deep(.multiselect) {
+  @apply min-h-10 h-10 border border-slate-300 rounded text-sm;
+}
+.filter-select-wrapper :deep(.multiselect.is-active) {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+</style>
 

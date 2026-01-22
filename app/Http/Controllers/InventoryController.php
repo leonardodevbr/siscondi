@@ -325,16 +325,29 @@ class InventoryController extends Controller
     /**
      * Get list of users for filter dropdown.
      */
-    public function users(): JsonResponse
+    public function users(Request $request): JsonResponse
     {
-        $users = User::select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+        ]);
+
+        $user = auth()->user();
+        $userBranchId = $user?->branch_id ? (int) $user->branch_id : null;
+
+        $query = User::select('id', 'name')->orderBy('name');
+
+        if ($userBranchId !== null) {
+            $query->where('branch_id', $userBranchId);
+        } elseif ($request->filled('branch_id')) {
+            $query->where('branch_id', (int) $request->branch_id);
+        }
+
+        $users = $query->get();
 
         return response()->json([
-            'data' => $users->map(fn ($user) => [
-                'value' => $user->id,
-                'label' => $user->name,
+            'data' => $users->map(fn ($u) => [
+                'value' => $u->id,
+                'label' => $u->name,
             ]),
         ]);
     }

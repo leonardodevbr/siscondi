@@ -26,7 +26,8 @@
             v-model="filters.branch_id"
             :options="branchOptions"
             placeholder="Todas as filiais"
-            @update:modelValue="loadMovements"
+            filter-style
+            @update:modelValue="onBranchFilterChange"
           />
         </div>
         <div>
@@ -47,6 +48,7 @@
             v-model="filters.user_id"
             :options="userOptions"
             placeholder="Todos os usuários"
+            filter-style
             @update:modelValue="loadMovements"
           />
         </div>
@@ -225,10 +227,12 @@ export default {
     });
 
     const userOptions = computed(() => {
-      return users.value.map((user) => ({
-        value: user.id,
-        label: user.name,
+      const list = users.value || [];
+      const opts = list.map((u) => ({
+        value: u.id ?? u.value,
+        label: u.name ?? u.label ?? String(u.id ?? u.value ?? ''),
       }));
+      return [{ value: null, label: 'Todos os usuários' }, ...opts];
     });
 
     const branchOptions = computed(() => {
@@ -239,10 +243,15 @@ export default {
 
     const loadUsers = async () => {
       try {
-        const response = await api.get('/inventory/users');
-        users.value = response.data.data || [];
+        const params = {};
+        if (isGlobalAdmin.value && filters.value.branch_id) {
+          params.branch_id = filters.value.branch_id;
+        }
+        const response = await api.get('/inventory/users', { params });
+        users.value = Array.isArray(response.data?.data) ? response.data.data : [];
       } catch (error) {
         console.error('Erro ao carregar usuários:', error);
+        users.value = [];
       }
     };
 
@@ -290,6 +299,12 @@ export default {
       }, 500);
     };
 
+    const onBranchFilterChange = () => {
+      filters.value.user_id = null;
+      loadUsers();
+      loadMovements(1);
+    };
+
     const changePage = (page) => {
       loadMovements(page);
     };
@@ -310,6 +325,7 @@ export default {
       isGlobalAdmin,
       loadMovements,
       debouncedSearch,
+      onBranchFilterChange,
       changePage,
     };
   },
