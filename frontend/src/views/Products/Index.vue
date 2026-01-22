@@ -12,20 +12,30 @@
       <div class="hidden md:flex gap-2">
         <button
           @click="handleImport"
-          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors"
+          class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-700 transition-colors flex items-center gap-2"
         >
+          <ArrowUpTrayIcon class="h-5 w-5" />
           Importar Excel
         </button>
         <router-link
           :to="{ name: 'products.labels' }"
-          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors"
+          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
         >
+          <BarcodeIcon class="h-5 w-5" />
           Gerar Etiquetas
         </router-link>
         <button
-          @click="$router.push({ name: 'products.form' })"
-          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+          @click="showScanner = true"
+          class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
         >
+          <BoltIcon class="h-5 w-5" />
+          Conferência de Estoque
+        </button>
+        <button
+          @click="$router.push({ name: 'products.form' })"
+          class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <PlusIcon class="h-5 w-5" />
           Novo Produto
         </button>
       </div>
@@ -44,7 +54,7 @@
           <MenuButton class="p-2 rounded border border-slate-300 hover:bg-slate-50 transition-colors">
             <EllipsisVerticalIcon class="h-5 w-5 text-slate-600" />
           </MenuButton>
-          <MenuItems class="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-sm z-50">
+          <MenuItems class="absolute right-0 mt-2 w-56 bg-white rounded-lg border border-slate-200 shadow-sm z-50">
             <div class="py-1">
               <MenuItem v-slot="{ active }">
                 <router-link
@@ -54,9 +64,21 @@
                     'flex items-center gap-2 px-4 py-2 text-sm text-slate-700',
                   ]"
                 >
-                  <QrCodeIcon class="h-5 w-5" />
+                  <BarcodeIcon class="h-5 w-5" />
                   Gerar Etiquetas
                 </router-link>
+              </MenuItem>
+              <MenuItem v-slot="{ active }">
+                <button
+                  @click="showScanner = true"
+                  :class="[
+                    active ? 'bg-slate-100' : '',
+                    'w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 text-left',
+                  ]"
+                >
+                  <BoltIcon class="h-5 w-5" />
+                  Conferência de Estoque
+                </button>
               </MenuItem>
               <MenuItem v-slot="{ active }">
                 <button
@@ -191,7 +213,7 @@
                     class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
                     title="Gerar Etiquetas"
                   >
-                    <TicketIcon class="h-5 w-5" />
+                    <BarcodeIcon class="h-5 w-5" />
                   </button>
                   <button
                     @click="editProduct(product.id)"
@@ -245,6 +267,11 @@
       @close="isAvailabilityOpen = false"
     />
 
+    <ScannerDrawer
+      :show="showScanner"
+      @close="handleScannerClose"
+    />
+
     <input
       ref="fileInput"
       type="file"
@@ -263,12 +290,14 @@ import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
 import { useSettingsStore } from '@/stores/settings';
 import { useAuthStore } from '@/stores/auth';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassIcon, TicketIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, MagnifyingGlassIcon, BoltIcon } from '@heroicons/vue/24/outline';
+import BarcodeIcon from '@/components/icons/BarcodeIcon.vue';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
+import ScannerDrawer from '@/components/Inventory/ScannerDrawer.vue';
 import api from '@/services/api';
 
 let searchTimeout = null;
@@ -280,10 +309,10 @@ export default {
     TrashIcon,
     PlusIcon,
     EllipsisVerticalIcon,
-    QrCodeIcon,
+    BarcodeIcon,
     ArrowUpTrayIcon,
     MagnifyingGlassIcon,
-    TicketIcon,
+    BoltIcon,
     Menu,
     MenuButton,
     MenuItems,
@@ -291,6 +320,7 @@ export default {
     ProductThumb,
     SearchableSelect,
     StockAvailabilityModal,
+    ScannerDrawer,
   },
   setup() {
     const router = useRouter();
@@ -303,6 +333,7 @@ export default {
     const fileInput = ref(null);
     const isAvailabilityOpen = ref(false);
     const selectedProductId = ref(null);
+    const showScanner = ref(false);
     const filters = ref({
       search: '',
       category_id: '',
@@ -361,6 +392,11 @@ export default {
     const openAvailability = (id) => {
       selectedProductId.value = id;
       isAvailabilityOpen.value = true;
+    };
+
+    const handleScannerClose = () => {
+      showScanner.value = false;
+      loadProducts();
     };
 
     const deleteProduct = async (product) => {
@@ -502,6 +538,8 @@ export default {
       fileInput,
       isAvailabilityOpen,
       selectedProductId,
+      showScanner,
+      handleScannerClose,
       canViewGlobalStock,
       loadProducts,
       debouncedSearch,

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
 import { useToast } from 'vue-toastification';
@@ -8,6 +8,7 @@ import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
+import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
 
 const cashRegisterStore = useCashRegisterStore();
 const cartStore = useCartStore();
@@ -18,6 +19,7 @@ const searchQuery = ref('');
 const products = ref([]);
 const loadingProducts = ref(false);
 const searchTimeout = ref(null);
+const showPriceCheckModal = ref(false);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -193,6 +195,21 @@ async function handleCancelSale() {
   }
 }
 
+function handlePriceCheckClose() {
+  showPriceCheckModal.value = false;
+  nextTick(() => {
+    const el = document.querySelector('#product-search');
+    if (el) el.focus();
+  });
+}
+
+function handleF2Key(e) {
+  if (e.key !== 'F2') return;
+  if (!cashRegisterStore.isOpen || showPriceCheckModal.value) return;
+  e.preventDefault();
+  showPriceCheckModal.value = true;
+}
+
 onMounted(async () => {
   await checkCashRegisterStatus();
 
@@ -203,6 +220,12 @@ onMounted(async () => {
       searchInput.focus();
     }
   }
+
+  window.addEventListener('keydown', handleF2Key);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleF2Key);
 });
 </script>
 
@@ -422,7 +445,15 @@ onMounted(async () => {
               </span>
             </div>
 
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                class="border-slate-300 text-slate-700 hover:bg-slate-50"
+                @click="showPriceCheckModal = true"
+              >
+                F2 - Consultar Preço
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -436,12 +467,18 @@ onMounted(async () => {
                 variant="primary"
                 @click="handleFinalizeSale"
               >
-                Finalizar Venda (F2)
+                Finalizar Venda
               </Button>
             </div>
           </div>
         </div>
       </div>
+
+      <StockAvailabilityModal
+        mode="price-check"
+        :is-open="showPriceCheckModal"
+        @close="handlePriceCheckClose"
+      />
     </div>
   </div>
 </template>
