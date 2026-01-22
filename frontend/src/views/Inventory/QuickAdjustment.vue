@@ -8,7 +8,7 @@
         v-model="scanCode"
         @keyup.enter="handleScan"
         type="text"
-        placeholder="Escaneie o código de barras ou digite o SKU e tecle Enter..."
+        placeholder="Escaneie ou digite o código de barras"
         class="w-full p-4 text-center text-xl border-2 border-blue-300 rounded-lg shadow-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
         autofocus
       />
