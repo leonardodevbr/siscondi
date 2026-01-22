@@ -187,6 +187,13 @@
                     <MagnifyingGlassIcon class="h-5 w-5" />
                   </button>
                   <button
+                    @click="goToLabels(product)"
+                    class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                    title="Gerar Etiquetas"
+                  >
+                    <TagIcon class="h-5 w-5" />
+                  </button>
+                  <button
                     @click="editProduct(product.id)"
                     class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
                     title="Editar"
@@ -256,7 +263,7 @@ import { useProductStore } from '@/stores/product';
 import { useCategoryStore } from '@/stores/category';
 import { useSettingsStore } from '@/stores/settings';
 import { useAuthStore } from '@/stores/auth';
-import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { PencilSquareIcon, TrashIcon, PlusIcon, EllipsisVerticalIcon, QrCodeIcon, ArrowUpTrayIcon, MagnifyingGlassIcon, TagIcon } from '@heroicons/vue/24/outline';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { useAlert } from '@/composables/useAlert';
 import ProductThumb from '@/components/Common/ProductThumb.vue';
@@ -339,6 +346,15 @@ export default {
 
     const editProduct = (id) => {
       router.push({ name: 'products.form.edit', params: { id } });
+    };
+
+    const goToLabels = (product) => {
+      // Pega o SKU da primeira variação ou usa o nome do produto
+      const searchTerm = product.variants?.[0]?.sku || product.name;
+      router.push({
+        name: 'products.labels',
+        query: { search: searchTerm },
+      });
     };
 
     const openAvailability = (id) => {
@@ -490,6 +506,7 @@ export default {
       debouncedSearch,
       changePage,
       editProduct,
+      goToLabels,
       openAvailability,
       deleteProduct,
       handleImport,
