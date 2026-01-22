@@ -32,7 +32,8 @@ class InventoryMovementObserver
 
             $quantityChange = match ($inventoryMovement->type) {
                 'entry', 'return' => $inventoryMovement->quantity,
-                'exit', 'adjustment' => -$inventoryMovement->quantity,
+                'exit' => -$inventoryMovement->quantity,
+                'adjustment' => -$inventoryMovement->quantity,
                 default => 0,
             };
 

@@ -18,6 +18,34 @@
         </select>
       </div>
 
+      <div v-if="form.type === 'adjustment'">
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Operação *
+        </label>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="form.operation"
+              type="radio"
+              value="add"
+              required
+              class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+            />
+            <span class="text-sm text-slate-700">Adicionar Saldo</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="form.operation"
+              type="radio"
+              value="sub"
+              required
+              class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+            />
+            <span class="text-sm text-slate-700">Remover Saldo</span>
+          </label>
+        </div>
+      </div>
+
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">
           Quantidade *
@@ -26,10 +54,14 @@
           v-model.number="form.quantity"
           type="number"
           min="1"
+          step="1"
           required
           class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Digite a quantidade"
+          placeholder="Digite a quantidade (sempre positiva)"
         />
+        <p class="text-xs text-slate-500 mt-1">
+          Digite sempre um valor positivo. A operação será aplicada automaticamente.
+        </p>
       </div>
 
       <div>
@@ -103,6 +135,7 @@ const loading = ref(false)
 
 const form = ref({
   type: '',
+  operation: 'add',
   quantity: 1,
   reason: '',
 })
@@ -111,9 +144,18 @@ watch(() => props.show, (newVal) => {
   if (newVal) {
     form.value = {
       type: '',
+      operation: 'add',
       quantity: 1,
       reason: '',
     }
+  }
+})
+
+watch(() => form.value.type, (newType) => {
+  if (newType === 'entry' || newType === 'return') {
+    form.value.operation = 'add'
+  } else if (newType === 'exit') {
+    form.value.operation = 'sub'
   }
 })
 
@@ -132,6 +174,11 @@ const handleSubmit = async () => {
     return
   }
 
+  if (form.value.type === 'adjustment' && !form.value.operation) {
+    toast.error('Selecione a operação (Adicionar ou Remover)')
+    return
+  }
+
   if ((form.value.type === 'exit' || form.value.type === 'adjustment') && !form.value.reason.trim()) {
     toast.error('O motivo é obrigatório para saídas e ajustes')
     return
@@ -140,11 +187,17 @@ const handleSubmit = async () => {
   try {
     loading.value = true
 
+    const quantity = Math.abs(form.value.quantity)
+    const operation = form.value.type === 'adjustment' 
+      ? form.value.operation 
+      : (form.value.type === 'entry' || form.value.type === 'return' ? 'add' : 'sub')
+
     const response = await api.post('/inventory/adjustment', {
       product_id: props.productId,
       variation_id: props.variationId,
       type: form.value.type,
-      quantity: form.value.quantity,
+      operation: operation,
+      quantity: quantity,
       reason: form.value.reason || null,
     })
 

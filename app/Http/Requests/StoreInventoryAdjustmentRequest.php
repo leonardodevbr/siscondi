@@ -28,6 +28,7 @@ class StoreInventoryAdjustmentRequest extends FormRequest
             'product_id' => ['required', 'integer', 'exists:products,id'],
             'variation_id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'type' => ['required', 'string', Rule::in(['entry', 'exit', 'adjustment', 'return'])],
+            'operation' => ['nullable', 'string', Rule::in(['add', 'sub'])],
             'quantity' => ['required', 'integer', 'min:1'],
             'reason' => ['nullable', 'string', 'max:500'],
         ];

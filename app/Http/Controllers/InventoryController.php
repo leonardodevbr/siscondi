@@ -18,22 +18,74 @@ class InventoryController extends Controller
      */
     public function storeAdjustment(StoreInventoryAdjustmentRequest $request): JsonResponse
     {
+        $user = auth()->user();
+        $branchId = $user?->branch_id ?? request()->header('X-Branch-ID');
+        
+        if (! $branchId) {
+            return response()->json([
+                'message' => 'Filial não identificada. Não é possível realizar a movimentação.',
+            ], 422);
+        }
+
+        $branchId = (int) $branchId;
+
+        $product = Product::with(['variants.inventories' => function ($query) use ($branchId): void {
+            $query->where('branch_id', $branchId);
+        }])->findOrFail($request->product_id);
+
+        $variant = null;
+        $inventory = null;
+        $currentStock = 0;
+
+        if ($request->variation_id) {
+            $variant = $product->variants()->find($request->variation_id);
+            if (! $variant) {
+                return response()->json([
+                    'message' => 'Variação não encontrada.',
+                ], 404);
+            }
+            $inventory = $variant->inventories->first();
+            $currentStock = $inventory?->quantity ?? 0;
+        } else {
+            $variant = $product->variants()->first();
+            if (! $variant) {
+                return response()->json([
+                    'message' => 'Produto sem variação cadastrada.',
+                ], 422);
+            }
+            $inventory = $variant->inventories->first();
+            $currentStock = $inventory?->quantity ?? 0;
+        }
+
+        $quantity = abs((int) $request->quantity);
+        $operation = $request->operation ?? $this->getDefaultOperation($request->type);
+        
+        $finalType = $request->type;
+        if ($request->type === 'adjustment') {
+            $finalType = $operation === 'add' ? 'entry' : 'adjustment';
+        }
+        
+        $willSubtract = $operation === 'sub' || $finalType === 'exit' || $finalType === 'adjustment';
+
+        if ($willSubtract && $currentStock < $quantity) {
+            return response()->json([
+                'message' => "Saldo insuficiente para realizar esta baixa. Estoque atual: {$currentStock}",
+            ], 422);
+        }
+
         $movement = InventoryMovement::create([
             'product_id' => $request->product_id,
             'variation_id' => $request->variation_id,
             'user_id' => auth()->id(),
-            'type' => $request->type,
-            'quantity' => $request->quantity,
+            'type' => $finalType,
+            'quantity' => $quantity,
             'reason' => $request->reason,
         ]);
 
-        $product = Product::with(['variants.inventories' => function ($query): void {
-            $user = auth()->user();
-            $branchId = $user?->branch_id ?? request()->header('X-Branch-ID');
-            if ($branchId) {
-                $query->where('branch_id', $branchId);
-            }
-        }])->findOrFail($request->product_id);
+        $product->refresh();
+        $product->load(['variants.inventories' => function ($query) use ($branchId): void {
+            $query->where('branch_id', $branchId);
+        }]);
 
         if ($request->variation_id) {
             $variant = $product->variants()->find($request->variation_id);
@@ -56,6 +108,18 @@ class InventoryController extends Controller
             ],
             'current_stock' => $currentStock,
         ], 201);
+    }
+
+    /**
+     * Get default operation based on movement type.
+     */
+    private function getDefaultOperation(string $type): string
+    {
+        return match ($type) {
+            'entry', 'return' => 'add',
+            'exit', 'adjustment' => 'sub',
+            default => 'add',
+        };
     }
 
     /**
