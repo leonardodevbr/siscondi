@@ -25,6 +25,8 @@ const { confirm, info } = useAlert();
 
 const searchQuery = ref('');
 const lastScannedCode = ref('');
+const scanBuffer = ref('');
+const scanLastKeyTime = ref(0);
 const products = ref([]);
 const loadingProducts = ref(false);
 const searchTimeout = ref(null);
@@ -103,50 +105,25 @@ function clearScanAndFocus() {
   });
 }
 
-async function handleScan(e) {
-  if (e?.key !== 'Enter') return;
-  const code = searchQuery.value.trim();
-  if (!code) return;
-
-  lastScannedCode.value = code;
-
-  try {
-    const { data } = await api.get('/inventory/scan', { params: { code } });
-    const stock = data.current_stock ?? 0;
-    if (stock < 1) {
-      toast.error('Sem estoque nesta filial.');
-      clearScanAndFocus();
-      return;
-    }
-    const product = {
-      id: data.product_id,
-      name: data.name,
-      price: data.price ?? 0,
-      current_stock: stock,
-    };
-    cartStore.addItem(product, 1, data.variation_id);
-    toast.success(`${data.name} adicionado.`);
-  } catch (err) {
-    const msg = err.response?.data?.message ?? 'Produto não encontrado.';
-    toast.error(msg);
-  }
-  clearScanAndFocus();
+function viaScan(code) {
+  return /^\d+$/.test(code) || code.length >= 8;
 }
 
-function handleBarcodeSearch(e) {
-  if (e.key !== 'Enter') return;
-  const code = searchQuery.value.trim();
-  if (!code) return;
-
-  lastScannedCode.value = code;
-
-  const viaScan = /^\d+$/.test(code) || code.length >= 8;
-  if (viaScan) {
-    handleScan(e);
+async function processScanApi(code) {
+  const { data } = await api.get('/inventory/scan', { params: { code } });
+  const stock = data.current_stock ?? 0;
+  if (stock < 1) {
+    toast.error('Sem estoque nesta filial.');
     return;
   }
-
-  runProductSearchAndAdd(code);
+  const product = {
+    id: data.product_id,
+    name: data.name,
+    price: data.price ?? 0,
+    current_stock: stock,
+  };
+  cartStore.addItem(product, 1, data.variation_id);
+  toast.success(`${data.name} adicionado.`);
 }
 
 async function runProductSearchAndAdd(code) {
@@ -160,19 +137,16 @@ async function runProductSearchAndAdd(code) {
     if (!product && list.length > 0) product = list[0];
     if (!product) {
       toast.error('Produto não encontrado.');
-      clearScanAndFocus();
       return;
     }
     const variant = product.variants?.find((v) => v.barcode && String(v.barcode) === code) ?? product.variants?.[0];
     if (!variant) {
       toast.error('Produto sem variação.');
-      clearScanAndFocus();
       return;
     }
     const stock = product.current_stock ?? variant.current_stock ?? 0;
     if (!stock || stock < 1) {
       toast.error('Sem estoque nesta filial.');
-      clearScanAndFocus();
       return;
     }
     cartStore.addItem(product, 1, variant.id);
@@ -180,7 +154,64 @@ async function runProductSearchAndAdd(code) {
   } catch {
     toast.error('Erro ao buscar produto.');
   }
-  clearScanAndFocus();
+}
+
+async function handleScannedCode(code) {
+  const c = String(code).trim();
+  if (!c) return;
+  lastScannedCode.value = c;
+
+  try {
+    if (viaScan(c)) {
+      try {
+        await processScanApi(c);
+      } catch (err) {
+        const msg = err.response?.data?.message ?? 'Produto não encontrado.';
+        toast.error(msg);
+      }
+    } else {
+      await runProductSearchAndAdd(c);
+    }
+  } finally {
+    clearScanAndFocus();
+  }
+}
+
+function handleBarcodeSearch(e) {
+  if (e.key !== 'Enter') return;
+  const code = searchQuery.value.trim();
+  if (!code) return;
+  handleScannedCode(code);
+}
+
+function handleScanBufferKeydown(e) {
+  if (!cashRegisterStore.isOpen) return;
+  const el = document.activeElement;
+  const tag = el?.tagName?.toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+
+  const key = e.key;
+  const now = Date.now();
+
+  if (key === 'Enter') {
+    const buf = scanBuffer.value.trim();
+    const rapid = now - scanLastKeyTime.value < 50;
+    scanBuffer.value = '';
+    if (buf && rapid) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleScannedCode(buf);
+    }
+    return;
+  }
+
+  if (key.length === 1 && /[\dA-Za-z\-.]/.test(key)) {
+    if (now - scanLastKeyTime.value > 50) scanBuffer.value = '';
+    scanBuffer.value += key;
+    scanLastKeyTime.value = now;
+  } else {
+    scanBuffer.value = '';
+  }
 }
 
 function handleAddProduct(product) {
@@ -463,10 +494,12 @@ onMounted(async () => {
     focusSearch();
   }
   window.addEventListener('keydown', handleKeydown);
+  window.addEventListener('keydown', handleScanBufferKeydown, true);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener('keydown', handleScanBufferKeydown, true);
 });
 </script>
 
@@ -529,6 +562,7 @@ onUnmounted(() => {
                 type="text"
                 placeholder="Bipar ou digitar produto..."
                 class="input-base w-full text-lg"
+                autocomplete="off"
                 autofocus
                 @input="handleSearchInput"
                 @keyup.enter="handleBarcodeSearch"
@@ -552,9 +586,9 @@ onUnmounted(() => {
                   type="button"
                   class="flex flex-col rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
                   :class="{
-                    'cursor-not-allowed opacity-50': !(product.current_stock ?? product.stock_quantity) || (product.current_stock ?? product.stock_quantity) === 0,
+                    'cursor-not-allowed opacity-50': (product.current_stock ?? product.stock_quantity) === 0,
                   }"
-                  :disabled="!(product.current_stock ?? product.stock_quantity) || (product.current_stock ?? product.stock_quantity) === 0"
+                  :disabled="(product.current_stock ?? product.stock_quantity) === 0"
                   @click="handleAddProduct(product)"
                 >
                   <p class="text-sm font-semibold text-slate-800">{{ product.name }}</p>
@@ -562,7 +596,7 @@ onUnmounted(() => {
                   <p class="mt-2 text-sm font-bold text-blue-600">
                     {{ formatCurrency(product.effective_price ?? product.sell_price) }}
                   </p>
-                  <p v-if="(product.current_stock ?? product.stock_quantity) > 0" class="mt-1 text-xs text-slate-400">
+                  <p v-if="Number(product.current_stock ?? product.stock_quantity ?? 0) > 0" class="mt-1 text-xs text-slate-400">
                     Estoque: {{ product.current_stock ?? product.stock_quantity }}
                   </p>
                   <p v-else class="mt-1 text-xs text-red-500">Sem estoque</p>

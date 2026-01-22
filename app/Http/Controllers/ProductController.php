@@ -90,7 +90,27 @@ class ProductController extends Controller
 
         $products = $query->paginate(15);
 
+        $this->hydrateCurrentStockForBranch($products->items(), $branchId);
+
         return ProductResource::collection($products)->response();
+    }
+
+    /**
+     * @param array<int, Product> $productModels
+     */
+    private function hydrateCurrentStockForBranch(array $productModels, ?int $branchId): void
+    {
+        foreach ($productModels as $product) {
+            $total = 0;
+            foreach ($product->variants ?? [] as $variant) {
+                $qty = $variant->inventories->isEmpty()
+                    ? 0
+                    : (int) $variant->inventories->sum('quantity');
+                $variant->setAttribute('current_stock', $qty);
+                $total += $qty;
+            }
+            $product->setAttribute('current_stock', $total);
+        }
     }
 
     /**
