@@ -28,7 +28,7 @@ class GenerateLabelRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.variant_id' => ['required', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000'],
-            'layout' => ['required', 'string', Rule::in(['thermal', 'a4'])],
+            'layout' => ['required', 'string', Rule::in(['thermal', 'pimaco_6181', 'a4_compact'])],
         ];
     }
 }

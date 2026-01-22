@@ -70,7 +70,13 @@ class LabelController extends Controller
 
         $storeName = config('app.name', 'Loja');
         
-        $view = $layout === 'thermal' ? 'labels.thermal' : 'labels.sheet';
+        // Define qual view usar baseado no layout
+        $view = match ($layout) {
+            'thermal' => 'labels.thermal',
+            'pimaco_6181' => 'labels.pimaco_6181',
+            'a4_compact' => 'labels.sheet',
+            default => 'labels.sheet',
+        };
         
         $pdf = Pdf::loadView($view, [
             'labels' => $labelData,
@@ -84,7 +90,15 @@ class LabelController extends Controller
             $pdf->setOption('margin-left', 0);
             $pdf->setOption('margin-right', 0);
             $pdf->setOption('enable-local-file-access', true);
+        } elseif ($layout === 'pimaco_6181') {
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->setOption('margin-top', 0);
+            $pdf->setOption('margin-bottom', 0);
+            $pdf->setOption('margin-left', 0);
+            $pdf->setOption('margin-right', 0);
+            $pdf->setOption('enable-local-file-access', true);
         } else {
+            // a4_compact
             $pdf->setPaper('a4', 'portrait');
             $pdf->setOption('margin-top', 5);
             $pdf->setOption('margin-bottom', 5);
