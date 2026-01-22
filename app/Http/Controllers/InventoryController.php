@@ -413,6 +413,7 @@ class InventoryController extends Controller
                 'name' => $name,
                 'current_stock' => $qty,
                 'price' => $variation->getEffectivePrice(),
+                'variation_attributes' => $attrs,
             ]);
         }
 
@@ -450,6 +451,7 @@ class InventoryController extends Controller
                 'name' => $name,
                 'current_stock' => $qty,
                 'price' => $defaultVariation->getEffectivePrice(),
+                'variation_attributes' => $attrs,
             ]);
         }
 

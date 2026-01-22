@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
+import { setupCartPersist } from '@/stores/cart';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
 import { useToast } from 'vue-toastification';
@@ -41,16 +42,28 @@ const isFullscreen = ref(false);
 const selectedCartIndex = ref(null);
 const cartListRef = ref(null);
 const customerCpf = ref('');
+const showStartSaleModal = ref(false);
+const startSaleCpfInput = ref('');
 
 const cartTotal = computed(() => cartStore.subtotal);
 
+const isIdle = computed(() => !cartStore.saleStarted);
 const operatorName = computed(() => authStore.user?.name ?? 'Operador');
 const branchName = computed(() => {
   const b = appStore.currentBranch ?? authStore.user?.branch;
   return b?.name ?? 'Filial não definida';
 });
+const customerLabel = computed(() => {
+  const c = cartStore.customer;
+  if (!c?.document) return 'Consumidor Final';
+  const d = String(c.document).replace(/\D/g, '');
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return c.document;
+});
 
-const shortcuts = [
+const shortcutsIdle = [{ key: 'F1', label: 'Iniciar Venda' }];
+const shortcutsSale = [
   { key: 'F1', label: 'Ajuda' },
   { key: 'F2', label: 'Consultar Preço' },
   { key: 'F3', label: 'Remover Item' },
@@ -59,6 +72,48 @@ const shortcuts = [
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Fechar / Limpar Busca' },
 ];
+const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
+
+function formatVariantLabel(attributes) {
+  if (!attributes || Object.keys(attributes).length === 0) {
+    return '';
+  }
+  const values = [];
+  const sizeKeys = ['tamanho', 'size', 'tam'];
+  const colorKeys = ['cor', 'color', 'colour'];
+  for (const sizeKey of sizeKeys) {
+    for (const [key, value] of Object.entries(attributes)) {
+      if (key.toLowerCase().trim() === sizeKey) {
+        values.push(String(value).trim());
+        break;
+      }
+    }
+  }
+  for (const colorKey of colorKeys) {
+    for (const [key, value] of Object.entries(attributes)) {
+      if (key.toLowerCase().trim() === colorKey) {
+        values.push(String(value).trim());
+        break;
+      }
+    }
+  }
+  return values.length > 0 ? values.join(' / ') : '';
+}
+
+function formatProductNameWithVariant(product) {
+  if (!product.variants || product.variants.length === 0) {
+    return product.name;
+  }
+  const variant = product.variants[0];
+  const attrs = variant.attributes ?? {};
+  const variantLabel = formatVariantLabel(attrs);
+  return variantLabel ? `${product.name} - ${variantLabel}` : product.name;
+}
+
+function formatCartItemName(item) {
+  const variantLabel = formatVariantLabel(item.variant_attributes);
+  return variantLabel ? `${item.product.name} - ${variantLabel}` : item.product.name;
+}
 
 async function checkCashRegisterStatus() {
   try {
@@ -121,6 +176,12 @@ async function processScanApi(code) {
     name: data.name,
     price: data.price ?? 0,
     current_stock: stock,
+    variants: data.variation_id ? [
+      {
+        id: data.variation_id,
+        attributes: data.variation_attributes ?? {},
+      },
+    ] : [],
   };
   cartStore.addItem(product, 1, data.variation_id);
   toast.success(`${data.name} adicionado.`);
@@ -185,7 +246,7 @@ function handleBarcodeSearch(e) {
 }
 
 function handleScanBufferKeydown(e) {
-  if (!cashRegisterStore.isOpen) return;
+  if (!cashRegisterStore.isOpen || !cartStore.saleStarted) return;
   const el = document.activeElement;
   const tag = el?.tagName?.toLowerCase();
   if (tag === 'input' || tag === 'textarea') return;
@@ -247,7 +308,7 @@ function handleUpdateQuantity(index, newQuantity) {
 }
 
 function handleClearCart() {
-  cartStore.clearCart();
+  cartStore.clearForCancel();
   toast.info('Itens da venda limpos.');
 }
 
@@ -278,7 +339,7 @@ async function handleFinalizeSale() {
       payments: [{ method: 'money', amount: cartTotal.value }],
     });
     toast.success('Venda finalizada.');
-    cartStore.clearCart();
+    cartStore.clearForFinalize();
     await cashRegisterStore.checkStatus();
   } catch (err) {
     const msg = err.response?.data?.message ?? 'Erro ao finalizar venda.';
@@ -295,7 +356,7 @@ async function handleCancelSale() {
     'blue'
   );
   if (ok) {
-    cartStore.clearCart();
+    cartStore.clearForCancel();
     toast.info('Venda cancelada.');
   }
 }
@@ -357,6 +418,50 @@ function closeCloseRegisterModal() {
   closeRegisterFinalBalance.value = '';
 }
 
+function openStartSaleModal() {
+  startSaleCpfInput.value = '';
+  showStartSaleModal.value = true;
+}
+
+function closeStartSaleModal() {
+  showStartSaleModal.value = false;
+  startSaleCpfInput.value = '';
+}
+
+function confirmStartSale() {
+  const raw = startSaleCpfInput.value?.replace(/\D/g, '').trim() ?? '';
+  if (raw) {
+    cartStore.setCustomer({ document: raw });
+  } else {
+    cartStore.setCustomer(null);
+  }
+  cartStore.setSaleStarted(true);
+  closeStartSaleModal();
+  nextTick(focusSearch);
+}
+
+function skipStartSale() {
+  cartStore.setCustomer(null);
+  cartStore.setSaleStarted(true);
+  closeStartSaleModal();
+  nextTick(focusSearch);
+}
+
+function handleReloadBlock(e) {
+  if (!cashRegisterStore.isOpen) return;
+  const k = e.key;
+  const mod = e.ctrlKey || e.metaKey;
+  const reload =
+    k === 'F5' ||
+    (mod && (k === 'r' || k === 'R')) ||
+    (mod && e.shiftKey && (k === 'r' || k === 'R'));
+  if (reload) {
+    e.preventDefault();
+    e.stopPropagation();
+    toast.warning('Para atualizar, encerre a venda.');
+  }
+}
+
 async function confirmCloseRegister() {
   const v = parseFloat(closeRegisterFinalBalance.value);
   if (Number.isNaN(v) || v < 0) {
@@ -381,14 +486,12 @@ function handleKeydown(e) {
   const key = e.key;
   const isF = /^F([1-9]|1[0-2])$/.test(key);
 
-  if (key === 'F5') {
-    e.preventDefault();
-    info('Atualizar página', 'Finalize ou cancele a venda antes.');
-    return;
-  }
-
   if (key === 'Escape') {
     e.preventDefault();
+    if (showStartSaleModal.value) {
+      skipStartSale();
+      return;
+    }
     if (showHelpModal.value) {
       showHelpModal.value = false;
       nextTick(focusSearch);
@@ -412,9 +515,11 @@ function handleKeydown(e) {
       closeCloseRegisterModal();
       return;
     }
-    searchQuery.value = '';
-    products.value = [];
-    focusSearch();
+    if (cartStore.saleStarted) {
+      searchQuery.value = '';
+      products.value = [];
+      focusSearch();
+    }
     return;
   }
 
@@ -422,9 +527,22 @@ function handleKeydown(e) {
   e.preventDefault();
 
   if (key === 'F1') {
-    showHelpModal.value = true;
+    if (isIdle.value && !showStartSaleModal.value) {
+      openStartSaleModal();
+      return;
+    }
+    if (isIdle.value && showStartSaleModal.value) {
+      skipStartSale();
+      return;
+    }
+    if (cartStore.saleStarted) {
+      showHelpModal.value = true;
+    }
     return;
   }
+
+  if (isIdle.value) return;
+
   if (key === 'F2') {
     if (!showPriceCheckModal.value) {
       document.querySelector('#product-search')?.blur();
@@ -489,22 +607,26 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 onMounted(async () => {
   await checkCashRegisterStatus();
-  if (cashRegisterStore.isOpen) {
+  cartStore.hydrate();
+  setupCartPersist(cartStore);
+  if (cashRegisterStore.isOpen && cartStore.saleStarted) {
     await nextTick();
     focusSearch();
   }
   window.addEventListener('keydown', handleKeydown);
   window.addEventListener('keydown', handleScanBufferKeydown, true);
+  window.addEventListener('keydown', handleReloadBlock, true);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
+  window.removeEventListener('keydown', handleReloadBlock, true);
 });
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
+  <div class="flex h-full min-h-0 flex-col overflow-x-hidden">
     <PosClosedState v-if="!cashRegisterStore.isOpen" />
 
     <template v-else>
@@ -516,6 +638,10 @@ onUnmounted(() => {
           <span>{{ operatorName }}</span>
           <span class="text-slate-400">|</span>
           <span>{{ branchName }}</span>
+          <template v-if="cartStore.saleStarted">
+            <span class="text-slate-400">|</span>
+            <span>Cliente: {{ customerLabel }}</span>
+          </template>
         </div>
         <div class="flex items-center gap-2">
           <button
@@ -538,7 +664,23 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <div class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-0">
+      <div v-if="isIdle" class="flex min-h-0 flex-1 flex-col pb-16">
+        <div class="flex flex-1 flex-col items-center justify-center gap-6 px-4">
+          <div class="text-center">
+            <h2 class="text-4xl font-bold text-slate-800">
+              CAIXA LIVRE
+            </h2>
+            <p class="mt-2 text-xl text-slate-600">
+              PRÓXIMO CLIENTE
+            </p>
+          </div>
+          <p class="text-slate-500">
+            Pressione F1 para iniciar venda
+          </p>
+        </div>
+      </div>
+
+      <div v-else class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-16">
         <div class="flex shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
           <div>
             <p class="text-xs text-slate-500">Saldo do Caixa</p>
@@ -591,7 +733,7 @@ onUnmounted(() => {
                   :disabled="(product.current_stock ?? product.stock_quantity) === 0"
                   @click="handleAddProduct(product)"
                 >
-                  <p class="text-sm font-semibold text-slate-800">{{ product.name }}</p>
+                  <p class="text-sm font-semibold text-slate-800">{{ formatProductNameWithVariant(product) }}</p>
                   <p class="mt-1 text-xs text-slate-500">{{ product.variants?.[0]?.sku ?? product.sku ?? '-' }}</p>
                   <p class="mt-2 text-sm font-bold text-blue-600">
                     {{ formatCurrency(product.effective_price ?? product.sell_price) }}
@@ -628,7 +770,7 @@ onUnmounted(() => {
                 >
                   <div class="flex items-start justify-between">
                     <div class="flex-1">
-                      <p class="text-sm font-semibold text-slate-800">{{ item.product.name }}</p>
+                      <p class="text-sm font-semibold text-slate-800">{{ formatCartItemName(item) }}</p>
                       <p class="mt-1 text-xs text-slate-500">
                         {{ formatCurrency(item.unit_price) }} x {{ item.quantity }}
                       </p>
@@ -693,20 +835,50 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="-mx-4 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
-          <span
-            v-for="s in shortcuts"
-            :key="s.key"
-            class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-medium ring-1 ring-slate-600"
-          >
-            <kbd class="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-xs">{{ s.key }}</kbd>
-            <span>{{ s.label }}</span>
-          </span>
-        </div>
+      <div v-if="isIdle" class="fixed bottom-0 left-0 right-0 z-50 flex shrink-0 justify-center bg-slate-800 px-4 py-2 text-sm text-white">
+        <span class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-medium ring-1 ring-slate-600">
+          <kbd class="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-xs">F1</kbd>
+          <span>Iniciar Venda</span>
+        </span>
+      </div>
+
+      <div v-else class="fixed bottom-0 left-0 right-0 z-50 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
+        <span
+          v-for="s in shortcuts"
+          :key="s.key"
+          class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-medium ring-1 ring-slate-600"
+        >
+          <kbd class="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-xs">{{ s.key }}</kbd>
+          <span>{{ s.label }}</span>
+        </span>
       </div>
 
       <StockAvailabilityModal mode="price-check" :is-open="showPriceCheckModal" @close="handlePriceCheckClose" />
+
+      <Modal :is-open="showStartSaleModal" title="Identificar Cliente na Nota?" @close="skipStartSale">
+        <div class="space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">CPF / CNPJ (opcional)</label>
+            <input
+              v-model="startSaleCpfInput"
+              type="text"
+              placeholder="000.000.000-00 ou 00.000.000/0001-00"
+              class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              @keydown.enter.prevent="confirmStartSale"
+            >
+          </div>
+          <div class="flex justify-end gap-2">
+            <Button type="button" variant="outline" @click="skipStartSale">
+              Sem CPF
+            </Button>
+            <Button type="button" variant="primary" @click="confirmStartSale">
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal :is-open="showHelpModal" title="Atalhos do PDV" @close="closeHelp">
         <ul class="space-y-2 text-slate-700">

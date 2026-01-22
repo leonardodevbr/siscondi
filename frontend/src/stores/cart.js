@@ -1,9 +1,48 @@
 import { defineStore } from 'pinia';
 import currency from 'currency.js';
 
+const PERSIST_KEY = 'pdv_cart';
+
+function persist(state) {
+  const payload = {
+    items: state.items,
+    customer: state.customer,
+    discount: state.discount,
+    saleStarted: state.saleStarted,
+  };
+  if (!payload.saleStarted && payload.items.length === 0 && !payload.customer) {
+    try {
+      window.localStorage.removeItem(PERSIST_KEY);
+    } catch {
+      // ignore
+    }
+    return;
+  }
+  try {
+    window.localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
+function load() {
+  try {
+    const raw = window.localStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: [],
+    customer: null,
+    discount: 0,
+    saleStarted: false,
   }),
   getters: {
     subtotal(state) {
@@ -17,6 +56,30 @@ export const useCartStore = defineStore('cart', {
     },
   },
   actions: {
+    hydrate() {
+      const data = load();
+      if (!data) return;
+      if (Array.isArray(data.items)) this.items = data.items;
+      if (data.customer != null) this.customer = data.customer;
+      if (typeof data.discount === 'number') this.discount = data.discount;
+      if (data.saleStarted === true) this.saleStarted = true;
+    },
+    clearPersisted() {
+      try {
+        window.localStorage.removeItem(PERSIST_KEY);
+      } catch {
+        // ignore
+      }
+    },
+    setCustomer(customer) {
+      this.customer = customer;
+    },
+    setSaleStarted(value) {
+      this.saleStarted = !!value;
+    },
+    setDiscount(value) {
+      this.discount = typeof value === 'number' ? value : 0;
+    },
     addItem(product, quantity = 1, productVariantId = null) {
       const variantId = productVariantId ?? product.variants?.[0]?.id;
       if (!variantId) {
@@ -42,6 +105,8 @@ export const useCartStore = defineStore('cart', {
         existing.total = currency(existing.unit_price).multiply(existing.quantity).value;
       } else {
         const unitPrice = parseFloat(product.effective_price ?? product.price ?? product.sell_price ?? 0);
+        const variant = product.variants?.find((v) => v.id === variantId) ?? product.variants?.[0];
+        const variantAttributes = variant?.attributes ?? {};
         this.items.push({
           product: {
             id: product.id,
@@ -51,6 +116,7 @@ export const useCartStore = defineStore('cart', {
             stock_quantity: stock,
           },
           product_variant_id: variantId,
+          variant_attributes: variantAttributes,
           quantity,
           unit_price: unitPrice,
           total: currency(unitPrice).multiply(quantity).value,
@@ -81,6 +147,23 @@ export const useCartStore = defineStore('cart', {
     },
     clearCart() {
       this.items = [];
+      this.customer = null;
+      this.discount = 0;
+      this.saleStarted = false;
+    },
+    clearForCancel() {
+      this.clearCart();
+      this.clearPersisted();
+    },
+    clearForFinalize() {
+      this.clearCart();
+      this.clearPersisted();
     },
   },
 });
+
+export function setupCartPersist(store) {
+  store.$subscribe(() => {
+    persist(store.$state);
+  });
+}
