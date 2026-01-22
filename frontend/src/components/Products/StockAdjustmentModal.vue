@@ -140,6 +140,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  initialType: {
+    type: String,
+    default: '',
+  },
   autoFocusQuantity: {
     type: Boolean,
     default: false,
@@ -159,16 +163,24 @@ const form = ref({
   reason: '',
 })
 
+const getDefaultOperation = (type) => {
+  if (type === 'entry' || type === 'return') return 'add'
+  if (type === 'exit') return 'sub'
+  return 'add'
+}
+
 watch(() => props.show, (newVal) => {
   if (newVal) {
+    const initialType = props.initialType || (props.autoFocusQuantity ? 'adjustment' : '')
+    
     form.value = {
-      type: props.autoFocusQuantity ? 'adjustment' : '',
-      operation: 'add',
+      type: initialType,
+      operation: getDefaultOperation(initialType),
       quantity: 1,
       reason: '',
     }
     
-    if (props.autoFocusQuantity) {
+    if (props.autoFocusQuantity || props.initialType) {
       nextTick(() => {
         quantityInput.value?.focus()
         quantityInput.value?.select()

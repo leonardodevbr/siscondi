@@ -3,9 +3,29 @@
     class="flex flex-col items-center justify-center h-[calc(100vh-170px)] p-4 bg-gray-100"
     @click="focusInput"
   >
-    <h1 class="text-3xl font-bold mb-8 text-gray-800">Ajuste Rápido de Estoque</h1>
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">Ajuste Rápido de Estoque</h1>
 
     <div class="w-full max-w-md">
+      <div class="mb-4">
+        <p class="text-sm font-medium text-gray-600 mb-2 text-center">Tipo de Movimentação</p>
+        <div class="flex rounded-lg overflow-hidden border border-gray-300 shadow-sm">
+          <button
+            v-for="option in operationTypes"
+            :key="option.value"
+            type="button"
+            @click="defaultOperationType = option.value"
+            :class="[
+              'flex-1 py-3 px-2 text-sm font-semibold transition-all duration-200 focus:outline-none',
+              defaultOperationType === option.value
+                ? option.activeClass
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            ]"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
       <input
         ref="barcodeInput"
         v-model="scanCode"
@@ -50,6 +70,7 @@
       :variation-id="selectedProduct.variation_id"
       :product-name="selectedProduct.name"
       :current-stock="selectedProduct.current_stock"
+      :initial-type="defaultOperationType"
       :auto-focus-quantity="true"
       @close="handleModalClose"
       @adjustment-made="handleAdjustmentMade"
@@ -75,6 +96,15 @@ const selectedProduct = ref({
 const productNotFound = ref(false);
 const lastMovements = ref([]);
 const toast = useToast();
+
+const defaultOperationType = ref('entry');
+
+const operationTypes = [
+  { value: 'entry', label: 'Entrada', activeClass: 'bg-green-600 text-white' },
+  { value: 'exit', label: 'Saída', activeClass: 'bg-red-600 text-white' },
+  { value: 'adjustment', label: 'Ajuste', activeClass: 'bg-blue-600 text-white' },
+  { value: 'return', label: 'Devolução', activeClass: 'bg-amber-500 text-white' },
+];
 
 const focusInput = () => {
   if (!showAdjustmentModal.value && barcodeInput.value) {
