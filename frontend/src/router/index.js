@@ -77,13 +77,13 @@ const routes = [
         path: 'inventory/movements',
         name: 'inventory.movements',
         component: MovementsIndex,
-        meta: { title: 'Histórico de Movimentações' },
+        meta: { title: 'Histórico de Movimentações', roles: ['super-admin', 'manager', 'stockist'] },
       },
       {
         path: 'inventory/quick',
         name: 'inventory.quick',
         component: QuickAdjustment,
-        meta: { title: 'Ajuste Rápido de Estoque' },
+        meta: { title: 'Ajuste Rápido de Estoque', roles: ['super-admin', 'manager', 'stockist'] },
       },
       {
         path: 'customers',

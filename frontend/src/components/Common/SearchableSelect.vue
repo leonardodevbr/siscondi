@@ -4,7 +4,7 @@
       {{ label }}
     </label>
     <div
-      class="relative"
+      class="relative overflow-visible"
       :class="filterStyle ? 'filter-select-wrapper' : ''"
     >
       <Multiselect
@@ -89,11 +89,22 @@ watch(internalValue, (val) => {
 </script>
 
 <style scoped>
+.filter-select-wrapper {
+  min-height: 2.5rem;
+}
 .filter-select-wrapper :deep(.multiselect) {
-  @apply min-h-10 h-10 border border-slate-300 rounded text-sm;
+  min-height: 2.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  box-sizing: border-box;
+  overflow: visible;
 }
 .filter-select-wrapper :deep(.multiselect.is-active) {
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6;
+  border-color: #3b82f6;
 }
 </style>
 

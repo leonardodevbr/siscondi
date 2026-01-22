@@ -324,6 +324,7 @@ class InventoryController extends Controller
 
     /**
      * Get list of users for filter dropdown.
+     * Users with branch: only same branch. Super Admin: all, or filter by request branch_id.
      */
     public function users(Request $request): JsonResponse
     {
@@ -332,7 +333,8 @@ class InventoryController extends Controller
         ]);
 
         $user = auth()->user();
-        $userBranchId = $user?->branch_id ? (int) $user->branch_id : null;
+        $userBranchId = $user?->branch_id ?? $user?->branch?->id;
+        $userBranchId = $userBranchId ? (int) $userBranchId : null;
 
         $query = User::select('id', 'name')->orderBy('name');
 

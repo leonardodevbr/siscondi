@@ -9,10 +9,10 @@
       </div>
     </div>
 
-    <div class="card p-4 sm:p-6">
+    <div class="card p-4 sm:p-6 overflow-visible">
       <!-- Filtros -->
-      <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div>
+      <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 overflow-visible">
+        <div class="overflow-visible">
           <input
             v-model="filters.search"
             type="text"
@@ -21,7 +21,7 @@
             @input="debouncedSearch"
           />
         </div>
-        <div v-if="isGlobalAdmin">
+        <div v-if="isGlobalAdmin" class="overflow-visible">
           <SearchableSelect
             v-model="filters.branch_id"
             :options="branchOptions"
@@ -30,20 +30,16 @@
             @update:modelValue="onBranchFilterChange"
           />
         </div>
-        <div>
-          <select
+        <div class="overflow-visible">
+          <SearchableSelect
             v-model="filters.type"
-            class="w-full h-10 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="loadMovements"
-          >
-            <option value="">Todos os tipos</option>
-            <option value="entry">Entrada</option>
-            <option value="exit">Saída</option>
-            <option value="adjustment">Ajuste</option>
-            <option value="return">Devolução</option>
-          </select>
+            :options="typeOptions"
+            placeholder="Todos os tipos"
+            filter-style
+            @update:modelValue="loadMovements"
+          />
         </div>
-        <div>
+        <div class="overflow-visible">
           <SearchableSelect
             v-model="filters.user_id"
             :options="userOptions"
@@ -52,7 +48,7 @@
             @update:modelValue="loadMovements"
           />
         </div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 overflow-visible">
           <input
             v-model="filters.date_from"
             type="date"
@@ -241,6 +237,14 @@ export default {
       return [{ value: null, label: 'Todas as filiais' }, ...options];
     });
 
+    const typeOptions = [
+      { value: '', label: 'Todos os tipos' },
+      { value: 'entry', label: 'Entrada' },
+      { value: 'exit', label: 'Saída' },
+      { value: 'adjustment', label: 'Ajuste' },
+      { value: 'return', label: 'Devolução' },
+    ];
+
     const loadUsers = async () => {
       try {
         const params = {};
@@ -322,6 +326,7 @@ export default {
       filters,
       userOptions,
       branchOptions,
+      typeOptions,
       isGlobalAdmin,
       loadMovements,
       debouncedSearch,
