@@ -209,13 +209,6 @@
                     <MagnifyingGlassIcon class="h-5 w-5" />
                   </button>
                   <button
-                    @click="goToLabels(product)"
-                    class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
-                    title="Gerar Etiquetas"
-                  >
-                    <RectangleGroupIcon class="h-5 w-5" />
-                  </button>
-                  <button
                     @click="editProduct(product.id)"
                     class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
                     title="Editar"
@@ -229,6 +222,31 @@
                   >
                     <TrashIcon class="h-5 w-5" />
                   </button>
+                  <Menu as="div" class="relative">
+                    <MenuButton
+                      class="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                      title="Mais ações"
+                    >
+                      <EllipsisVerticalIcon class="h-5 w-5" />
+                    </MenuButton>
+                    <MenuItems class="absolute right-0 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white shadow-lg focus:outline-none z-[9999]">
+                      <div class="py-1">
+                        <MenuItem v-slot="{ active }">
+                          <button
+                            type="button"
+                            :class="[
+                              active ? 'bg-slate-100' : '',
+                              'w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 text-left',
+                            ]"
+                            @click="goToLabels(product)"
+                          >
+                            <RectangleGroupIcon class="h-5 w-5 text-green-600" />
+                            Gerar Etiquetas
+                          </button>
+                        </MenuItem>
+                      </div>
+                    </MenuItems>
+                  </Menu>
                 </div>
               </td>
             </tr>

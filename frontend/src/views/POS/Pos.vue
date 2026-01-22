@@ -35,7 +35,6 @@ const shortcuts = [
   { key: 'F2', label: 'Consultar Preço' },
   { key: 'F3', label: 'Remover Item' },
   { key: 'F4', label: 'Cancelar Venda' },
-  { key: 'F6', label: 'Abrir Gaveta' },
   { key: 'F7', label: 'Identificar Cliente' },
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Fechar / Limpar Busca' },
@@ -304,7 +303,11 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F2') {
-    if (!showPriceCheckModal.value) showPriceCheckModal.value = true;
+    if (!showPriceCheckModal.value) {
+      const el = document.querySelector('#product-search');
+      if (el) el.blur();
+      showPriceCheckModal.value = true;
+    }
     return;
   }
   if (key === 'F3') {
@@ -313,10 +316,6 @@ function handleKeydown(e) {
   }
   if (key === 'F4') {
     handleCancelSale();
-    return;
-  }
-  if (key === 'F6') {
-    handleF6OpenDrawer();
     return;
   }
   if (key === 'F7') {
@@ -604,7 +603,7 @@ onUnmounted(() => {
                 class="border-slate-300 text-slate-700 hover:bg-slate-50"
                 @click="showPriceCheckModal = true"
               >
-                F2 - Consultar
+                F2 - Consultar Preço
               </Button>
               <Button
                 type="button"
