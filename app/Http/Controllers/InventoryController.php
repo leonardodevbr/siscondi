@@ -72,8 +72,6 @@ class InventoryController extends Controller
         }
 
         $quantity = abs((int) $request->quantity);
-        $operation = $request->operation ?? $this->getDefaultOperation($request->type);
-        
         $finalType = $request->type;
         $operation = $request->operation ?? $this->getDefaultOperation($request->type);
 
@@ -113,6 +111,7 @@ class InventoryController extends Controller
             'movement' => [
                 'id' => $movement->id,
                 'type' => $movement->type,
+                'operation' => $movement->operation,
                 'quantity' => $movement->quantity,
                 'reason' => $movement->reason,
                 'created_at' => $movement->created_at,
@@ -170,12 +169,14 @@ class InventoryController extends Controller
                         : ($movement->variation->sku ?? '');
                 }
 
+                $op = $movement->operation ?? 'add';
                 return [
                     'id' => $movement->id,
                     'type' => $movement->type,
                     'type_label' => $this->getTypeLabel($movement->type),
+                    'operation' => $op,
                     'quantity' => $movement->quantity,
-                    'quantity_display' => ($movement->type === 'entry' || $movement->type === 'return' ? '+' : '-') . $movement->quantity,
+                    'quantity_display' => ($op === 'sub' ? '-' : '+') . $movement->quantity,
                     'reason' => $movement->reason,
                     'user' => $movement->user ? [
                         'id' => $movement->user->id,
@@ -256,12 +257,14 @@ class InventoryController extends Controller
                     $variantInfo = count($variantParts) > 0 ? ' - ' . implode('/', $variantParts) : ' - ' . ($movement->variation->sku ?? '');
                 }
 
+                $op = $movement->operation ?? 'add';
                 return [
                     'id' => $movement->id,
                     'type' => $movement->type,
                     'type_label' => $this->getTypeLabel($movement->type),
+                    'operation' => $op,
                     'quantity' => $movement->quantity,
-                    'quantity_display' => ($movement->type === 'entry' || $movement->type === 'return' ? '+' : '-') . $movement->quantity,
+                    'quantity_display' => ($op === 'sub' ? '-' : '+') . $movement->quantity,
                     'reason' => $movement->reason,
                     'product_name' => $productName . $variantInfo,
                     'user' => $movement->user ? [
@@ -326,7 +329,7 @@ class InventoryController extends Controller
             'code' => ['required', 'string'],
         ]);
 
-        $code = $request->code;
+        $code = trim((string) $request->code);
         $branchId = auth()->user()?->branch_id ?? request()->header('X-Branch-ID');
 
         if (! $branchId) {
@@ -337,7 +340,6 @@ class InventoryController extends Controller
 
         $branchId = (int) $branchId;
 
-        // Try to find a variation first
         $variation = ProductVariant::where('sku', $code)
             ->orWhere('barcode', $code)
             ->first();
@@ -357,7 +359,6 @@ class InventoryController extends Controller
             ]);
         }
 
-        // If no variation found, try to find a product
         $product = Product::where('sku', $code)
             ->orWhere('barcode', $code)
             ->first();

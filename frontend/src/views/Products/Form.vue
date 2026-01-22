@@ -634,8 +634,15 @@
                       {{ movement.type_label }}
                     </span>
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
-                    {{ movement.quantity_display || movement.quantity }}
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <span
+                      :class="[
+                        'text-sm font-medium',
+                        movement.operation === 'add' ? 'text-green-600' : 'text-red-600',
+                      ]"
+                    >
+                      {{ movement.quantity_display || movement.quantity }}
+                    </span>
                   </td>
                   <td class="px-4 py-3 text-sm text-slate-600">
                     {{ movement.reason || '-' }}

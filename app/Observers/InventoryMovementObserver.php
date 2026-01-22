@@ -30,11 +30,12 @@ class InventoryMovementObserver
 
             $branchId = (int) $branchId;
 
-            $quantityChange = match ($inventoryMovement->operation) {
-                'add' => $inventoryMovement->quantity,
-                'sub' => -$inventoryMovement->quantity,
-                default => 0,
-            };
+            $quantityChange = 0;
+            if ($inventoryMovement->operation === 'add') {
+                $quantityChange = $inventoryMovement->quantity;
+            } elseif ($inventoryMovement->operation === 'sub') {
+                $quantityChange = -$inventoryMovement->quantity;
+            }
 
             if ($quantityChange === 0) {
                 return;

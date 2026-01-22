@@ -125,9 +125,7 @@
                 <div
                   :class="[
                     'text-sm font-medium',
-                    movement.type === 'entry' || movement.type === 'return'
-                      ? 'text-green-600'
-                      : 'text-red-600',
+                    movement.operation === 'add' ? 'text-green-600' : 'text-red-600',
                   ]"
                 >
                   {{ movement.quantity_display }}
