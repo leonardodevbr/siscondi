@@ -569,15 +569,20 @@ class ProductController extends Controller
         $key = "variants.{$index}.image";
         
         if ($request->hasFile($key)) {
+            // Novo arquivo enviado: faz upload
             $image = $request->file($key);
             $path = $image->store('product-variants', 'public');
             $variantData['image'] = $path;
         } elseif (isset($variantData['image']) && is_string($variantData['image']) && ! empty($variantData['image'])) {
+            // String enviada: valida se é caminho válido
             if (! str_starts_with($variantData['image'], 'product-variants/') && ! str_starts_with($variantData['image'], 'products/')) {
-                $variantData['image'] = null;
+                // Se não for caminho válido, remove o campo (não atualiza)
+                unset($variantData['image']);
             }
+            // Se for caminho válido, mantém no array (mas isso não deveria acontecer no update)
         } else {
-            $variantData['image'] = null;
+            // Nenhum arquivo novo e nenhum campo image no request: remove do array para preservar imagem existente
+            unset($variantData['image']);
         }
 
         if (isset($variantData['attributes']) && is_string($variantData['attributes'])) {

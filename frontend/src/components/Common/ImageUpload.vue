@@ -108,6 +108,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue';
+import { useToast } from 'vue-toastification';
 import { CameraIcon, XMarkIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 
 export default {
@@ -130,6 +131,7 @@ export default {
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
+    const toast = useToast();
     const fileInput = ref(null);
     const imagePreview = ref(null);
     const imageError = ref(false);
@@ -211,9 +213,31 @@ export default {
 
     const handleFileSelect = (event) => {
       const file = event.target.files?.[0];
-      if (file && file.type.startsWith('image/')) {
-        emit('update:modelValue', file);
+      
+      if (!file) {
+        return;
       }
+
+      // Validação de tipo
+      if (!file.type.startsWith('image/')) {
+        toast.error('Por favor, selecione um arquivo de imagem válido.');
+        if (event.target) {
+          event.target.value = '';
+        }
+        return;
+      }
+
+      // Validação de tamanho (2MB máximo)
+      const maxSize = 2 * 1024 * 1024; // 2MB em bytes
+      if (file.size > maxSize) {
+        toast.error('A imagem deve ter no máximo 2MB.');
+        if (event.target) {
+          event.target.value = '';
+        }
+        return;
+      }
+
+      emit('update:modelValue', file);
     };
 
     const removeImage = () => {
@@ -282,6 +306,16 @@ export default {
       canvas.toBlob(
         (blob) => {
           if (!blob) return;
+          
+          // Validação de tamanho para foto da câmera
+          const maxSize = 2 * 1024 * 1024; // 2MB
+          if (blob.size > maxSize) {
+            toast.error('A imagem capturada é muito grande. Tente novamente com menor qualidade.');
+            stopStream();
+            showCameraModal.value = false;
+            return;
+          }
+          
           const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
           emit('update:modelValue', file);
           stopStream();

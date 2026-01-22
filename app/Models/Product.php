@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -93,6 +94,42 @@ class Product extends Model
         return $this->promotional_price !== null
             && $this->promotional_expires_at !== null
             && now()->isBefore($this->promotional_expires_at);
+    }
+
+    /**
+     * Retorna a URL da imagem com fallback inteligente.
+     * Prioridade: Capa do produto -> Primeira variação com foto -> null
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        // Prioridade 1: Capa explícita do produto
+        if ($this->image && !empty($this->image) && Storage::disk('public')->exists($this->image)) {
+            return asset('storage/' . $this->image);
+        }
+
+        // Prioridade 2: Primeira variação com foto
+        if ($this->relationLoaded('variants')) {
+            $variantWithImage = $this->variants
+                ->filter(fn ($variant) => !empty($variant->image))
+                ->first();
+            
+            if ($variantWithImage && $variantWithImage->image && Storage::disk('public')->exists($variantWithImage->image)) {
+                return asset('storage/' . $variantWithImage->image);
+            }
+        } else {
+            // Se a relação não estiver carregada, faz uma query leve
+            $variantWithImage = $this->variants()
+                ->whereNotNull('image')
+                ->where('image', '!=', '')
+                ->first();
+            
+            if ($variantWithImage && $variantWithImage->image && Storage::disk('public')->exists($variantWithImage->image)) {
+                return asset('storage/' . $variantWithImage->image);
+            }
+        }
+
+        // Prioridade 3: Placeholder (null)
+        return null;
     }
 }
 

@@ -726,7 +726,7 @@ export default {
           sell_price: product.sell_price || '',
           promotional_price: product.promotional_price || null,
           promotional_expires_at: product.promotional_expires_at || null,
-          cover_image: product.cover_image || null,
+          cover_image: product.image || null,
           stock: simpleStock,
           sku: simpleSku,
           barcode: simpleBarcode,
@@ -904,9 +904,8 @@ export default {
               formData.append(`variants[${index}][sku]`, variant.sku);
               if (variant.barcode) formData.append(`variants[${index}][barcode]`, variant.barcode);
               if (variant.price) formData.append(`variants[${index}][price]`, variant.price);
+              // Só envia a imagem se for um arquivo novo (File), não envia URLs existentes
               if (variant.image instanceof File) {
-                formData.append(`variants[${index}][image]`, variant.image);
-              } else if (variant.image) {
                 formData.append(`variants[${index}][image]`, variant.image);
               }
               formData.append(`variants[${index}][attributes]`, JSON.stringify(variant.attributes));
