@@ -1,11 +1,11 @@
 <template>
   <Modal :is-open="show" title="Ajustar Estoque" @close="handleClose">
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <div v-if="productName" class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center">
-        <p class="text-lg font-bold text-blue-900">{{ productName }}</p>
-        <div class="mt-2 flex items-center justify-center gap-2">
+      <div v-if="productName" class="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+        <p class="text-xl font-bold text-blue-900">{{ productName }}</p>
+        <div class="mt-2 flex items-center gap-2">
           <span class="text-sm text-blue-700">Estoque Atual:</span>
-          <span class="text-2xl font-bold text-blue-900">{{ currentStock }}</span>
+          <span class="text-3xl font-bold text-blue-900">{{ currentStock }}</span>
           <span class="text-sm text-blue-700">un.</span>
         </div>
       </div>
@@ -103,10 +103,10 @@
           type="button"
           @click="handleSubmit"
           :disabled="loading"
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         >
           <span v-if="loading">Salvando...</span>
-          <span v-else>Salvar</span>
+          <span v-else>Confirmar Ajuste</span>
         </button>
       </div>
     </form>
