@@ -26,14 +26,14 @@
 
         .label {
             width: 40mm !important;
-            height: 25mm !important;
-            max-height: 25mm !important;
+            height: 23mm !important;
+            max-height: 23mm !important;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
             text-align: center;
-            padding: 1mm 2mm;
+            padding: 0 1mm;
             page-break-inside: avoid;
             overflow: hidden;
             box-sizing: border-box;
@@ -42,13 +42,13 @@
         .label-header {
             width: 100%;
             text-align: center;
+            line-height: 1;
         }
 
         .product-name {
-            font-size: 8pt;
+            font-size: 9pt;
             font-weight: bold;
             line-height: 1;
-            margin-bottom: 0.5mm;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -61,8 +61,7 @@
             font-weight: normal;
             color: #666;
             line-height: 1;
-            margin-top: -0.5mm;
-            margin-bottom: 0.5mm;
+            margin-top: 1px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -71,7 +70,8 @@
 
         .barcode-container {
             width: 100%;
-            margin: 0.5mm 0;
+            text-align: center;
+            margin: 1px 0;
         }
 
         .barcode-image {
@@ -90,15 +90,16 @@
             font-family: 'Courier New', monospace;
             color: #000;
             line-height: 1;
-            margin-top: 0.5mm;
+            letter-spacing: -0.5px;
         }
 
         .price {
-            font-size: 11pt;
+            font-size: 12pt;
             font-weight: 900;
             color: #000;
             line-height: 1;
-            margin-top: 0.5mm;
+            width: 100%;
+            text-align: center;
         }
     </style>
 </head>
