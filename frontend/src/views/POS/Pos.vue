@@ -7,21 +7,39 @@ import { useAlert } from '@/composables/useAlert';
 import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
+import Modal from '@/components/Common/Modal.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
 
 const cashRegisterStore = useCashRegisterStore();
 const cartStore = useCartStore();
 const toast = useToast();
-const { confirm } = useAlert();
+const { confirm, info } = useAlert();
 
 const searchQuery = ref('');
 const products = ref([]);
 const loadingProducts = ref(false);
 const searchTimeout = ref(null);
 const showPriceCheckModal = ref(false);
+const showHelpModal = ref(false);
+const showCheckoutModal = ref(false);
+const showCustomerModal = ref(false);
+const selectedCartIndex = ref(null);
+const cartListRef = ref(null);
+const customerCpf = ref('');
 
 const cartTotal = computed(() => cartStore.subtotal);
+
+const shortcuts = [
+  { key: 'F1', label: 'Ajuda' },
+  { key: 'F2', label: 'Consultar Preço' },
+  { key: 'F3', label: 'Remover Item' },
+  { key: 'F4', label: 'Cancelar Venda' },
+  { key: 'F6', label: 'Abrir Gaveta' },
+  { key: 'F7', label: 'Identificar Cliente' },
+  { key: 'F10', label: 'Finalizar Venda' },
+  { key: 'ESC', label: 'Fechar / Limpar Busca' },
+];
 
 async function checkCashRegisterStatus() {
   try {
@@ -197,17 +215,140 @@ async function handleCancelSale() {
 
 function handlePriceCheckClose() {
   showPriceCheckModal.value = false;
-  nextTick(() => {
-    const el = document.querySelector('#product-search');
-    if (el) el.focus();
-  });
+  nextTick(() => focusSearch());
 }
 
-function handleF2Key(e) {
-  if (e.key !== 'F2') return;
-  if (!cashRegisterStore.isOpen || showPriceCheckModal.value) return;
+function closeHelp() {
+  showHelpModal.value = false;
+  nextTick(() => focusSearch());
+}
+function closeCheckout() {
+  showCheckoutModal.value = false;
+  nextTick(() => focusSearch());
+}
+function closeCustomer() {
+  showCustomerModal.value = false;
+  nextTick(() => focusSearch());
+}
+
+function focusSearch() {
+  const el = document.querySelector('#product-search');
+  if (el) el.focus();
+}
+
+function handleF3RemoveItem() {
+  const items = cartStore.items;
+  if (items.length === 0) return;
+  const idx = selectedCartIndex.value != null && selectedCartIndex.value >= 0 && selectedCartIndex.value < items.length
+    ? selectedCartIndex.value
+    : items.length - 1;
+  handleRemoveItem(idx);
+  const rest = cartStore.items;
+  selectedCartIndex.value = rest.length === 0 ? null : Math.min(idx, rest.length - 1);
+  nextTick(() => cartListRef.value?.focus());
+}
+
+async function handleF6OpenDrawer() {
+  try {
+    await api.post('/cash-register/open-drawer');
+    toast.success('Gaveta acionada.');
+  } catch (err) {
+    toast.info('Abertura de gaveta não disponível.');
+  }
+}
+
+function handleKeydown(e) {
+  if (!cashRegisterStore.isOpen) return;
+  const key = e.key;
+  const isF = /^F([1-9]|1[0-2])$/.test(key);
+
+  if (key === 'F5') {
+    e.preventDefault();
+    info('Atualizar página', 'Para atualizar, finalize ou cancele a venda atual.');
+    return;
+  }
+
+  if (key === 'Escape') {
+    e.preventDefault();
+    if (showHelpModal.value) {
+      showHelpModal.value = false;
+      nextTick(() => focusSearch());
+      return;
+    }
+    if (showPriceCheckModal.value) {
+      handlePriceCheckClose();
+      return;
+    }
+    if (showCheckoutModal.value) {
+      showCheckoutModal.value = false;
+      nextTick(() => focusSearch());
+      return;
+    }
+    if (showCustomerModal.value) {
+      showCustomerModal.value = false;
+      nextTick(() => focusSearch());
+      return;
+    }
+    searchQuery.value = '';
+    products.value = [];
+    focusSearch();
+    return;
+  }
+
+  if (!isF) return;
+
   e.preventDefault();
-  showPriceCheckModal.value = true;
+
+  if (key === 'F1') {
+    showHelpModal.value = true;
+    return;
+  }
+  if (key === 'F2') {
+    if (!showPriceCheckModal.value) showPriceCheckModal.value = true;
+    return;
+  }
+  if (key === 'F3') {
+    handleF3RemoveItem();
+    return;
+  }
+  if (key === 'F4') {
+    handleCancelSale();
+    return;
+  }
+  if (key === 'F6') {
+    handleF6OpenDrawer();
+    return;
+  }
+  if (key === 'F7') {
+    showCustomerModal.value = true;
+    customerCpf.value = '';
+    return;
+  }
+  if (key === 'F10') {
+    if (cartStore.items.length === 0) {
+      toast.error('Adicione pelo menos um item ao carrinho.');
+      return;
+    }
+    showCheckoutModal.value = true;
+  }
+}
+
+async function confirmCheckout() {
+  showCheckoutModal.value = false;
+  await handleFinalizeSale();
+  nextTick(() => focusSearch());
+}
+
+function handleCustomerSubmit() {
+  const cpf = customerCpf.value?.replace(/\D/g, '').trim();
+  if (!cpf) {
+    toast.error('Informe o CPF ou identifique o cliente.');
+    return;
+  }
+  toast.success('Cliente identificado.');
+  showCustomerModal.value = false;
+  customerCpf.value = '';
+  nextTick(() => focusSearch());
 }
 
 onMounted(async () => {
@@ -215,17 +356,14 @@ onMounted(async () => {
 
   if (cashRegisterStore.isOpen) {
     await nextTick();
-    const searchInput = document.querySelector('#product-search');
-    if (searchInput) {
-      searchInput.focus();
-    }
+    focusSearch();
   }
 
-  window.addEventListener('keydown', handleF2Key);
+  window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleF2Key);
+  window.removeEventListener('keydown', handleKeydown);
 });
 </script>
 
@@ -356,7 +494,11 @@ onUnmounted(() => {
           </div>
 
           <!-- Lista de Itens -->
-          <div class="flex-1 overflow-y-auto p-4">
+          <div
+            ref="cartListRef"
+            tabindex="-1"
+            class="flex-1 overflow-y-auto p-4 outline-none"
+          >
             <div
               v-if="cartStore.items.length === 0"
               class="flex h-32 items-center justify-center"
@@ -373,7 +515,9 @@ onUnmounted(() => {
               <div
                 v-for="(item, index) in cartStore.items"
                 :key="index"
-                class="rounded-lg border border-slate-200 p-3"
+                class="rounded-lg border p-3 transition-colors cursor-pointer"
+                :class="selectedCartIndex === index ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
+                @click="selectedCartIndex = index"
               >
                 <div class="flex items-start justify-between">
                   <div class="flex-1">
@@ -387,7 +531,7 @@ onUnmounted(() => {
                   <button
                     type="button"
                     class="ml-2 text-red-500 hover:text-red-700"
-                    @click="handleRemoveItem(index)"
+                    @click.stop="handleRemoveItem(index)"
                   >
                     <svg
                       class="h-5 w-5"
@@ -404,7 +548,7 @@ onUnmounted(() => {
                     </svg>
                   </button>
                 </div>
-                <div class="mt-2 flex items-center gap-2">
+                <div class="mt-2 flex items-center gap-2" @click.stop>
                   <button
                     type="button"
                     class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
@@ -450,9 +594,17 @@ onUnmounted(() => {
                 type="button"
                 variant="outline"
                 class="border-slate-300 text-slate-700 hover:bg-slate-50"
+                @click="showHelpModal = true"
+              >
+                F1 - Ajuda
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                class="border-slate-300 text-slate-700 hover:bg-slate-50"
                 @click="showPriceCheckModal = true"
               >
-                F2 - Consultar Preço
+                F2 - Consultar
               </Button>
               <Button
                 type="button"
@@ -460,18 +612,30 @@ onUnmounted(() => {
                 class="border-red-300 text-red-600 hover:bg-red-50"
                 @click="handleCancelSale"
               >
-                Cancelar (Esc)
+                F4 - Cancelar
               </Button>
               <Button
                 type="button"
                 variant="primary"
-                @click="handleFinalizeSale"
+                @click="showCheckoutModal = true"
               >
-                Finalizar Venda
+                F10 - Finalizar
               </Button>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Barra de legenda (atalhos) -->
+      <div class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
+        <span
+          v-for="s in shortcuts"
+          :key="s.key"
+          class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-medium ring-1 ring-slate-600"
+        >
+          <kbd class="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-xs">{{ s.key }}</kbd>
+          <span>{{ s.label }}</span>
+        </span>
       </div>
 
       <StockAvailabilityModal
@@ -479,6 +643,76 @@ onUnmounted(() => {
         :is-open="showPriceCheckModal"
         @close="handlePriceCheckClose"
       />
+
+      <Modal
+        :is-open="showHelpModal"
+        title="Atalhos do PDV"
+        @close="closeHelp"
+      >
+        <ul class="space-y-2 text-slate-700">
+          <li v-for="s in shortcuts" :key="s.key" class="flex items-center gap-2">
+            <kbd class="rounded bg-slate-200 px-2 py-0.5 font-mono text-sm">{{ s.key }}</kbd>
+            <span>{{ s.label }}</span>
+          </li>
+        </ul>
+      </Modal>
+
+      <Modal
+        :is-open="showCheckoutModal"
+        title="Finalizar Venda"
+        @close="closeCheckout"
+      >
+        <div class="space-y-4">
+          <p class="text-lg font-semibold text-slate-800">
+            Total: {{ formatCurrency(cartTotal) }}
+          </p>
+          <p class="text-sm text-slate-500">
+            Pagamento em dinheiro. Confirme para encerrar a venda.
+          </p>
+          <div class="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              @click="closeCheckout"
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              @click="confirmCheckout"
+            >
+              Confirmar e finalizar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        :is-open="showCustomerModal"
+        title="Identificar Cliente"
+        @close="closeCustomer"
+      >
+        <form class="space-y-4" @submit.prevent="handleCustomerSubmit">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">CPF</label>
+            <input
+              v-model="customerCpf"
+              type="text"
+              placeholder="000.000.000-00"
+              class="w-full h-10 px-3 rounded border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+          </div>
+          <div class="flex justify-end gap-2">
+            <Button type="button" variant="outline" @click="closeCustomer">
+              Fechar
+            </Button>
+            <Button type="submit" variant="primary">
+              Identificar
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   </div>
 </template>
