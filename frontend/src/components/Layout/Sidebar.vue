@@ -16,6 +16,7 @@ import {
   QrCodeIcon,
   BuildingStorefrontIcon,
   ClipboardDocumentListIcon,
+  BoltIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -62,6 +63,7 @@ const menuGroups = computed(() => {
         { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon, roles: ['*'] },
         { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon, roles: ['*'] },
         { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: QrCodeIcon, roles: ['*'] },
+        { name: 'Leitura Rápida', to: { name: 'inventory.quick' }, icon: BoltIcon, roles: ['*'] },
         { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, roles: ['*'] },
         { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon, roles: ['*'] },
         { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon, roles: ['super-admin', 'manager'] },

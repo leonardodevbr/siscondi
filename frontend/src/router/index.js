@@ -18,6 +18,7 @@ import CouponsIndex from '@/views/Coupons/Index.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
 import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
+import QuickAdjustment from '@/views/Inventory/QuickAdjustment.vue';
 
 const routes = [
   {
@@ -77,6 +78,12 @@ const routes = [
         name: 'inventory.movements',
         component: MovementsIndex,
         meta: { title: 'Histórico de Movimentações' },
+      },
+      {
+        path: 'inventory/quick',
+        name: 'inventory.quick',
+        component: QuickAdjustment,
+        meta: { title: 'Ajuste Rápido de Estoque' },
       },
       {
         path: 'customers',

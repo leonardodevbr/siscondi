@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreInventoryAdjustmentRequest;
 use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -314,5 +315,73 @@ class InventoryController extends Controller
             'return' => 'Devolução',
             default => $type,
         };
+    }
+
+    /**
+     * Search for a product or variation by SKU or barcode.
+     */
+    public function scan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string'],
+        ]);
+
+        $code = $request->code;
+        $branchId = auth()->user()?->branch_id ?? request()->header('X-Branch-ID');
+
+        if (! $branchId) {
+            return response()->json([
+                'message' => 'Filial não identificada. Não é possível realizar a busca.',
+            ], 422);
+        }
+
+        $branchId = (int) $branchId;
+
+        // Try to find a variation first
+        $variation = ProductVariant::where('sku', $code)
+            ->orWhere('barcode', $code)
+            ->first();
+
+        if ($variation) {
+            $product = $variation->product;
+            $inventory = $variation->inventories()->where('branch_id', $branchId)->first();
+
+            return response()->json([
+                'product_id' => $product->id,
+                'variation_id' => $variation->id,
+                'name' => $product->name . ' - ' . ($variation->sku ?? ''), // Adjust name for variation
+                'current_stock' => $inventory?->quantity ?? 0,
+            ]);
+        }
+
+        // If no variation found, try to find a product
+        $product = Product::where('sku', $code)
+            ->orWhere('barcode', $code)
+            ->first();
+
+        if ($product) {
+            // If it's a simple product (no variations or only one default variation)
+            // Or we need to select one if no variation was provided from the scan
+            $defaultVariation = $product->variants()->first();
+
+            if (! $defaultVariation) {
+                return response()->json([
+                    'message' => 'Produto encontrado, mas sem variações para ajuste.',
+                ], 404);
+            }
+
+            $inventory = $defaultVariation->inventories()->where('branch_id', $branchId)->first();
+
+            return response()->json([
+                'product_id' => $product->id,
+                'variation_id' => $defaultVariation->id,
+                'name' => $product->name . ' - ' . ($defaultVariation->sku ?? ''), // Adjust name for default variation
+                'current_stock' => $inventory?->quantity ?? 0,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Produto não encontrado.',
+        ], 404);
     }
 }

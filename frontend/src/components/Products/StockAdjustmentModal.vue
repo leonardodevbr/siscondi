@@ -51,6 +51,7 @@
           Quantidade *
         </label>
         <input
+          ref="quantityInput"
           v-model.number="form.quantity"
           type="number"
           min="1"
@@ -104,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import Modal from '@/components/Common/Modal.vue'
 import api from '@/services/api'
 import { useToast } from 'vue-toastification'
@@ -126,12 +127,17 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  autoFocusQuantity: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['close', 'success'])
+const emit = defineEmits(['close', 'success', 'adjustment-made'])
 
 const toast = useToast()
 const loading = ref(false)
+const quantityInput = ref(null)
 
 const form = ref({
   type: '',
@@ -143,10 +149,16 @@ const form = ref({
 watch(() => props.show, (newVal) => {
   if (newVal) {
     form.value = {
-      type: '',
+      type: props.autoFocusQuantity ? 'adjustment' : '', // Pre-select adjustment if autoFocus is on
       operation: 'add',
       quantity: 1,
       reason: '',
+    }
+    
+    if (props.autoFocusQuantity) {
+      nextTick(() => {
+        quantityInput.value?.focus()
+      })
     }
   }
 })
@@ -203,6 +215,15 @@ const handleSubmit = async () => {
 
     toast.success('Movimentação registrada com sucesso')
     emit('success', response.data.current_stock)
+    
+    // Emit detailed event for QuickAdjustment view
+    emit('adjustment-made', {
+      ...response.data.movement,
+      operation: operation,
+      type_label: form.value.type === 'adjustment' ? 'Ajuste' : (form.value.type === 'entry' ? 'Entrada' : (form.value.type === 'exit' ? 'Saída' : 'Devolução')),
+      current_stock: response.data.current_stock
+    })
+    
     handleClose()
   } catch (error) {
     const message = error.response?.data?.message || 'Erro ao registrar movimentação'
