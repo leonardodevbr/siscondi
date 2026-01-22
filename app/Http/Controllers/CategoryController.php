@@ -32,15 +32,17 @@ class CategoryController extends Controller
                 ->withCount('products');
 
             $categories = $query->orderBy('name')->get();
+            
+            return CategoryResource::collection($categories)->response();
         } else {
             if ($request->has('active')) {
                 $query->where('active', $request->boolean('active'));
             }
 
             $categories = $query->paginate(15);
+            
+            return CategoryResource::collection($categories)->response();
         }
-
-        return response()->json($categories);
     }
 
     /**

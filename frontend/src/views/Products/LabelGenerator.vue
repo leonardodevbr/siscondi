@@ -30,7 +30,6 @@
                 v-model="filters.category_id"
                 :options="categoryOptions"
                 placeholder="Todas as categorias"
-                @update:modelValue="handleCategoryChange"
               />
             </div>
           </div>
@@ -177,14 +176,31 @@ export default {
     let searchTimeout = null;
 
     const categoryOptions = computed(() => {
+      const options = [{ id: null, name: 'Todas as categorias' }];
+      
+      // Calcula quantidade de produtos por categoria baseado nos produtos carregados
+      const categoryCounts = {};
+      products.value.forEach((product) => {
+        if (product.category_id) {
+          categoryCounts[product.category_id] = (categoryCounts[product.category_id] || 0) + 1;
+        }
+      });
+
+      // Filtra apenas categorias que têm produtos e formata com quantidade
+      // Prioriza products_count da API, senão usa a contagem local
       const categories = categoryStore.items || [];
-      return [
-        { id: null, name: 'Todas as categorias' },
-        ...categories.map((cat) => ({
-          id: cat.id,
-          name: cat.name,
-        })),
-      ];
+      categories.forEach((category) => {
+        const count = category.products_count ?? categoryCounts[category.id] ?? 0;
+        if (count > 0) {
+          const label = `${category.name} (${count})`;
+          options.push({
+            id: category.id,
+            name: label,
+          });
+        }
+      });
+
+      return options;
     });
 
     const filteredProducts = computed(() => {
@@ -213,10 +229,21 @@ export default {
       }
 
       // Filtro por categoria
-      if (filters.value.category_id) {
-        result = result.filter(
-          (product) => product.category_id === filters.value.category_id
-        );
+      if (filters.value.category_id !== null && filters.value.category_id !== '' && filters.value.category_id !== undefined) {
+        const categoryId = Number(filters.value.category_id);
+        result = result.filter((product) => {
+          // Tenta pegar category_id direto ou do objeto category
+          let productCategoryId = null;
+          
+          if (product.category_id) {
+            productCategoryId = Number(product.category_id);
+          } else if (product.category?.id) {
+            productCategoryId = Number(product.category.id);
+          }
+          
+          // Compara os IDs convertidos para número
+          return productCategoryId !== null && productCategoryId === categoryId;
+        });
       }
 
       return result;
@@ -259,9 +286,6 @@ export default {
       }, 300);
     };
 
-    const handleCategoryChange = () => {
-      // A filtragem é feita via computed
-    };
 
     const updateQuantity = (variantId, value) => {
       quantities.value[variantId] = parseInt(value) || 0;
@@ -365,8 +389,8 @@ export default {
     };
 
     onMounted(async () => {
-      // Carrega categorias
-      await categoryStore.fetchAll();
+      // Carrega categorias (apenas as que têm produtos)
+      await categoryStore.fetchForFilter();
 
       // Verifica se há parâmetros na URL
       if (route.query.search) {
@@ -392,106 +416,11 @@ export default {
       cartItems,
       totalLabels,
       handleSearchInput,
-      handleCategoryChange,
       updateQuantity,
       formatVariantDescription,
       formatPrice,
       generateLabels,
     };
-  },
-  methods: {
-    async loadProducts() {
-      try {
-        this.loading = true;
-        const response = await api.get('/products', {
-          params: {
-            per_page: 100,
-          },
-        });
-        
-        this.products = response.data.data || response.data || [];
-        this.initializeQuantities();
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-        this.$toast?.error('Erro ao carregar produtos');
-      } finally {
-        this.loading = false;
-      }
-    },
-    initializeQuantities() {
-      this.quantities = {};
-      for (const product of this.products) {
-        if (product.variants) {
-          for (const variant of product.variants) {
-            this.quantities[variant.id] = 0;
-          }
-        }
-      }
-    },
-    updateCart() {
-      // Força reatividade
-      this.$forceUpdate();
-    },
-    formatVariantDescription(variant) {
-      if (!variant.attributes || Object.keys(variant.attributes).length === 0) {
-        return 'Padrão';
-      }
-      
-      const parts = [];
-      for (const [key, value] of Object.entries(variant.attributes)) {
-        parts.push(`${this.capitalize(key)}: ${value}`);
-      }
-      
-      return parts.join(' / ');
-    },
-    capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    },
-    formatPrice(price) {
-      if (!price) return '0,00';
-      return parseFloat(price).toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-    },
-    async generateLabels() {
-      if (this.cartItems.length === 0) {
-        return;
-      }
-
-      try {
-        this.generating = true;
-        
-        const payload = {
-          items: this.cartItems.map(item => ({
-            variant_id: item.variant_id,
-            quantity: item.quantity,
-          })),
-          layout: this.selectedLayout,
-        };
-
-        const response = await api.post('/labels/generate', payload, {
-          responseType: 'blob',
-        });
-
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'etiquetas.pdf');
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-
-        this.$toast?.success('Etiquetas geradas com sucesso!');
-      } catch (error) {
-        console.error('Erro ao gerar etiquetas:', error);
-        this.$toast?.error('Erro ao gerar etiquetas');
-      } finally {
-        this.generating = false;
-      }
-    },
   },
 };
 </script>

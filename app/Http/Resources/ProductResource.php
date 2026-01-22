@@ -30,6 +30,7 @@ class ProductResource extends JsonResource
             'effective_price' => $this->getEffectivePrice(),
             'has_active_promotion' => $this->hasActivePromotion(),
             'current_stock' => $this->when(isset($this->current_stock), fn () => $this->current_stock),
+            'category_id' => $this->category_id,
             'variants' => $this->whenLoaded('variants', fn () => ProductVariantResource::collection($this->variants)),
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
