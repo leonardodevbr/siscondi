@@ -59,12 +59,9 @@
 
 <script setup>
 import { ref, onMounted, onActivated, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
 import StockAdjustmentModal from '@/components/Products/StockAdjustmentModal.vue';
-import axios from 'axios';
+import api from '@/services/api';
 import { useToast } from 'vue-toastification';
-
-const route = useRoute();
 
 const scanCode = ref('');
 const barcodeInput = ref(null);
@@ -89,8 +86,11 @@ const handleScan = async () => {
   if (!scanCode.value) return;
 
   try {
-    const response = await axios.get(`/api/inventory/scan?code=${scanCode.value}`);
+    const response = await api.get(`/inventory/scan?code=${scanCode.value}`);
     const data = response.data;
+    
+    console.log('[SCAN] Código buscado:', scanCode.value);
+    console.log('[SCAN] Resultado:', data);
 
     selectedProduct.value = {
       product_id: data.product_id,
