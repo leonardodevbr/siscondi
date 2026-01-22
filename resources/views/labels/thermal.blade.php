@@ -26,79 +26,78 @@
 
         .label {
             width: 40mm !important;
-            height: 23mm !important;
-            max-height: 23mm !important;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
+            height: 21mm !important;
+            max-height: 21mm !important;
+            display: block;
             text-align: center;
-            padding: 0 1mm;
+            padding: 0;
             page-break-inside: avoid;
             overflow: hidden;
             box-sizing: border-box;
+            margin: 0;
         }
 
-        .label-header {
-            width: 100%;
-            text-align: center;
-            line-height: 1;
+        .spacer {
+            height: 1mm;
+            display: block;
         }
 
         .product-name {
-            font-size: 9pt;
+            width: 100%;
+            display: block;
+            font-size: 8pt;
             font-weight: bold;
             line-height: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             color: #000;
-            width: 100%;
+            margin-bottom: 1px;
+            padding: 0 1mm;
         }
 
         .label-details {
+            width: 100%;
+            display: block;
             font-size: 7pt;
             font-weight: normal;
             color: #666;
             line-height: 1;
-            margin-top: 1px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            width: 100%;
-        }
-
-        .barcode-container {
-            width: 100%;
-            text-align: center;
-            margin: 1px 0;
+            margin-bottom: 1px;
+            padding: 0 1mm;
         }
 
         .barcode-image {
-            max-width: 100%;
-            max-height: 8mm !important;
-            height: 8mm !important;
-            width: auto;
             display: block;
-            margin: 0 auto;
+            width: 35mm;
+            height: 6mm;
+            margin: 0.5mm auto;
             object-fit: contain;
         }
 
         .barcode-value {
+            width: 100%;
+            display: block;
             font-size: 7pt;
             font-weight: normal;
             font-family: 'Courier New', monospace;
             color: #000;
             line-height: 1;
             letter-spacing: -0.5px;
+            text-align: center;
+            margin-bottom: 1px;
         }
 
         .price {
-            font-size: 12pt;
+            width: 100%;
+            display: block;
+            font-size: 11pt;
             font-weight: 900;
             color: #000;
             line-height: 1;
-            width: 100%;
             text-align: center;
         }
     </style>
@@ -110,17 +109,15 @@
     @endphp
     @foreach($labelsArray as $index => $label)
         <div class="label" @if($index < $totalLabels - 1) style="page-break-after: always !important;" @endif>
-            <div class="label-header">
-                <div class="product-name">{{ Str::limit($label['product_name'], 25) }}</div>
-                @if(!empty($label['label_details']))
-                    <div class="label-details">{{ $label['label_details'] }}</div>
-                @endif
-            </div>
+            <div class="spacer"></div>
 
-            <div class="barcode-container">
-                <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">
-                <div class="barcode-value">{{ $label['barcode_value'] }}</div>
-            </div>
+            <div class="product-name">{{ Str::limit($label['product_name'], 25) }}</div>
+            @if(!empty($label['label_details']))
+                <div class="label-details">{{ $label['label_details'] }}</div>
+            @endif
+
+            <img src="data:image/png;base64,{{ $label['barcode_image'] }}" alt="Barcode" class="barcode-image">
+            <div class="barcode-value">{{ $label['barcode_value'] }}</div>
 
             <div class="price">R$ {{ number_format($label['price'], 2, ',', '.') }}</div>
         </div>
