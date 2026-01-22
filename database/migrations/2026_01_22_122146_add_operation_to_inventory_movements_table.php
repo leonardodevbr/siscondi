@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inventory_movements', function (Blueprint $table) {
-            $table->enum('operation', ['add', 'sub'])->after('type');
+            $table->enum('operation', ['add', 'sub'])->default('add')->after('type');
         });
     }
 

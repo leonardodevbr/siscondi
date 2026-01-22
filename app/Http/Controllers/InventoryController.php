@@ -345,11 +345,14 @@ class InventoryController extends Controller
         if ($variation) {
             $product = $variation->product;
             $inventory = $variation->inventories()->where('branch_id', $branchId)->first();
+            $attrs = $variation->attributes ?? [];
+            $attrString = implode(' / ', array_values(array_filter($attrs)));
+            $name = $product->name . ($attrString ? ' - ' . $attrString : '');
 
             return response()->json([
                 'product_id' => $product->id,
                 'variation_id' => $variation->id,
-                'name' => $product->name . ' - ' . ($variation->sku ?? ''), // Adjust name for variation
+                'name' => $name,
                 'current_stock' => $inventory?->quantity ?? 0,
             ]);
         }
@@ -371,11 +374,14 @@ class InventoryController extends Controller
             }
 
             $inventory = $defaultVariation->inventories()->where('branch_id', $branchId)->first();
+            $attrs = $defaultVariation->attributes ?? [];
+            $attrString = implode(' / ', array_values(array_filter($attrs)));
+            $name = $product->name . ($attrString ? ' - ' . $attrString : '');
 
             return response()->json([
                 'product_id' => $product->id,
                 'variation_id' => $defaultVariation->id,
-                'name' => $product->name . ' - ' . ($defaultVariation->sku ?? ''), // Adjust name for default variation
+                'name' => $name,
                 'current_stock' => $inventory?->quantity ?? 0,
             ]);
         }

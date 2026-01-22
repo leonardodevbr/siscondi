@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+  <div class="flex flex-col items-center justify-center h-[calc(100vh-100px)] p-4 bg-gray-100">
     <h1 class="text-3xl font-bold mb-8 text-gray-800">Ajuste Rápido de Estoque</h1>
 
     <div class="w-full max-w-md">
