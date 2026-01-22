@@ -293,10 +293,8 @@ class ProductController extends Controller
         return DB::transaction(function () use ($request, $product): JsonResponse {
             $data = $request->validated();
             
-            // Pega variants do validated ou do input direto (para garantir que stock venha)
+            // Remove campos de estoque - estoque só pode ser alterado via movimentações
             $variants = $data['variants'] ?? $request->input('variants', []);
-            // Pega stock do validated ou do input direto
-            $stock = $data['stock'] ?? $request->input('stock');
             unset($data['variants'], $data['stock']);
 
             if ($request->hasFile('cover_image')) {
@@ -360,17 +358,7 @@ class ProductController extends Controller
                         }
                     }
 
-                    // Extrai informações de estoque da variação (se vierem)
-                    $stockValue = null;
-                    if (isset($variantData['stock'])) {
-                        $stockValue = $variantData['stock'] !== null && $variantData['stock'] !== '' 
-                            ? (int) $variantData['stock'] 
-                            : null;
-                    } elseif (isset($variantData['quantity'])) {
-                        $stockValue = $variantData['quantity'] !== null && $variantData['quantity'] !== '' 
-                            ? (int) $variantData['quantity'] 
-                            : null;
-                    }
+                    // Remove campos de estoque - estoque só pode ser alterado via movimentações
                     unset($variantData['stock'], $variantData['quantity']);
 
                     // Garante que attributes seja um array
@@ -401,19 +389,7 @@ class ProductController extends Controller
                         $variant = $product->variants()->create($variantData);
                     }
 
-                    // Atualização de estoque: sempre atualiza se veio explicitamente (mesmo que seja 0)
-                    if ($currentBranchId && $stockValue !== null) {
-                        \App\Models\Inventory::updateOrCreate(
-                            [
-                                'branch_id' => $currentBranchId,
-                                'product_variant_id' => $variant->id,
-                            ],
-                            [
-                                'quantity' => $stockValue,
-                                'min_quantity' => 0,
-                            ]
-                        );
-                    }
+                    // Estoque não é atualizado aqui - apenas via InventoryMovementObserver
                 }
             } else {
                 // Produto simples (sem variações): atualiza/cria variação única com dados do formulário
@@ -512,19 +488,7 @@ class ProductController extends Controller
                     ]);
                 }
 
-                // Atualiza estoque na filial atual
-                if ($stock !== null && $stock !== '' && $currentBranchId) {
-                    \App\Models\Inventory::updateOrCreate(
-                        [
-                            'branch_id' => $currentBranchId,
-                            'product_variant_id' => $variant->id,
-                        ],
-                        [
-                            'quantity' => (int) $stock,
-                            'min_quantity' => 0,
-                        ]
-                    );
-                }
+                // Estoque não é atualizado aqui - apenas via InventoryMovementObserver
             }
 
             $product->refresh();

@@ -42,9 +42,6 @@ class UpdateProductRequest extends FormRequest
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.image' => ['nullable', 'image', 'max:2048'],
             'variants.*.attributes' => ['nullable'],
-            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
-            'variants.*.quantity' => ['nullable', 'integer', 'min:0'],
-            'stock' => ['nullable', 'integer', 'min:0'],
             'simple_attributes' => ['nullable'],
         ];
     }
