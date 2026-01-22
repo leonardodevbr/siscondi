@@ -29,9 +29,22 @@ class InventoryController extends Controller
 
         $branchId = (int) $branchId;
 
+        $productId = $request->product_id;
+        
+        if ($request->variation_id && ! $productId) {
+            $variant = ProductVariant::findOrFail($request->variation_id);
+            $productId = $variant->product_id;
+        }
+        
+        if (! $productId) {
+            return response()->json([
+                'message' => 'Produto não identificado. É necessário informar product_id ou variation_id.',
+            ], 422);
+        }
+
         $product = Product::with(['variants.inventories' => function ($query) use ($branchId): void {
             $query->where('branch_id', $branchId);
-        }])->findOrFail($request->product_id);
+        }])->findOrFail($productId);
 
         $variant = null;
         $inventory = null;
@@ -74,7 +87,7 @@ class InventoryController extends Controller
         }
 
         $movement = InventoryMovement::create([
-            'product_id' => $request->product_id,
+            'product_id' => $productId,
             'variation_id' => $request->variation_id,
             'user_id' => auth()->id(),
             'type' => $finalType,
@@ -131,25 +144,39 @@ class InventoryController extends Controller
             'variation_id' => ['nullable', 'integer', 'exists:product_variants,id'],
         ]);
 
-        $query = InventoryMovement::with(['user:id,name', 'variation:id,sku'])
+        $query = InventoryMovement::with(['user:id,name', 'variation:id,sku,attributes'])
             ->where('product_id', $productId)
             ->orderBy('created_at', 'desc');
 
         if ($request->has('variation_id') && $request->variation_id) {
             $query->where('variation_id', $request->variation_id);
-        } else {
-            $query->whereNull('variation_id');
         }
 
         $movements = $query->paginate(20);
 
         return response()->json([
             'data' => $movements->map(function ($movement) {
+                $variantInfo = '';
+                if ($movement->variation) {
+                    $attrs = $movement->variation->attributes ?? [];
+                    $variantParts = [];
+                    if (isset($attrs['cor'])) {
+                        $variantParts[] = $attrs['cor'];
+                    }
+                    if (isset($attrs['tamanho'])) {
+                        $variantParts[] = $attrs['tamanho'];
+                    }
+                    $variantInfo = count($variantParts) > 0 
+                        ? ' - ' . implode('/', $variantParts) 
+                        : ' - ' . ($movement->variation->sku ?? '');
+                }
+
                 return [
                     'id' => $movement->id,
                     'type' => $movement->type,
                     'type_label' => $this->getTypeLabel($movement->type),
                     'quantity' => $movement->quantity,
+                    'quantity_display' => ($movement->type === 'entry' || $movement->type === 'return' ? '+' : '-') . $movement->quantity,
                     'reason' => $movement->reason,
                     'user' => $movement->user ? [
                         'id' => $movement->user->id,
@@ -158,6 +185,7 @@ class InventoryController extends Controller
                     'variation' => $movement->variation ? [
                         'id' => $movement->variation->id,
                         'sku' => $movement->variation->sku,
+                        'info' => $variantInfo,
                     ] : null,
                     'created_at' => $movement->created_at->format('d/m/Y H:i'),
                 ];

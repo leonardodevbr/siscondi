@@ -25,13 +25,25 @@ class StoreInventoryAdjustmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'variation_id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'type' => ['required', 'string', Rule::in(['entry', 'exit', 'adjustment', 'return'])],
             'operation' => ['nullable', 'string', Rule::in(['add', 'sub'])],
             'quantity' => ['required', 'integer', 'min:1'],
             'reason' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! $this->product_id && ! $this->variation_id) {
+                $validator->errors()->add('product_id', 'É necessário informar o produto ou a variação.');
+            }
+        });
     }
 
     /**
