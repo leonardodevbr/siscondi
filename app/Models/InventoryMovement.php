@@ -19,6 +19,7 @@ class InventoryMovement extends Model
         'product_id',
         'variation_id',
         'user_id',
+        'branch_id',
         'type',
         'operation',
         'quantity',
@@ -31,6 +32,14 @@ class InventoryMovement extends Model
     protected $casts = [
         'quantity' => 'integer',
     ];
+
+    /**
+     * @return BelongsTo<Branch, InventoryMovement>
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
 
     /**
      * @return BelongsTo<Product, InventoryMovement>

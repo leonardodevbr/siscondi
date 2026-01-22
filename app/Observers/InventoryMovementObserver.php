@@ -17,13 +17,11 @@ class InventoryMovementObserver
     public function created(InventoryMovement $inventoryMovement): void
     {
         DB::transaction(function () use ($inventoryMovement): void {
-            $user = auth()->user();
-            $branchId = $user?->branch_id ?? request()->header('X-Branch-ID');
+            $branchId = $inventoryMovement->branch_id;
 
             if (! $branchId) {
                 Log::warning('InventoryMovement created without branch_id', [
                     'movement_id' => $inventoryMovement->id,
-                    'user_id' => $user?->id,
                 ]);
                 return;
             }

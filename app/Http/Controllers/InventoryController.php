@@ -85,6 +85,7 @@ class InventoryController extends Controller
             'product_id' => $productId,
             'variation_id' => $request->variation_id,
             'user_id' => auth()->id(),
+            'branch_id' => $branchId,
             'type' => $finalType,
             'operation' => $operation,
             'quantity' => $quantity,
@@ -140,11 +141,20 @@ class InventoryController extends Controller
     {
         $request->validate([
             'variation_id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
+        $user = auth()->user();
+        $branchId = $user?->branch_id ?? $request->header('X-Branch-ID');
         $query = InventoryMovement::with(['user:id,name', 'variation:id,sku,attributes'])
             ->where('product_id', $productId)
             ->orderBy('created_at', 'desc');
+
+        if ($branchId) {
+            $query->where('branch_id', (int) $branchId);
+        } elseif ($request->filled('branch_id')) {
+            $query->where('branch_id', (int) $request->branch_id);
+        }
 
         if ($request->has('variation_id') && $request->variation_id) {
             $query->where('variation_id', $request->variation_id);
@@ -205,19 +215,37 @@ class InventoryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryMovement::with(['user:id,name', 'product:id,name', 'variation:id,sku,barcode,attributes'])
-            ->orderBy('created_at', 'desc');
+        $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+        ]);
+
+        $user = auth()->user();
+        $userBranchId = $user?->branch_id ? (int) $user->branch_id : null;
+
+        $query = InventoryMovement::with([
+            'user:id,name',
+            'product:id,name',
+            'variation:id,sku,barcode,attributes',
+            'branch:id,name',
+        ])->orderBy('created_at', 'desc');
+
+        if ($userBranchId !== null) {
+            $query->where('branch_id', $userBranchId);
+        } elseif ($request->filled('branch_id')) {
+            $query->where('branch_id', (int) $request->branch_id);
+        }
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search): void {
                 $q->whereHas('product', function ($q2) use ($search): void {
                     $q2->where('name', 'like', "%{$search}%");
-                });
-            })->orWhere(function ($q) use ($search): void {
-                $q->whereNotNull('variation_id')
-                    ->whereHas('variation', function ($q2) use ($search): void {
-                        $q2->where('sku', 'like', "%{$search}%");
+                })
+                    ->orWhere(function ($q2) use ($search): void {
+                        $q2->whereNotNull('variation_id')
+                            ->whereHas('variation', function ($q3) use ($search): void {
+                                $q3->where('sku', 'like', "%{$search}%");
+                            });
                     });
             });
         }
@@ -267,6 +295,11 @@ class InventoryController extends Controller
                     'quantity_display' => ($op === 'sub' ? '-' : '+') . $movement->quantity,
                     'reason' => $movement->reason,
                     'product_name' => $productName . $variantInfo,
+                    'branch' => $movement->branch ? [
+                        'id' => $movement->branch->id,
+                        'name' => $movement->branch->name,
+                    ] : null,
+                    'branch_name' => $movement->branch?->name ?? 'N/A',
                     'user' => $movement->user ? [
                         'id' => $movement->user->id,
                         'name' => $movement->user->name,

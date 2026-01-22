@@ -11,7 +11,7 @@
 
     <div class="card p-4 sm:p-6">
       <!-- Filtros -->
-      <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div>
           <input
             v-model="filters.search"
@@ -19,6 +19,14 @@
             placeholder="Buscar por produto ou SKU..."
             class="w-full h-10 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             @input="debouncedSearch"
+          />
+        </div>
+        <div v-if="isGlobalAdmin">
+          <SearchableSelect
+            v-model="filters.branch_id"
+            :options="branchOptions"
+            placeholder="Todas as filiais"
+            @update:modelValue="loadMovements"
           />
         </div>
         <div>
@@ -75,6 +83,9 @@
                 Data
               </th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Filial
+              </th>
+              <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Produto
               </th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -96,6 +107,11 @@
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-slate-900">
                   {{ movement.created_at }}
+                </div>
+              </td>
+              <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-slate-600">
+                  {{ movement.branch_name || 'N/A' }}
                 </div>
               </td>
               <td class="px-4 sm:px-6 py-4">
@@ -176,6 +192,8 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import api from '@/services/api';
 
@@ -188,14 +206,19 @@ export default {
   },
   setup() {
     const toast = useToast();
+    const authStore = useAuthStore();
+    const appStore = useAppStore();
     const loading = ref(false);
     const movements = ref([]);
     const pagination = ref(null);
     const users = ref([]);
 
+    const isGlobalAdmin = computed(() => !authStore.user?.branch_id);
+
     const filters = ref({
       search: '',
       type: '',
+      branch_id: null,
       user_id: null,
       date_from: '',
       date_to: '',
@@ -206,6 +229,12 @@ export default {
         value: user.id,
         label: user.name,
       }));
+    });
+
+    const branchOptions = computed(() => {
+      const list = appStore.branches || [];
+      const options = list.map((b) => ({ value: b.id, label: b.name }));
+      return [{ value: null, label: 'Todas as filiais' }, ...options];
     });
 
     const loadUsers = async () => {
@@ -266,6 +295,7 @@ export default {
     };
 
     onMounted(async () => {
+      await appStore.fetchBranches();
       await loadUsers();
       await loadMovements();
     });
@@ -276,6 +306,8 @@ export default {
       pagination,
       filters,
       userOptions,
+      branchOptions,
+      isGlobalAdmin,
       loadMovements,
       debouncedSearch,
       changePage,
