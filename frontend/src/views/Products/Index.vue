@@ -127,7 +127,7 @@
         <p class="text-slate-500">Nenhum produto encontrado</p>
       </div>
 
-      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
+      <div v-else class="-mx-4 sm:-mx-6 min-w-0">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
@@ -155,7 +155,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
-            <tr v-for="product in productStore.products" :key="product.id">
+            <tr v-for="product in productStore.products" :key="product.id" class="relative z-10 focus-within:z-20">
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <ProductThumb
                   :src="getProductImage(product)"
@@ -229,7 +229,7 @@
                     >
                       <EllipsisVerticalIcon class="h-5 w-5" />
                     </MenuButton>
-                    <MenuItems class="absolute right-0 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white shadow-lg focus:outline-none z-[9999]">
+                    <MenuItems class="absolute right-0 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-50">
                       <div class="py-1">
                         <MenuItem v-slot="{ active }">
                           <button
