@@ -505,7 +505,7 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <div class="flex min-h-0 flex-1 flex-col gap-4 p-4">
+      <div class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-0">
         <div class="flex shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
           <div>
             <p class="text-xs text-slate-500">Saldo do Caixa</p>
@@ -660,7 +660,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
+        <div class="-mx-4 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
           <span
             v-for="s in shortcuts"
             :key="s.key"
