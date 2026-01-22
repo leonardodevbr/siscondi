@@ -102,6 +102,10 @@
                 <div class="text-sm font-medium text-slate-900">
                   {{ movement.product_name }}
                 </div>
+                <div v-if="movement.variation" class="text-xs text-slate-500 mt-0.5">
+                  <span v-if="movement.variation.sku">SKU: {{ movement.variation.sku }}</span>
+                  <span v-else-if="movement.variation.barcode">Código: {{ movement.variation.barcode }}</span>
+                </div>
               </td>
               <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <span

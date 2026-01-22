@@ -185,6 +185,7 @@ class InventoryController extends Controller
                     'variation' => $movement->variation ? [
                         'id' => $movement->variation->id,
                         'sku' => $movement->variation->sku,
+                        'barcode' => $movement->variation->barcode,
                         'info' => $variantInfo,
                     ] : null,
                     'created_at' => $movement->created_at->format('d/m/Y H:i'),
@@ -204,8 +205,7 @@ class InventoryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryMovement::with(['user:id,name', 'product:id,name'])
-            ->with('variation')
+        $query = InventoryMovement::with(['user:id,name', 'product:id,name', 'variation:id,sku,barcode,attributes'])
             ->orderBy('created_at', 'desc');
 
         if ($request->has('search') && $request->search) {
@@ -268,6 +268,11 @@ class InventoryController extends Controller
                     'user' => $movement->user ? [
                         'id' => $movement->user->id,
                         'name' => $movement->user->name,
+                    ] : null,
+                    'variation' => $movement->variation ? [
+                        'id' => $movement->variation->id,
+                        'sku' => $movement->variation->sku,
+                        'barcode' => $movement->variation->barcode,
                     ] : null,
                     'created_at' => $movement->created_at->format('d/m/Y H:i'),
                     'created_at_raw' => $movement->created_at,

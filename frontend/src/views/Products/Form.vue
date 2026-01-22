@@ -590,6 +590,9 @@
                     Data
                   </th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                    Variação
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Usuário
                   </th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
@@ -609,6 +612,14 @@
                     {{ movement.created_at }}
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                    <span v-if="movement.variation" class="text-xs">
+                      <span v-if="movement.variation.info">{{ movement.variation.info }}</span>
+                      <span v-else-if="movement.variation.sku">SKU: {{ movement.variation.sku }}</span>
+                      <span v-else>-</span>
+                    </span>
+                    <span v-else class="text-xs text-slate-400">Produto simples</span>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
                     {{ movement.user?.name || 'N/A' }}
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap">
@@ -624,7 +635,7 @@
                     </span>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
-                    {{ movement.quantity }}
+                    {{ movement.quantity_display || movement.quantity }}
                   </td>
                   <td class="px-4 py-3 text-sm text-slate-600">
                     {{ movement.reason || '-' }}
