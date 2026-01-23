@@ -951,17 +951,17 @@ onBeforeRouteLeave((_to, _from, next) => {
 function scrollToBottom() {
   nextTick(() => {
     if (cartListRef.value) {
-      cartListRef.value.scrollTo({
-        top: cartListRef.value.scrollHeight,
-        behavior: 'smooth',
-      });
+      cartListRef.value.scrollTop = cartListRef.value.scrollHeight;
     }
   });
 }
 
-watch(() => cartStore.items.length, () => {
+watch(() => cartStore.items.length, async () => {
   if (cartStore.items.length > 0) {
-    scrollToBottom();
+    await nextTick();
+    if (cartListRef.value) {
+      cartListRef.value.scrollTop = cartListRef.value.scrollHeight;
+    }
   }
 });
 
@@ -1093,7 +1093,7 @@ onUnmounted(() => {
         </div>
 
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
-          <div class="flex flex-col space-y-4 lg:col-span-2">
+          <div class="flex min-h-0 flex-col space-y-4 lg:col-span-2">
             <div>
               <div v-if="lastScannedCode && !lastScannedProduct" class="mb-1">
                 <label class="block text-xs text-slate-500">Último código: {{ lastScannedCode }}</label>
@@ -1197,7 +1197,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex h-full flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
+          <div class="flex h-full max-h-full flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
             <div class="shrink-0 border-b border-slate-200 p-4">
               <h3 class="text-lg font-semibold text-slate-800">Itens da Venda</h3>
             </div>
@@ -1205,7 +1205,8 @@ onUnmounted(() => {
             <div
               ref="cartListRef"
               tabindex="-1"
-              class="min-h-0 flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
+              class="flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
+              style="max-height: calc(100vh - 422px);"
             >
               <div v-if="cartStore.items.length === 0" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-400">Nenhum item.</p>
@@ -1243,7 +1244,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="shrink-0 border-t border-slate-200 bg-slate-50 p-4">
+            <div class="shrink-0 border-t border-slate-200 bg-slate-50 p-4 rounded-b-md">
               <div class="mb-4 flex items-center justify-between">
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
