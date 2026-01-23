@@ -15,7 +15,7 @@ import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
 import CheckoutModal from '@/components/Pos/CheckoutModal.vue';
 import DiscountModalContent from '@/components/Pos/DiscountModalContent.vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon } from '@heroicons/vue/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -305,27 +305,100 @@ async function runProductSearchAndAdd(code, quantity = 1) {
   }
 }
 
+async function confirmCancellation(code) {
+  const item = cartStore.items.find((i) => {
+    const itemCode = i.barcode || i.sku;
+    return itemCode && String(itemCode) === String(code);
+  });
+
+  if (!item) {
+    toast.error('Item não encontrado na lista.');
+    return;
+  }
+
+  const user = authStore.user;
+  const isAdmin = user?.roles?.some((r) => {
+    if (typeof r === 'string') {
+      return r === 'super-admin' || r === 'admin' || r === 'manager';
+    }
+    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
+  });
+
+  const productName = formatCartItemName(item);
+
+  let confirmed = false;
+
+  if (isAdmin) {
+    const result = await Swal.fire({
+      title: 'Confirmar Cancelamento',
+      html: `Deseja remover <strong>1 un</strong> de <strong>${productName}</strong>?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, Remover',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444',
+      focusConfirm: false,
+    });
+    confirmed = result.isConfirmed;
+  } else {
+    const result = await Swal.fire({
+      title: 'Cancelar Item',
+      html: `Insira a senha de gerente para cancelar <strong>${productName}</strong>:`,
+      icon: 'lock',
+      input: 'password',
+      inputPlaceholder: 'Senha de gerente',
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444',
+      focusConfirm: false,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Por favor, insira a senha.';
+        }
+      },
+    });
+
+    if (result.isConfirmed) {
+      const correctPassword = 'admin123';
+      if (result.value === correctPassword) {
+        confirmed = true;
+      } else {
+        toast.error('Senha incorreta.');
+        return;
+      }
+    }
+  }
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await cartStore.removeItemByCode(code);
+    toast.success('Item removido.');
+    isCancellationMode.value = false;
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
+    searchQuery.value = '';
+    products.value = [];
+    nextTick(focusSearch);
+  } catch (error) {
+    const message = error.response?.data?.message || error.message || 'Erro ao remover item.';
+    toast.error(message);
+    isCancellationMode.value = false;
+    nextTick(focusSearch);
+  }
+}
+
 async function handleScannedCode(code) {
   const c = String(code).trim();
   if (!c) return;
   
   if (isCancellationMode.value) {
-    try {
-      await cartStore.removeItemByCode(c);
-      toast.success('Item removido.');
-      isCancellationMode.value = false;
-      if (searchTimeout.value) {
-        clearTimeout(searchTimeout.value);
-        searchTimeout.value = null;
-      }
-      searchQuery.value = '';
-      products.value = [];
-      nextTick(focusSearch);
-    } catch (error) {
-      toast.error(error.message || 'Erro ao remover item.');
-      isCancellationMode.value = false;
-      nextTick(focusSearch);
-    }
+    await confirmCancellation(c);
     return;
   }
   
@@ -1026,30 +1099,38 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
-              <div v-if="isCancellationMode" class="mb-2 rounded-lg border-2 border-red-500 bg-red-50 p-2">
-                <p class="text-center text-sm font-semibold text-red-700">
-                  ⚠️ MODO CANCELAMENTO ATIVO
-                </p>
+              <div v-if="isCancellationMode" class="mb-2">
+                <span class="inline-flex items-center gap-1.5 rounded bg-orange-100 px-2 py-1 text-xs font-bold text-orange-600">
+                  MODO CANCELAMENTO (ESC para sair)
+                </span>
               </div>
-              <input
-                id="product-search"
-                v-model="searchQuery"
-                name="product-search-input"
-                type="text"
-                :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
-                :class="[
-                  'input-base w-full text-lg',
-                  isCancellationMode ? 'border-2 border-red-500 focus:border-red-600 focus:ring-red-500' : ''
-                ]"
-                autocomplete="off"
-                autocapitalize="off"
-                autocorrect="off"
-                spellcheck="false"
-                data-form-type="other"
-                autofocus
-                @input="handleSearchInput"
-                @keyup.enter="handleBarcodeSearch"
-              >
+              <div class="relative">
+                <div v-if="isCancellationMode" class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                  <TrashIcon class="h-5 w-5 text-orange-400" />
+                </div>
+                <div v-else class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                  <MagnifyingGlassIcon class="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="product-search"
+                  v-model="searchQuery"
+                  name="product-search-input"
+                  type="text"
+                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
+                  :class="[
+                    'input-base w-full text-lg pr-10',
+                    isCancellationMode ? 'ring-2 ring-orange-400 focus:ring-orange-500' : ''
+                  ]"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  data-form-type="other"
+                  autofocus
+                  @input="handleSearchInput"
+                  @keyup.enter="handleBarcodeSearch"
+                >
+              </div>
             </div>
 
             <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white">
