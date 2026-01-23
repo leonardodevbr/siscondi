@@ -53,6 +53,7 @@ const isBalanceVisible = ref(false);
 const balanceVisibilityTimeout = ref(null);
 const isLoading = ref(true);
 const loadingProgress = ref(0);
+const isCancellationMode = ref(false);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -82,7 +83,7 @@ const shortcutsSale = [
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
-const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
+const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale.value));
 
 function formatVariantLabel(attributes) {
   if (!attributes || Object.keys(attributes).length === 0) {
@@ -305,6 +306,24 @@ async function handleScannedCode(code) {
   const c = String(code).trim();
   if (!c) return;
   
+  if (isCancellationMode.value) {
+    try {
+      await cartStore.removeItemByCode(c);
+      toast.success('Item removido.');
+      isCancellationMode.value = false;
+      if (searchTimeout.value) {
+        clearTimeout(searchTimeout.value);
+        searchTimeout.value = null;
+      }
+      searchQuery.value = '';
+      products.value = [];
+      nextTick(focusSearch);
+    } catch (error) {
+      toast.error(error.message || 'Erro ao remover item.');
+    }
+    return;
+  }
+  
   const parsed = parseQuantityMultiplier(c);
   quantityMultiplier.value = parsed.quantity;
   lastScannedCode.value = parsed.code;
@@ -512,16 +531,11 @@ function focusSearch() {
   if (el) el.focus();
 }
 
-function handleF3RemoveItem() {
-  const items = cartStore.items;
-  if (items.length === 0) return;
-  const idx = selectedCartIndex.value != null && selectedCartIndex.value >= 0 && selectedCartIndex.value < items.length
-    ? selectedCartIndex.value
-    : items.length - 1;
-  handleRemoveItem(idx);
-  const rest = cartStore.items;
-  selectedCartIndex.value = rest.length === 0 ? null : Math.min(idx, Math.max(0, rest.length - 1));
-  nextTick(() => cartListRef.value?.focus());
+function handleF3ToggleCancellationMode() {
+  isCancellationMode.value = !isCancellationMode.value;
+  if (isCancellationMode.value) {
+    nextTick(focusSearch);
+  }
 }
 
 function toggleFullscreen() {
@@ -744,6 +758,11 @@ function handleKeydown(e) {
       return;
     }
     if (cartStore.saleStarted) {
+      if (isCancellationMode.value) {
+        isCancellationMode.value = false;
+        nextTick(focusSearch);
+        return;
+      }
       if (searchQuery.value.trim()) {
         searchQuery.value = '';
         products.value = [];
@@ -783,7 +802,7 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F3') {
-    handleF3RemoveItem();
+    handleF3ToggleCancellationMode();
     return;
   }
   if (key === 'F4') {
@@ -1018,13 +1037,21 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
+              <div v-if="isCancellationMode" class="mb-2 rounded-lg border-2 border-red-500 bg-red-50 p-2">
+                <p class="text-center text-sm font-semibold text-red-700">
+                  ⚠️ MODO CANCELAMENTO ATIVO
+                </p>
+              </div>
               <input
                 id="product-search"
                 v-model="searchQuery"
                 name="product-search-input"
                 type="text"
-                placeholder="Bipar ou digitar produto... (ex: x3 7891234567890)"
-                class="input-base w-full text-lg"
+                :placeholder="isCancellationMode ? 'BIPE O PRODUTO PARA REMOVER' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
+                :class="[
+                  'input-base w-full text-lg',
+                  isCancellationMode ? 'border-2 border-red-500 focus:border-red-600 focus:ring-red-500' : ''
+                ]"
                 autocomplete="off"
                 autocapitalize="off"
                 autocorrect="off"
@@ -1096,15 +1123,6 @@ onUnmounted(() => {
                         {{ formatCurrency(item.unit_price) }} x {{ item.quantity }}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      class="ml-2 text-red-500 hover:text-red-700"
-                      @click.stop="handleRemoveItem(index)"
-                    >
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
                   </div>
                   <div class="mt-2 flex items-center justify-between">
                     <div class="flex items-center gap-2 text-xs text-slate-500">

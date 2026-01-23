@@ -96,6 +96,23 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async removeItemByCode(code) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/remove-item-by-code', {
+          sale_id: this.saleId,
+          code,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao remover item.';
+        throw new Error(message);
+      }
+    },
     async setCustomer(customerId) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');

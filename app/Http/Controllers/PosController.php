@@ -169,10 +169,17 @@ class PosController extends Controller
 
             $existingItem = SaleItem::where('sale_id', $sale->id)
                 ->where('product_variant_id', $variantId)
+                ->lockForUpdate()
                 ->first();
 
             if ($existingItem) {
-                $existingItem->quantity += $quantity;
+                $newQuantity = $existingItem->quantity + $quantity;
+                
+                if ($availableStock < $newQuantity) {
+                    throw new \InvalidArgumentException("Estoque insuficiente. Disponível: {$availableStock}, Solicitado: {$newQuantity}");
+                }
+                
+                $existingItem->quantity = $newQuantity;
                 $existingItem->total_price = $existingItem->unit_price * $existingItem->quantity;
                 $existingItem->save();
             } else {
@@ -226,6 +233,63 @@ class PosController extends Controller
                 ->findOrFail($itemId);
 
             $item->delete();
+
+            $this->recalculateSaleTotals($sale);
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+        ], 200);
+    }
+
+    /**
+     * Remove item da venda por código de barras/SKU.
+     */
+    public function removeItemByCode(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'exists:sales,id'],
+            'code' => ['required', 'string'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $sale = Sale::findOrFail($request->input('sale_id'));
+
+        if ($sale->status !== SaleStatus::OPEN) {
+            return response()->json([
+                'message' => 'Sale is not open',
+            ], 400);
+        }
+
+        $code = $request->input('code');
+        $sale = DB::transaction(function () use ($sale, $code): Sale {
+            $item = SaleItem::where('sale_id', $sale->id)
+                ->whereHas('productVariant', function ($q) use ($code) {
+                    $q->where('sku', $code)
+                        ->orWhere('barcode', $code);
+                })
+                ->lockForUpdate()
+                ->first();
+
+            if (! $item) {
+                throw new \InvalidArgumentException('Item não encontrado na venda.');
+            }
+
+            if ($item->quantity > 1) {
+                $item->quantity -= 1;
+                $item->total_price = $item->unit_price * $item->quantity;
+                $item->save();
+            } else {
+                $item->delete();
+            }
 
             $this->recalculateSaleTotals($sale);
 
