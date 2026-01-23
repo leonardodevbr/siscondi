@@ -14,7 +14,7 @@ import Button from '@/components/Common/Button.vue';
 import Modal from '@/components/Common/Modal.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -49,6 +49,8 @@ const quantityMultiplier = ref(1);
 const lastScannedProduct = ref(null);
 const isBalanceVisible = ref(false);
 const balanceVisibilityTimeout = ref(null);
+const isLoading = ref(true);
+const loadingProgress = ref(0);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -126,6 +128,29 @@ async function checkCashRegisterStatus() {
   } catch {
     toast.error('Erro ao verificar status do caixa.');
   }
+}
+
+async function initializePDV() {
+  isLoading.value = true;
+  loadingProgress.value = 0;
+  
+  const progressInterval = setInterval(() => {
+    if (loadingProgress.value < 90) {
+      loadingProgress.value += 2;
+    }
+  }, 30);
+  
+  const minTime = new Promise((resolve) => setTimeout(resolve, 1500));
+  const statusCheck = checkCashRegisterStatus();
+  
+  await Promise.all([minTime, statusCheck]);
+  
+  clearInterval(progressInterval);
+  loadingProgress.value = 100;
+  
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  
+  isLoading.value = false;
 }
 
 async function searchProducts(query) {
@@ -364,7 +389,6 @@ async function handleRemoveItem(index) {
   
   if (confirmed) {
     cartStore.removeItem(index);
-    toast.info('Item removido.');
     // TODO: Solicitar senha de gerente se user.role === 'seller'
   }
 }
@@ -379,7 +403,6 @@ function handleUpdateQuantity(index, newQuantity) {
 
 function handleClearCart() {
   cartStore.clearForCancel();
-  toast.info('Itens da venda limpos.');
 }
 
 function branchIdForSale() {
@@ -432,18 +455,24 @@ async function handleCancelSale() {
       searchQuery.value = '';
       products.value = [];
       quantityMultiplier.value = 1;
-      toast.info('Venda cancelada.');
       nextTick(focusSearch);
     }
   } else {
-    cartStore.setCustomer(null);
-    cartStore.setSaleStarted(false);
-    lastScannedProduct.value = null;
-    lastScannedCode.value = '';
-    searchQuery.value = '';
-    products.value = [];
-    quantityMultiplier.value = 1;
-    toast.info('Venda reiniciada.');
+    const ok = await confirm(
+      'Reiniciar Venda',
+      'Deseja reiniciar a venda atual? O cliente será removido e a tela voltará ao estado inicial.',
+      'Sim, reiniciar',
+      'blue'
+    );
+    if (ok) {
+      cartStore.setCustomer(null);
+      cartStore.setSaleStarted(false);
+      lastScannedProduct.value = null;
+      lastScannedCode.value = '';
+      searchQuery.value = '';
+      products.value = [];
+      quantityMultiplier.value = 1;
+    }
   }
 }
 
@@ -777,7 +806,7 @@ onBeforeRouteLeave((_to, _from, next) => {
 });
 
 onMounted(async () => {
-  await checkCashRegisterStatus();
+  await initializePDV();
   cartStore.hydrate();
   setupCartPersist(cartStore);
   if (cashRegisterStore.isOpen && cartStore.saleStarted) {
@@ -801,9 +830,25 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full min-h-0 flex-col overflow-x-hidden">
-    <PosClosedState v-if="!cashRegisterStore.isOpen" />
+    <div
+      v-if="isLoading"
+      class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
+    >
+      <div class="text-center">
+        <h1 class="mb-4 text-3xl font-bold text-slate-800">Adonai System</h1>
+        <p class="mb-6 text-lg text-slate-600">Verificando Status do Caixa...</p>
+        <div class="mx-auto w-64 rounded-full bg-slate-200">
+          <div
+            class="h-2 rounded-full bg-blue-600 transition-all duration-300"
+            :style="{ width: `${loadingProgress}%` }"
+          />
+        </div>
+      </div>
+    </div>
 
-    <template v-else>
+    <PosClosedState v-if="!isLoading && !cashRegisterStore.isOpen" />
+
+    <template v-else-if="!isLoading">
       <header class="flex shrink-0 items-center justify-between gap-4 bg-slate-800 px-4 py-2 text-white">
         <div class="font-semibold">
           PDV
@@ -848,9 +893,17 @@ onUnmounted(() => {
               PRÓXIMO CLIENTE
             </p>
           </div>
-          <p class="text-slate-500">
+          <p class="mb-4 text-slate-500">
             Pressione F1 para iniciar venda
           </p>
+          <button
+            type="button"
+            class="flex items-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-lg font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            @click="openStartSaleModal"
+          >
+            <ShoppingCartIcon class="h-6 w-6" />
+            Iniciar Nova Venda (F1)
+          </button>
         </div>
       </div>
 
