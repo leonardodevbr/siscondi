@@ -56,7 +56,7 @@
         </div>
       </div>
 
-      <div v-if="showAddPayment" class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+      <div v-if="showAddPayment" class="rounded-lg border border-blue-200 bg-blue-50 p-4" @keydown.esc.stop.prevent="cancelAddPayment">
         <h4 class="mb-3 text-sm font-semibold text-slate-800">Adicionar Pagamento</h4>
         
         <div v-if="!methodSelected" class="space-y-2">
@@ -80,7 +80,7 @@
         </div>
 
         <div v-else class="space-y-3">
-          <div v-if="newPayment.method === 'credit_card' && !cardTypeSelected">
+          <div v-if="newPayment.method === 'credit_card' && !cardTypeSelected" @keydown.esc.stop="cancelAddPayment">
             <p class="text-xs text-slate-600 mb-2">Tipo de cartão:</p>
             <div class="space-y-1">
               <button
@@ -110,16 +110,16 @@
             </div>
           </div>
 
-          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected">
+          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="cancelAddPayment">
             <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
-            <div class="space-y-1">
+            <div class="space-y-1 max-h-60 overflow-y-auto">
               <button
-                v-for="n in 12"
+                v-for="(n, index) in Array.from({ length: 12 }, (_, i) => i + 1)"
                 :key="n"
                 type="button"
                 :class="[
                   'w-full rounded border px-3 py-2 text-left text-sm transition',
-                  newPayment.installments === n
+                  selectedInstallmentIndex === index
                     ? 'border-blue-500 bg-blue-100 font-medium'
                     : 'border-slate-300 bg-white hover:border-blue-300'
                 ]"
@@ -140,10 +140,10 @@
               placeholder="0,00"
               @input="handleAmountInput"
               @keydown.enter="confirmAddPayment"
-              @keydown.esc="cancelAddPayment"
+              @keydown.esc.stop="cancelAddPayment"
             >
             <p v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && installmentsSelected" class="mt-1 text-xs text-slate-500">
-              Total: {{ formatCurrency(parseAmount(amountFormatted) * newPayment.installments) }}
+              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency((parseAmount(amountFormatted) || 0) * newPayment.installments) }}
             </p>
           </div>
 
@@ -263,14 +263,14 @@ function formatPaymentMethod(method) {
 
 function parseAmount(value) {
   if (!value) return 0;
-  const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
+  const cleaned = value.replace(/\./g, '').replace(',', '.');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
 
 function formatAmountInput(value) {
-  const num = typeof value === 'string' ? parseAmount(value) : value;
-  if (num === 0) return '';
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value;
+  if (isNaN(num) || num === 0) return '';
   const parts = num.toFixed(2).split('.');
   return `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${parts[1]}`;
 }
@@ -345,7 +345,8 @@ function selectInstallments(n) {
   selectedInstallmentIndex.value = n - 1;
   nextTick(() => {
     amountInputVisible.value = true;
-    const singleValue = remainingAmount.value / n;
+    const remaining = Math.max(0, remainingAmount.value);
+    const singleValue = remaining / n;
     amountFormatted.value = formatAmountInput(String(singleValue));
     newPayment.value.amount = singleValue;
     focusAmountInput();
@@ -353,8 +354,12 @@ function selectInstallments(n) {
 }
 
 function installmentPreview(n) {
-  const amount = parseAmount(amountFormatted.value) || remainingAmount.value;
-  return amount / n;
+  if (amountFormatted.value) {
+    const amount = parseAmount(amountFormatted.value);
+    return amount / n;
+  }
+  const remaining = Math.max(0, remainingAmount.value);
+  return remaining / n;
 }
 
 function focusAmountInput() {
@@ -400,8 +405,19 @@ async function confirmAddPayment() {
   }
 }
 
-function cancelAddPayment() {
+function cancelAddPayment(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
   resetPaymentForm();
+}
+
+function handleModalClose() {
+  if (!showAddPayment.value) {
+    emit('close');
+  }
 }
 
 function handleKeydown(e) {
@@ -409,10 +425,16 @@ function handleKeydown(e) {
 
   if (e.key === 'Escape') {
     if (showAddPayment.value) {
-      cancelAddPayment();
-    } else {
-      emit('close');
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      cancelAddPayment(e);
+      return;
     }
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    emit('close');
     return;
   }
 
@@ -521,10 +543,10 @@ function handleKeydown(e) {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener('keydown', handleKeydown, true);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener('keydown', handleKeydown, true);
 });
 </script>
