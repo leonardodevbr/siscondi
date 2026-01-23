@@ -20,8 +20,10 @@ class Sale extends Model
     protected $fillable = [
         'user_id',
         'branch_id',
+        'cash_register_id',
         'customer_id',
         'coupon_id',
+        'coupon_code',
         'total_amount',
         'discount_amount',
         'final_amount',
@@ -64,6 +66,14 @@ class Sale extends Model
     }
 
     /**
+     * @return BelongsTo<CashRegister, Sale>
+     */
+    public function cashRegister(): BelongsTo
+    {
+        return $this->belongsTo(CashRegister::class);
+    }
+
+    /**
      * @return BelongsTo<Coupon, Sale>
      */
     public function coupon(): BelongsTo
@@ -85,6 +95,14 @@ class Sale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasMany<SalePayment>
+     */
+    public function salePayments(): HasMany
+    {
+        return $this->hasMany(SalePayment::class);
     }
 
     /**
