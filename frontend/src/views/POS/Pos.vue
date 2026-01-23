@@ -28,6 +28,7 @@ const { confirm, info } = useAlert();
 
 const searchQuery = ref('');
 const lastScannedCode = ref('');
+const allowNavigation = ref(false);
 const scanBuffer = ref('');
 const scanLastKeyTime = ref(0);
 const products = ref([]);
@@ -533,6 +534,7 @@ async function handleFinalizeSale() {
     toast.success('Venda finalizada.');
     showCheckoutModal.value = false;
     await cashRegisterStore.checkStatus();
+    allowNavigation.value = true;
     await router.push({ name: 'dashboard' });
   } catch (err) {
     const msg = err.response?.data?.message ?? err.message ?? 'Erro ao finalizar venda.';
@@ -1007,10 +1009,22 @@ async function handleCustomerSubmit() {
 }
 
 onBeforeRouteLeave((_to, _from, next) => {
+  if (allowNavigation.value) {
+    allowNavigation.value = false;
+    next();
+    return;
+  }
+
   if (!cashRegisterStore.isOpen) {
     next();
     return;
   }
+
+  if (!cartStore.saleStarted || !cartStore.saleId) {
+    next();
+    return;
+  }
+
   confirm(
     'Caixa aberto',
     'O caixa está aberto. Deseja realmente sair? Feche o caixa antes se for encerrar o turno.',
