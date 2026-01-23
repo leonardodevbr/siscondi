@@ -14,7 +14,7 @@ import Button from '@/components/Common/Button.vue';
 import Modal from '@/components/Common/Modal.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon } from '@heroicons/vue/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -244,8 +244,13 @@ async function processScanApi(code, quantity = 1) {
     variant_id: data.variation_id,
     quantity_added: quantity,
     variant_stock: stock,
+    price: data.price ?? 0,
   };
   cartStore.addItem(product, quantity, data.variation_id);
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
+  }
   searchQuery.value = '';
   products.value = [];
 }
@@ -273,14 +278,20 @@ async function runProductSearchAndAdd(code, quantity = 1) {
       toast.error(`Estoque insuficiente. Disponível: ${stock}`);
       return;
     }
+    const effectivePrice = variant.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
     lastScannedProduct.value = {
       ...product,
       variant_id: variant.id,
       quantity_added: quantity,
       variant_stock: stock,
       image: variant.image ?? product.image ?? null,
+      price: effectivePrice,
     };
     cartStore.addItem(product, quantity, variant.id);
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
     searchQuery.value = '';
     products.value = [];
   } catch {
@@ -363,14 +374,22 @@ function handleAddProduct(product) {
       toast.error('Produto sem variação.');
       return;
     }
+    const effectivePrice = v.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
     lastScannedProduct.value = {
       ...product,
       variant_id: v.id,
       quantity_added: 1,
       variant_stock: stock,
       image: v.image ?? product.image ?? null,
+      price: effectivePrice,
     };
     cartStore.addItem(product, 1, v.id);
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
+    searchQuery.value = '';
+    products.value = [];
   } catch (err) {
     toast.error(err.message ?? 'Erro ao adicionar.');
   }
@@ -942,18 +961,27 @@ onUnmounted(() => {
                   <span>Multiplicador: {{ quantityMultiplier }}x</span>
                 </div>
                 <div v-if="lastScannedProduct" class="flex flex-1 items-center gap-3">
-                  <img
-                    v-if="lastScannedProduct.image"
-                    :src="lastScannedProduct.image"
-                    :alt="lastScannedProduct.name"
-                    class="h-12 w-12 rounded object-cover"
-                  >
-                  <div v-else class="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-xs text-slate-400">
-                    Sem imagem
+                  <div v-if="lastScannedProduct.image" class="h-16 w-16 shrink-0 overflow-hidden rounded">
+                    <img
+                      :src="lastScannedProduct.image"
+                      :alt="lastScannedProduct.name"
+                      class="h-full w-full object-cover"
+                    >
                   </div>
-                  <div class="flex-1">
-                    <p class="text-sm font-semibold text-slate-800">{{ lastScannedProduct.name }}</p>
-                    <p class="text-xs text-slate-500">
+                  <div v-else class="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-gray-200">
+                    <PhotoIcon class="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-800 leading-tight">{{ lastScannedProduct.name }}</p>
+                    <div class="mt-1">
+                      <p class="text-xl font-bold text-blue-600">
+                        {{ formatCurrency(lastScannedProduct.price ?? 0) }}
+                      </p>
+                      <p v-if="lastScannedProduct.quantity_added > 1" class="text-sm font-semibold text-slate-600">
+                        Total: {{ formatCurrency((lastScannedProduct.price ?? 0) * lastScannedProduct.quantity_added) }}
+                      </p>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500">
                       Estoque: {{ lastScannedProduct.variant_stock ?? lastScannedProduct.current_stock ?? 0 }}
                       <span v-if="lastScannedProduct.quantity_added > 1" class="ml-2 text-blue-600">
                         +{{ lastScannedProduct.quantity_added }} itens
