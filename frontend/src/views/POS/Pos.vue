@@ -721,16 +721,20 @@ async function requestBalanceAccess() {
     text: 'Informe a Senha de Gerente para visualizar o saldo',
     input: 'password',
     inputPlaceholder: 'Digite a senha',
-    inputName: 'manager-password-balance',
+    inputName: 'manager-password-balance',    inputId: 'swal-manager-password-balance',
     inputAttributes: {
-      autocomplete: 'off',
+      autocomplete: 'new-password',
       autocapitalize: 'off',
       autocorrect: 'off',
       spellcheck: 'false',
+      name: 'manager-password-balance',
+      id: 'swal-manager-password-balance',
       'data-lpignore': 'true',
       'data-1p-ignore': 'true',
       'data-bwignore': 'true',
       'data-form-type': 'other',
+      'data-autocomplete': 'off',
+      'data-ignore': 'true',
     },
     showCancelButton: true,
     confirmButtonText: 'Confirmar',
@@ -744,6 +748,21 @@ async function requestBalanceAccess() {
     },
     allowOutsideClick: false,
     allowEscapeKey: true,
+    didOpen: () => {
+      nextTick(() => {
+        const input = document.querySelector('#swal-manager-password-balance') || document.querySelector('.swal2-input[type="password"]');
+        if (input) {
+          input.setAttribute('autocomplete', 'new-password');
+          input.setAttribute('data-lpignore', 'true');
+          input.setAttribute('data-1p-ignore', 'true');
+          input.setAttribute('data-bwignore', 'true');
+          input.setAttribute('data-form-type', 'other');
+          input.setAttribute('data-autocomplete', 'off');
+          input.setAttribute('data-ignore', 'true');
+          input.setAttribute('name', 'manager-password-balance');
+        }
+      });
+    },
   });
   
   if (password) {
@@ -1213,7 +1232,7 @@ onUnmounted(() => {
                     'input-base w-full text-lg pr-10',
                     isCancellationMode ? 'ring-2 ring-orange-400 focus:ring-orange-500' : ''
                   ]"
-                  autocomplete="off"
+                  autocomplete="one-time-code"
                   autocapitalize="off"
                   autocorrect="off"
                   spellcheck="false"
@@ -1221,6 +1240,10 @@ onUnmounted(() => {
                   data-lpignore="true"
                   data-1p-ignore="true"
                   data-bwignore="true"
+                  data-autocomplete="off"
+                  data-ignore="true"
+                  role="textbox"
+                  aria-label="Scanner de código de barras"
                   @input="handleSearchInput"
                   @keyup.enter="handleBarcodeSearch"
                 >
@@ -1268,7 +1291,7 @@ onUnmounted(() => {
               ref="cartListRef"
               tabindex="-1"
               class="flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
-              style="max-height: calc(100vh - 422px);"
+              style="max-height: calc(100vh - 388px);"
             >
               <div v-if="cartStore.items.length === 0" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-400">Nenhum item.</p>
