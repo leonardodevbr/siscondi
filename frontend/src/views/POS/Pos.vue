@@ -784,6 +784,7 @@ function toggleBalanceVisibility() {
 
 function handleReloadBlock(e) {
   if (!cashRegisterStore.isOpen) return;
+  if (!cartStore.saleStarted || !cartStore.saleId) return;
   const k = e.key;
   const mod = e.ctrlKey || e.metaKey;
   const reload =
