@@ -418,14 +418,14 @@ class InventoryController extends Controller
             ]);
         }
 
-        $product = Product::where('sku', $code)
-            ->orWhere('barcode', $code)
-            ->first();
+        $product = Product::whereHas('variants', function ($q) use ($code): void {
+            $q->where('sku', $code)->orWhere('barcode', $code);
+        })->with(['variants' => function ($q) use ($code): void {
+            $q->where('sku', $code)->orWhere('barcode', $code);
+        }])->first();
 
         if ($product) {
-            // If it's a simple product (no variations or only one default variation)
-            // Or we need to select one if no variation was provided from the scan
-            $defaultVariation = $product->variants()->first();
+            $defaultVariation = $product->variants->first();
 
             if (! $defaultVariation) {
                 return response()->json([

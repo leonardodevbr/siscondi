@@ -171,12 +171,15 @@ function viaScan(code) {
 
 function parseQuantityMultiplier(input) {
   const trimmed = String(input).trim();
+  if (!trimmed) return { quantity: 1, code: '' };
+  
   const patterns = [
-    /^x(\d+)\s*(.+)$/i,
-    /^(\d+)x\s*(.+)$/i,
-    /^(\d+)\*\s*(.+)$/i,
-    /^x(\d+)(.+)$/i,
+    /^(\d+)[x*]\s*(.+)$/i,
+    /^[x*](\d+)\s*(.+)$/i,
+    /^(\d+)[x*](.+)$/i,
+    /^[x*](\d+)(.+)$/i,
   ];
+  
   for (const pattern of patterns) {
     const match = trimmed.match(pattern);
     if (match) {
@@ -215,8 +218,11 @@ async function processScanApi(code, quantity = 1) {
     ...product,
     variant_id: data.variation_id,
     quantity_added: quantity,
+    variant_stock: stock,
   };
   cartStore.addItem(product, quantity, data.variation_id);
+  searchQuery.value = '';
+  products.value = [];
 }
 
 async function runProductSearchAndAdd(code, quantity = 1) {
@@ -412,24 +418,32 @@ async function handleFinalizeSale() {
 }
 
 async function handleCancelSale() {
-  if (cartStore.items.length === 0) {
-    toast.info('Não há itens para cancelar.');
-    return;
-  }
-  const ok = await confirm(
-    'Cancelar Venda',
-    'Deseja cancelar? Todos os itens da venda serão removidos.',
-    'Sim, cancelar',
-    'red'
-  );
-  if (ok) {
-    cartStore.clearForCancel();
+  if (cartStore.items.length > 0) {
+    const ok = await confirm(
+      'Cancelar Venda',
+      'Tem certeza que deseja cancelar a venda atual? Todos os itens serão removidos.',
+      'Sim, cancelar',
+      'red'
+    );
+    if (ok) {
+      cartStore.clearForCancel();
+      lastScannedProduct.value = null;
+      lastScannedCode.value = '';
+      searchQuery.value = '';
+      products.value = [];
+      quantityMultiplier.value = 1;
+      toast.info('Venda cancelada.');
+      nextTick(focusSearch);
+    }
+  } else {
+    cartStore.setCustomer(null);
+    cartStore.setSaleStarted(false);
     lastScannedProduct.value = null;
     lastScannedCode.value = '';
     searchQuery.value = '';
     products.value = [];
-    toast.info('Venda cancelada.');
-    nextTick(focusSearch);
+    quantityMultiplier.value = 1;
+    toast.info('Venda reiniciada.');
   }
 }
 
@@ -481,6 +495,10 @@ function toggleFullscreen() {
 }
 
 function openCloseRegisterModal() {
+  if (cartStore.items.length > 0) {
+    toast.error('Não é possível fechar o caixa com uma venda em andamento. Finalize ou cancele a venda atual.');
+    return;
+  }
   closeRegisterFinalBalance.value = String(cashRegisterStore.balance ?? 0);
   showCloseRegisterModal.value = true;
 }
