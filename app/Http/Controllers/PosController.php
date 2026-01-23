@@ -93,8 +93,9 @@ class PosController extends Controller
 
         if ($existingSale) {
             return response()->json([
+                'message' => 'Já existe uma venda em andamento. Finalize ou cancele a venda atual antes de iniciar uma nova.',
                 'sale' => $this->formatSaleResponse($existingSale),
-            ], 200);
+            ], 409);
         }
 
         $sale = DB::transaction(function () use ($user, $branchId, $cashRegister, $request): Sale {
@@ -418,9 +419,9 @@ class PosController extends Controller
                     StockMovement::create([
                         'branch_id' => $sale->branch_id,
                         'product_variant_id' => $item->product_variant_id,
-                        'type' => StockMovementType::OUT,
+                        'type' => StockMovementType::SALE,
                         'quantity' => $item->quantity,
-                        'description' => "Venda #{$sale->id}",
+                        'reason' => "Venda #{$sale->id}",
                         'user_id' => $user->id,
                     ]);
                 }
@@ -449,6 +450,43 @@ class PosController extends Controller
         return response()->json([
             'sale' => $this->formatSaleResponse($sale),
             'message' => 'Sale completed successfully',
+        ], 200);
+    }
+
+    /**
+     * Cancela a venda (muda status para 'canceled').
+     */
+    public function cancel(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'exists:sales,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $sale = Sale::findOrFail($request->input('sale_id'));
+
+        if ($sale->status !== SaleStatus::OPEN) {
+            return response()->json([
+                'message' => 'Sale is not open',
+            ], 400);
+        }
+
+        $sale = DB::transaction(function () use ($sale): Sale {
+            $sale->status = SaleStatus::CANCELED;
+            $sale->save();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+            'message' => 'Sale canceled successfully',
         ], 200);
     }
 

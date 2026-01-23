@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
-import { setupCartPersist } from '@/stores/cart';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
 import { useToast } from 'vue-toastification';
@@ -14,6 +13,8 @@ import Button from '@/components/Common/Button.vue';
 import Modal from '@/components/Common/Modal.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
+import CheckoutModal from '@/components/Pos/CheckoutModal.vue';
+import DiscountModalContent from '@/components/Pos/DiscountModalContent.vue';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
 
@@ -36,6 +37,7 @@ const showPriceCheckModal = ref(false);
 const showHelpModal = ref(false);
 const showCheckoutModal = ref(false);
 const showCustomerModal = ref(false);
+const showDiscountModal = ref(false);
 const showCloseRegisterModal = ref(false);
 const closeRegisterFinalBalance = ref('');
 const closeRegisterLoading = ref(false);
@@ -76,6 +78,7 @@ const shortcutsSale = [
   { key: 'F3', label: 'Remover Item' },
   { key: 'F4', label: 'Cancelar Venda' },
   { key: 'F7', label: 'Identificar Cliente' },
+  { key: 'F8', label: 'Desconto/Cupom' },
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
@@ -118,8 +121,11 @@ function formatProductNameWithVariant(product) {
 }
 
 function formatCartItemName(item) {
-  const variantLabel = formatVariantLabel(item.variant_attributes);
-  return variantLabel ? `${item.product.name} - ${variantLabel}` : item.product.name;
+  if (!item) return '';
+  const variantLabel = formatVariantLabel(item.variant_attributes ?? {});
+  const productName = item.product_name ?? item.product?.name ?? 'Produto';
+  if (!variantLabel) return productName;
+  return `${productName} - ${variantLabel}`;
 }
 
 async function checkCashRegisterStatus() {
@@ -225,34 +231,30 @@ async function processScanApi(code, quantity = 1) {
     toast.error(`Estoque insuficiente. Disponível: ${stock}`);
     return;
   }
-  const product = {
-    id: data.product_id,
-    name: data.name,
-    price: data.price ?? 0,
-    current_stock: stock,
-    image: data.image ?? null,
-    variants: data.variation_id ? [
-      {
-        id: data.variation_id,
-        attributes: data.variation_attributes ?? {},
-        current_stock: stock,
-      },
-    ] : [],
-  };
-  lastScannedProduct.value = {
-    ...product,
-    variant_id: data.variation_id,
-    quantity_added: quantity,
-    variant_stock: stock,
-    price: data.price ?? 0,
-  };
-  cartStore.addItem(product, quantity, data.variation_id);
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value);
-    searchTimeout.value = null;
+  
+  try {
+    await cartStore.addItem(data.variation_id, quantity);
+    
+    lastScannedProduct.value = {
+      id: data.product_id,
+      name: data.name,
+      variant_id: data.variation_id,
+      quantity_added: quantity,
+      variant_stock: stock,
+      price: data.price ?? 0,
+      image: data.image ?? null,
+    };
+    
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
+    searchQuery.value = '';
+    products.value = [];
+  } catch (error) {
+    toast.error(error.message || 'Erro ao adicionar item.');
+    lastScannedProduct.value = null;
   }
-  searchQuery.value = '';
-  products.value = [];
 }
 
 async function runProductSearchAndAdd(code, quantity = 1) {
@@ -362,18 +364,17 @@ function handleScanBufferKeydown(e) {
   }
 }
 
-function handleAddProduct(product) {
+async function handleAddProduct(product) {
   try {
     const v = product.variants?.[0];
-    const stock = v?.current_stock ?? product.current_stock ?? product.stock_quantity ?? 0;
-    if (stock < 1) {
-      toast.error('Sem estoque nesta filial.');
-      return;
-    }
     if (!v) {
       toast.error('Produto sem variação.');
       return;
     }
+    
+    await cartStore.addItem(v.id, 1);
+    
+    const stock = v?.current_stock ?? product.current_stock ?? product.stock_quantity ?? 0;
     const effectivePrice = v.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
     lastScannedProduct.value = {
       ...product,
@@ -383,7 +384,7 @@ function handleAddProduct(product) {
       image: v.image ?? product.image ?? null,
       price: effectivePrice,
     };
-    cartStore.addItem(product, 1, v.id);
+    
     if (searchTimeout.value) {
       clearTimeout(searchTimeout.value);
       searchTimeout.value = null;
@@ -392,6 +393,7 @@ function handleAddProduct(product) {
     products.value = [];
   } catch (err) {
     toast.error(err.message ?? 'Erro ao adicionar.');
+    lastScannedProduct.value = null;
   }
 }
 
@@ -421,7 +423,7 @@ function handleUpdateQuantity(index, newQuantity) {
 }
 
 function handleClearCart() {
-  cartStore.clearForCancel();
+  cartStore.reset();
 }
 
 function branchIdForSale() {
@@ -460,37 +462,35 @@ async function handleFinalizeSale() {
 }
 
 async function handleCancelSale() {
-  if (cartStore.items.length > 0) {
-    const ok = await confirm(
-      'Cancelar Venda',
-      'Tem certeza que deseja cancelar a venda atual? Todos os itens serão removidos.',
-      'Sim, cancelar',
-      'red'
-    );
-    if (ok) {
-      cartStore.clearForCancel();
+  if (!cartStore.saleId) {
+    cartStore.reset();
+    lastScannedProduct.value = null;
+    lastScannedCode.value = '';
+    searchQuery.value = '';
+    products.value = [];
+    quantityMultiplier.value = 1;
+    return;
+  }
+
+  const ok = await confirm(
+    'Cancelar Venda',
+    'Tem certeza que deseja cancelar a venda atual? Todos os itens serão removidos e a venda será cancelada no sistema.',
+    'Sim, cancelar',
+    'red'
+  );
+  
+  if (ok) {
+    try {
+      await cartStore.cancel();
+      toast.success('Venda cancelada.');
       lastScannedProduct.value = null;
       lastScannedCode.value = '';
       searchQuery.value = '';
       products.value = [];
       quantityMultiplier.value = 1;
       nextTick(focusSearch);
-    }
-  } else {
-    const ok = await confirm(
-      'Reiniciar Venda',
-      'Deseja reiniciar a venda atual? O cliente será removido e a tela voltará ao estado inicial.',
-      'Sim, reiniciar',
-      'blue'
-    );
-    if (ok) {
-      cartStore.setCustomer(null);
-      cartStore.setSaleStarted(false);
-      lastScannedProduct.value = null;
-      lastScannedCode.value = '';
-      searchQuery.value = '';
-      products.value = [];
-      quantityMultiplier.value = 1;
+    } catch (error) {
+      toast.error(error.message || 'Erro ao cancelar venda.');
     }
   }
 }
@@ -566,23 +566,40 @@ function closeStartSaleModal() {
   startSaleCpfInput.value = '';
 }
 
-function confirmStartSale() {
-  const raw = startSaleCpfInput.value?.replace(/\D/g, '').trim() ?? '';
-  if (raw) {
-    cartStore.setCustomer({ document: raw });
-  } else {
-    cartStore.setCustomer(null);
+async function confirmStartSale() {
+  try {
+    const raw = startSaleCpfInput.value?.replace(/\D/g, '').trim() ?? '';
+    let customerId = null;
+    
+    if (raw) {
+      try {
+        const { data } = await api.get('/customers', { params: { document: raw } });
+        if (data.data && data.data.length > 0) {
+          customerId = data.data[0].id;
+        }
+      } catch {
+        // Cliente não encontrado, continuar sem cliente
+      }
+    }
+    
+    const branchId = branchIdForSale();
+    await cartStore.startSale(customerId, branchId);
+    closeStartSaleModal();
+    nextTick(focusSearch);
+  } catch (error) {
+    toast.error(error.message || 'Erro ao iniciar venda.');
   }
-  cartStore.setSaleStarted(true);
-  closeStartSaleModal();
-  nextTick(focusSearch);
 }
 
-function skipStartSale() {
-  cartStore.setCustomer(null);
-  cartStore.setSaleStarted(true);
-  closeStartSaleModal();
-  nextTick(focusSearch);
+async function skipStartSale() {
+  try {
+    const branchId = branchIdForSale();
+    await cartStore.startSale(null, branchId);
+    closeStartSaleModal();
+    nextTick(focusSearch);
+  } catch (error) {
+    toast.error(error.message || 'Erro ao iniciar venda.');
+  }
 }
 
 function hideBalanceAfterTimeout() {
@@ -725,6 +742,11 @@ function handleKeydown(e) {
       nextTick(focusSearch);
       return;
     }
+    if (showDiscountModal.value) {
+      showDiscountModal.value = false;
+      nextTick(focusSearch);
+      return;
+    }
     if (showCloseRegisterModal.value) {
       closeCloseRegisterModal();
       return;
@@ -782,6 +804,10 @@ function handleKeydown(e) {
     customerCpf.value = '';
     return;
   }
+  if (key === 'F8') {
+    showDiscountModal.value = true;
+    return;
+  }
   if (key === 'F10') {
     if (cartStore.items.length === 0) {
       toast.error('Adicione pelo menos um item.');
@@ -797,16 +823,28 @@ async function confirmCheckout() {
   nextTick(focusSearch);
 }
 
-function handleCustomerSubmit() {
+async function handleCustomerSubmit() {
   const cpf = customerCpf.value?.replace(/\D/g, '').trim();
   if (!cpf) {
     toast.error('Informe o CPF.');
     return;
   }
-  toast.success('Cliente identificado.');
-  showCustomerModal.value = false;
-  customerCpf.value = '';
-  nextTick(focusSearch);
+  
+  try {
+    const { data } = await api.get('/customers', { params: { document: cpf } });
+    if (data.data && data.data.length > 0) {
+      const customer = data.data[0];
+      await cartStore.setCustomer(customer.id);
+      toast.success('Cliente identificado.');
+      showCustomerModal.value = false;
+      customerCpf.value = '';
+      nextTick(focusSearch);
+    } else {
+      toast.error('Cliente não encontrado.');
+    }
+  } catch (error) {
+    toast.error(error.message || 'Erro ao identificar cliente.');
+  }
 }
 
 onBeforeRouteLeave((_to, _from, next) => {
@@ -826,11 +864,12 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 onMounted(async () => {
   await initializePDV();
-  cartStore.hydrate();
-  setupCartPersist(cartStore);
-  if (cashRegisterStore.isOpen && cartStore.saleStarted) {
-    await nextTick();
-    focusSearch();
+  if (cashRegisterStore.isOpen) {
+    await cartStore.init();
+    if (cartStore.saleStarted) {
+      await nextTick();
+      focusSearch();
+    }
   }
   window.addEventListener('keydown', handleKeydown);
   window.addEventListener('keydown', handleScanBufferKeydown, true);
@@ -1179,26 +1218,18 @@ onUnmounted(() => {
         </ul>
       </Modal>
 
-      <Modal :is-open="showCheckoutModal" title="Finalizar Venda" @close="closeCheckout">
-        <div class="space-y-4">
-          <p class="text-lg font-semibold text-slate-800">Total: {{ formatCurrency(cartTotal) }}</p>
-          <p class="text-sm text-slate-500">Pagamento em dinheiro. Confirme para encerrar.</p>
-          <div class="flex justify-end gap-2">
-            <Button variant="outline" @click="closeCheckout">Voltar</Button>
-            <Button variant="primary" @click="confirmCheckout">Confirmar e finalizar</Button>
-          </div>
-        </div>
-      </Modal>
+      <CheckoutModal :is-open="showCheckoutModal" @close="closeCheckout" @finish="confirmCheckout" />
 
       <Modal :is-open="showCustomerModal" title="Identificar Cliente" @close="closeCustomer">
         <form class="space-y-4" @submit.prevent="handleCustomerSubmit">
           <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">CPF</label>
+            <label class="mb-1 block text-sm font-medium text-slate-700">CPF / CNPJ</label>
             <input
               v-model="customerCpf"
               type="text"
-              placeholder="000.000.000-00"
+              placeholder="000.000.000-00 ou 00.000.000/0001-00"
               class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autofocus
             >
           </div>
           <div class="flex justify-end gap-2">
@@ -1206,6 +1237,10 @@ onUnmounted(() => {
             <Button type="submit" variant="primary">Identificar</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal :is-open="showDiscountModal" title="Aplicar Desconto / Cupom" @close="closeDiscount">
+        <DiscountModalContent @apply="handleApplyDiscount" @close="closeDiscount" />
       </Modal>
 
       <Modal :is-open="showCloseRegisterModal" title="Fechar Caixa" @close="closeCloseRegisterModal">

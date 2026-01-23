@@ -1,169 +1,204 @@
 import { defineStore } from 'pinia';
-import currency from 'currency.js';
-
-const PERSIST_KEY = 'pdv_cart';
-
-function persist(state) {
-  const payload = {
-    items: state.items,
-    customer: state.customer,
-    discount: state.discount,
-    saleStarted: state.saleStarted,
-  };
-  if (!payload.saleStarted && payload.items.length === 0 && !payload.customer) {
-    try {
-      window.localStorage.removeItem(PERSIST_KEY);
-    } catch {
-      // ignore
-    }
-    return;
-  }
-  try {
-    window.localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
-  } catch {
-    // ignore
-  }
-}
-
-function load() {
-  try {
-    const raw = window.localStorage.getItem(PERSIST_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data || typeof data !== 'object') return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
+import api from '@/services/api';
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
+    saleId: null,
     items: [],
     customer: null,
-    discount: 0,
+    totalAmount: 0,
+    discountAmount: 0,
+    finalAmount: 0,
+    payments: [],
     saleStarted: false,
   }),
   getters: {
     subtotal(state) {
-      return state.items.reduce(
-        (sum, item) => currency(sum).add(currency(item.unit_price).multiply(item.quantity)).value,
-        0,
-      );
+      return state.totalAmount;
     },
     totalCount(state) {
       return state.items.reduce((sum, item) => sum + item.quantity, 0);
     },
+    totalPayments(state) {
+      return state.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    },
+    remainingAmount(state) {
+      return Math.max(0, state.finalAmount - state.totalPayments);
+    },
+    canFinish(state) {
+      return state.remainingAmount <= 0 && state.items.length > 0;
+    },
   },
   actions: {
-    hydrate() {
-      const data = load();
-      if (!data) return;
-      if (Array.isArray(data.items)) this.items = data.items;
-      if (data.customer != null) this.customer = data.customer;
-      if (typeof data.discount === 'number') this.discount = data.discount;
-      if (data.saleStarted === true) this.saleStarted = true;
-    },
-    clearPersisted() {
+    async init() {
       try {
-        window.localStorage.removeItem(PERSIST_KEY);
-      } catch {
-        // ignore
-      }
-    },
-    setCustomer(customer) {
-      this.customer = customer;
-    },
-    setSaleStarted(value) {
-      this.saleStarted = !!value;
-    },
-    setDiscount(value) {
-      this.discount = typeof value === 'number' ? value : 0;
-    },
-    addItem(product, quantity = 1, productVariantId = null) {
-      const variantId = productVariantId ?? product.variants?.[0]?.id;
-      if (!variantId) {
-        throw new Error('Produto sem variação válida.');
-      }
-
-      const stock = product.stock_quantity ?? product.current_stock ?? 0;
-      if (!stock || stock < quantity) {
-        throw new Error(`Estoque insuficiente. Disponível: ${stock || 0}`);
-      }
-
-      const existingIndex = this.items.findIndex((i) => i.product_variant_id === variantId);
-
-      if (existingIndex !== -1) {
-        const existing = this.items[existingIndex];
-        const newQuantity = existing.quantity + quantity;
-
-        if (existing.product.stock_quantity < newQuantity) {
-          throw new Error(`Estoque insuficiente. Disponível: ${existing.product.stock_quantity}`);
+        const { data } = await api.get('/pos/active-sale');
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+          this.saleStarted = true;
+        } else {
+          this.reset();
         }
-
-        existing.quantity = newQuantity;
-        existing.total = currency(existing.unit_price).multiply(existing.quantity).value;
-      } else {
-        const unitPrice = parseFloat(product.effective_price ?? product.price ?? product.sell_price ?? 0);
-        const variant = product.variants?.find((v) => v.id === variantId) ?? product.variants?.[0];
-        const variantAttributes = variant?.attributes ?? {};
-        this.items.push({
-          product: {
-            id: product.id,
-            name: product.name,
-            sku: product.sku,
-            barcode: product.barcode,
-            stock_quantity: stock,
-          },
-          product_variant_id: variantId,
-          variant_attributes: variantAttributes,
-          quantity,
-          unit_price: unitPrice,
-          total: currency(unitPrice).multiply(quantity).value,
+      } catch (error) {
+        console.error('Erro ao buscar venda ativa:', error);
+        this.reset();
+      }
+    },
+    async startSale(customerId = null, branchId = null) {
+      try {
+        const { data } = await api.post('/pos/start', {
+          branch_id: branchId,
+          customer_id: customerId,
         });
-      }
-    },
-    removeItem(index) {
-      if (index >= 0 && index < this.items.length) {
-        this.items.splice(index, 1);
-      }
-    },
-    updateQuantity(index, quantity) {
-      if (index >= 0 && index < this.items.length) {
-        const item = this.items[index];
-
-        if (quantity <= 0) {
-          this.removeItem(index);
-          return;
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+          this.saleStarted = true;
+        } else if (data.message) {
+          throw new Error(data.message);
         }
-
-        if (item.product.stock_quantity < quantity) {
-          throw new Error(`Estoque insuficiente. Disponível: ${item.product.stock_quantity}`);
-        }
-
-        item.quantity = quantity;
-        item.total = currency(item.unit_price).multiply(quantity).value;
+      } catch (error) {
+        const message = error.response?.data?.message || error.message || 'Erro ao iniciar venda.';
+        throw new Error(message);
       }
     },
-    clearCart() {
+    async addItem(productVariantId, quantity = 1) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada. Inicie uma venda primeiro.');
+      }
+      try {
+        const { data } = await api.post('/pos/add-item', {
+          sale_id: this.saleId,
+          product_variant_id: productVariantId,
+          quantity,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao adicionar item.';
+        throw new Error(message);
+      }
+    },
+    async removeItem(itemId) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/remove-item', {
+          sale_id: this.saleId,
+          item_id: itemId,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao remover item.';
+        throw new Error(message);
+      }
+    },
+    async setCustomer(customerId) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/identify-customer', {
+          sale_id: this.saleId,
+          customer_id: customerId,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao identificar cliente.';
+        throw new Error(message);
+      }
+    },
+    async applyDiscount(type, value) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/apply-discount', {
+          sale_id: this.saleId,
+          type,
+          value,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao aplicar desconto.';
+        throw new Error(message);
+      }
+    },
+    async addPayment(method, amount, installments = 1) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/payment', {
+          sale_id: this.saleId,
+          method,
+          amount,
+          installments,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao adicionar pagamento.';
+        throw new Error(message);
+      }
+    },
+    async cancel() {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/cancel', {
+          sale_id: this.saleId,
+        });
+        this.reset();
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao cancelar venda.';
+        throw new Error(message);
+      }
+    },
+    async finish() {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/finish', {
+          sale_id: this.saleId,
+        });
+        this.reset();
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao finalizar venda.';
+        throw new Error(message);
+      }
+    },
+    syncFromSale(sale) {
+      this.saleId = sale.id;
+      this.items = sale.items || [];
+      this.customer = sale.customer;
+      this.totalAmount = sale.total_amount || 0;
+      this.discountAmount = sale.discount_amount || 0;
+      this.finalAmount = sale.final_amount || 0;
+      this.payments = sale.payments || [];
+    },
+    reset() {
+      this.saleId = null;
       this.items = [];
       this.customer = null;
-      this.discount = 0;
+      this.totalAmount = 0;
+      this.discountAmount = 0;
+      this.finalAmount = 0;
+      this.payments = [];
       this.saleStarted = false;
-    },
-    clearForCancel() {
-      this.clearCart();
-      this.clearPersisted();
-    },
-    clearForFinalize() {
-      this.clearCart();
-      this.clearPersisted();
     },
   },
 });
-
-export function setupCartPersist(store) {
-  store.$subscribe(() => {
-    persist(store.$state);
-  });
-}
