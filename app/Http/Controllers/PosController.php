@@ -415,7 +415,7 @@ class PosController extends Controller
     public function addPayment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'method' => ['required', 'string', 'in:credit_card,debit_card,cash,pix'],
+            'method' => ['required', 'string', 'in:credit_card,debit_card,cash,money,pix,store_credit'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'installments' => ['nullable', 'integer', 'min:1', 'max:12'],
         ]);
@@ -438,12 +438,24 @@ class PosController extends Controller
 
         $sale = DB::transaction(function () use ($sale, $request): Sale {
             $method = $request->input('method');
+            
+            // Converter 'cash' para 'money' (valor do enum)
+            if ($method === 'cash') {
+                $method = 'money';
+            }
+            
+            // Validar se o método é um valor válido do enum
+            $validMethods = array_map(fn($case) => $case->value, PaymentMethod::cases());
+            if (!in_array($method, $validMethods, true)) {
+                throw new \InvalidArgumentException("Método de pagamento inválido: {$method}");
+            }
+            
             $amount = (float) $request->input('amount');
             $installments = (int) ($request->input('installments') ?? 1);
 
             SalePayment::create([
                 'sale_id' => $sale->id,
-                'method' => $method,
+                'method' => PaymentMethod::from($method),
                 'amount' => $amount,
                 'installments' => $installments,
             ]);
