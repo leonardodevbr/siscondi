@@ -1142,7 +1142,6 @@ onUnmounted(() => {
                   data-lpignore="true"
                   data-1p-ignore="true"
                   data-bwignore="true"
-                  autofocus
                   @input="handleSearchInput"
                   @keyup.enter="handleBarcodeSearch"
                 >
