@@ -523,26 +523,19 @@ async function handleFinalizeSale() {
     return;
   }
 
-  const bid = branchIdForSale();
-  if (!bid) {
-    toast.error('Filial não identificada. Não é possível finalizar.');
+  if (!cartStore.canFinish) {
+    toast.error('Adicione pagamentos suficientes para finalizar a venda.');
     return;
   }
 
   try {
-    await api.post('/sales', {
-      branch_id: bid,
-      items: cartStore.items.map((i) => ({
-        product_variant_id: i.product_variant_id,
-        quantity: i.quantity,
-      })),
-      payments: [{ method: 'money', amount: cartTotal.value }],
-    });
+    await cartStore.finish();
     toast.success('Venda finalizada.');
-    cartStore.clearForFinalize();
+    showCheckoutModal.value = false;
     await cashRegisterStore.checkStatus();
+    await router.push({ name: 'dashboard' });
   } catch (err) {
-    const msg = err.response?.data?.message ?? 'Erro ao finalizar venda.';
+    const msg = err.response?.data?.message ?? err.message ?? 'Erro ao finalizar venda.';
     toast.error(msg);
   }
 }
@@ -985,9 +978,7 @@ function handleKeydown(e) {
 }
 
 async function confirmCheckout() {
-  showCheckoutModal.value = false;
   await handleFinalizeSale();
-  nextTick(focusSearch);
 }
 
 async function handleCustomerSubmit() {
