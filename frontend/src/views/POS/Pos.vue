@@ -980,13 +980,10 @@ onUnmounted(() => {
                       <p v-if="lastScannedProduct.quantity_added > 1" class="text-sm font-semibold text-slate-600">
                         Total: {{ formatCurrency((lastScannedProduct.price ?? 0) * lastScannedProduct.quantity_added) }}
                       </p>
-                    </div>
-                    <p class="mt-1 text-xs text-slate-500">
-                      Estoque: {{ lastScannedProduct.variant_stock ?? lastScannedProduct.current_stock ?? 0 }}
-                      <span v-if="lastScannedProduct.quantity_added > 1" class="ml-2 text-blue-600">
+                      <p v-if="lastScannedProduct.quantity_added > 1" class="mt-1 text-xs text-blue-600">
                         +{{ lastScannedProduct.quantity_added }} itens
-                      </span>
-                    </p>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1035,10 +1032,6 @@ onUnmounted(() => {
                   <p class="mt-2 text-sm font-bold text-blue-600">
                     {{ formatCurrency(product.effective_price ?? product.sell_price) }}
                   </p>
-                  <p v-if="Number(product.current_stock ?? product.stock_quantity ?? 0) > 0" class="mt-1 text-xs text-slate-400">
-                    Estoque: {{ product.current_stock ?? product.stock_quantity }}
-                  </p>
-                  <p v-else class="mt-1 text-xs text-red-500">Sem estoque</p>
                 </button>
               </div>
             </div>
