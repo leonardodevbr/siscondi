@@ -28,7 +28,7 @@
       <div class="space-y-3">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-slate-700">Pagamentos:</span>
-          <span class="text-xs text-slate-500">Pressione P para adicionar pagamento</span>
+          <span v-if="!showAddPayment && remainingAmount > 0" class="text-xs text-slate-500">Pressione P para adicionar pagamento</span>
         </div>
 
         <div v-if="payments.length === 0" class="rounded border border-slate-200 bg-slate-50 p-3 text-center text-sm text-slate-500">
@@ -59,7 +59,24 @@
       <div v-if="showAddPayment" class="rounded-lg border border-blue-200 bg-blue-50 p-4" @keydown.esc.stop.prevent="cancelAddPayment">
         <h4 class="mb-3 text-sm font-semibold text-slate-800">Adicionar Pagamento</h4>
         
-        <div v-if="!methodSelected" class="space-y-2">
+        <div v-if="!amountConfirmed" class="space-y-3">
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Valor</label>
+            <input
+              ref="amountInputRef"
+              v-model="amountFormatted"
+              type="text"
+              class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0,00"
+              @input="handleAmountInput"
+              @keydown.enter="confirmAmountAndShowMethods"
+              @keydown.esc.stop="cancelAddPayment"
+            >
+            <p class="mt-1 text-xs text-slate-500">Pressione ENTER para continuar</p>
+          </div>
+        </div>
+
+        <div v-else-if="!methodSelected" class="space-y-2">
           <p class="text-xs text-slate-600 mb-2">Selecione o método de pagamento:</p>
           <div class="space-y-1">
             <button
@@ -110,7 +127,7 @@
             </div>
           </div>
 
-          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && amountConfirmed && !installmentsSelected" @keydown.esc.stop="cancelAddPayment">
+          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="cancelAddPayment">
             <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
             <div class="space-y-1 max-h-60 overflow-y-auto">
               <button
@@ -130,24 +147,7 @@
             </div>
           </div>
 
-          <div v-if="amountInputVisible">
-            <label class="mb-1 block text-xs font-medium text-slate-700">Valor</label>
-            <input
-              ref="amountInputRef"
-              v-model="amountFormatted"
-              type="text"
-              class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0,00"
-              @input="handleAmountInput"
-              @keydown.enter="handleAmountConfirm"
-              @keydown.esc.stop="cancelAddPayment"
-            >
-            <p v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && installmentsSelected" class="mt-1 text-xs text-slate-500">
-              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency(newPayment.amount || 0) }}
-            </p>
-          </div>
-
-          <div class="flex justify-end gap-2">
+          <div v-if="(newPayment.method === 'cash' || newPayment.method === 'pix') || (newPayment.method === 'debit_card')" class="flex justify-end gap-2">
             <Button variant="outline" size="sm" @click="cancelAddPayment">Cancelar (ESC)</Button>
             <Button variant="primary" size="sm" @click="confirmAddPayment">Adicionar (ENTER)</Button>
           </div>
@@ -238,7 +238,18 @@ const change = computed(() => {
 watch(() => props.isOpen, (open) => {
   if (open) {
     resetPaymentForm();
-    showAddPayment.value = false;
+    const remaining = parseFloat(remainingAmount.value);
+    if (remaining > 0.01) {
+      showAddPayment.value = true;
+      amountInputVisible.value = true;
+      amountFormatted.value = formatAmountInput(remaining);
+      newPayment.value.amount = remaining;
+      nextTick(() => {
+        focusAmountInput();
+      });
+    } else {
+      showAddPayment.value = false;
+    }
   }
 });
 
@@ -313,26 +324,28 @@ function handleAmountInput(e) {
   newPayment.value.amount = parseAmount(formatted);
 }
 
+function confirmAmountAndShowMethods() {
+  const amount = parseAmount(amountFormatted.value);
+  if (!amount || amount <= 0) {
+    return;
+  }
+  
+  newPayment.value.amount = amount;
+  amountConfirmed.value = true;
+  methodSelected.value = false;
+  selectedMethodIndex.value = 0;
+}
+
 function selectMethod(method) {
   newPayment.value.method = method;
   methodSelected.value = true;
-  amountConfirmed.value = false;
   
   if (method === 'cash' || method === 'pix') {
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
-    amountConfirmed.value = true;
-    nextTick(() => {
-      amountInputVisible.value = true;
-      const remaining = parseFloat(remainingAmount.value);
-      amountFormatted.value = formatAmountInput(remaining);
-      newPayment.value.amount = remaining;
-      focusAmountInput();
-    });
   } else if (method === 'card') {
     cardTypeSelected.value = false;
     installmentsSelected.value = false;
-    amountConfirmed.value = false;
     newPayment.value.cardType = null;
     newPayment.value.method = 'credit_card';
   }
@@ -380,15 +393,13 @@ function selectInstallments(n) {
   newPayment.value.installments = n;
   installmentsSelected.value = true;
   selectedInstallmentIndex.value = n - 1;
-  
-  const amount = parseAmount(amountFormatted.value) || parseFloat(remainingAmount.value);
-  const singleValue = amount / n;
-  amountFormatted.value = formatAmountInput(singleValue);
-  newPayment.value.amount = singleValue;
+  nextTick(() => {
+    confirmAddPayment();
+  });
 }
 
 function installmentPreview(n) {
-  const amount = parseAmount(amountFormatted.value) || parseFloat(remainingAmount.value);
+  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
   const singleValue = amount / n;
   return Math.round((singleValue * 100)) / 100;
 }
@@ -403,18 +414,7 @@ function focusAmountInput() {
 }
 
 async function confirmAddPayment() {
-  let finalAmount;
-  
-  if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit') {
-    finalAmount = newPayment.value.amount || parseAmount(amountFormatted.value) * newPayment.value.installments;
-  } else {
-    const amount = parseAmount(amountFormatted.value);
-    if (!amount || amount <= 0) {
-      return;
-    }
-    finalAmount = amount;
-    newPayment.value.amount = amount;
-  }
+  let finalAmount = newPayment.value.amount;
   
   if (!finalAmount || finalAmount <= 0) {
     return;
@@ -444,7 +444,21 @@ async function confirmAddPayment() {
       newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' ? newPayment.value.installments : 1
     );
     
-    resetPaymentForm();
+    const newRemaining = parseFloat(remainingAmount.value) - finalAmount;
+    
+    if (newRemaining > 0.01) {
+      resetPaymentForm();
+      nextTick(() => {
+        showAddPayment.value = true;
+        amountInputVisible.value = true;
+        amountFormatted.value = formatAmountInput(newRemaining);
+        newPayment.value.amount = newRemaining;
+        amountConfirmed.value = false;
+        focusAmountInput();
+      });
+    } else {
+      resetPaymentForm();
+    }
   } catch (error) {
     console.error('Erro ao adicionar pagamento:', error);
   }
@@ -493,13 +507,29 @@ function handleKeydown(e) {
     if (!showAddPayment.value) {
       e.preventDefault();
       showAddPayment.value = true;
+      amountConfirmed.value = false;
       methodSelected.value = false;
-      selectedMethodIndex.value = 0;
+      amountInputVisible.value = true;
+      const remaining = parseFloat(remainingAmount.value);
+      amountFormatted.value = formatAmountInput(remaining);
+      newPayment.value.amount = remaining;
+      nextTick(() => {
+        focusAmountInput();
+      });
     }
     return;
   }
 
   if (!showAddPayment.value) return;
+
+  if (!amountConfirmed.value) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmAmountAndShowMethods();
+      return;
+    }
+    return;
+  }
 
   if (!methodSelected.value) {
     if (e.key === 'ArrowUp') {
@@ -553,7 +583,7 @@ function handleKeydown(e) {
     return;
   }
 
-  if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' && amountConfirmed.value && !installmentsSelected.value) {
+  if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' && cardTypeSelected.value && !installmentsSelected.value) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       selectedInstallmentIndex.value = Math.max(0, selectedInstallmentIndex.value - 1);
@@ -580,10 +610,12 @@ function handleKeydown(e) {
     return;
   }
 
-  if (amountInputVisible.value && e.key === 'Enter' && document.activeElement !== amountInputRef.value) {
-    e.preventDefault();
-    confirmAddPayment();
-    return;
+  if ((newPayment.value.method === 'cash' || newPayment.value.method === 'pix') || (newPayment.value.method === 'debit_card')) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmAddPayment();
+      return;
+    }
   }
 }
 
