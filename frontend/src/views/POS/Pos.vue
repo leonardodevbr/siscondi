@@ -44,6 +44,8 @@ const cartListRef = ref(null);
 const customerCpf = ref('');
 const showStartSaleModal = ref(false);
 const startSaleCpfInput = ref('');
+const quantityMultiplier = ref(1);
+const lastScannedProduct = ref(null);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -185,11 +187,11 @@ function parseQuantityMultiplier(input) {
   return { quantity: 1, code: trimmed };
 }
 
-async function processScanApi(code) {
+async function processScanApi(code, quantity = 1) {
   const { data } = await api.get('/inventory/scan', { params: { code } });
   const stock = data.current_stock ?? 0;
-  if (stock < 1) {
-    toast.error('Sem estoque nesta filial.');
+  if (stock < quantity) {
+    toast.error(`Estoque insuficiente. Disponível: ${stock}`);
     return;
   }
   const product = {
@@ -197,15 +199,21 @@ async function processScanApi(code) {
     name: data.name,
     price: data.price ?? 0,
     current_stock: stock,
+    image: data.image ?? null,
     variants: data.variation_id ? [
       {
         id: data.variation_id,
         attributes: data.variation_attributes ?? {},
+        current_stock: stock,
       },
     ] : [],
   };
-  cartStore.addItem(product, 1, data.variation_id);
-  toast.success(`${data.name} adicionado.`);
+  lastScannedProduct.value = {
+    ...product,
+    variant_id: data.variation_id,
+    quantity_added: quantity,
+  };
+  cartStore.addItem(product, quantity, data.variation_id);
 }
 
 async function runProductSearchAndAdd(code, quantity = 1) {
