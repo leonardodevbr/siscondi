@@ -534,8 +534,11 @@ async function handleFinalizeSale() {
     toast.success('Venda finalizada.');
     showCheckoutModal.value = false;
     await cashRegisterStore.checkStatus();
-    allowNavigation.value = true;
-    await router.push({ name: 'dashboard' });
+    searchQuery.value = '';
+    products.value = [];
+    lastScannedProduct.value = null;
+    lastScannedCode.value = '';
+    nextTick(focusSearch);
   } catch (err) {
     const msg = err.response?.data?.message ?? err.message ?? 'Erro ao finalizar venda.';
     toast.error(msg);
