@@ -55,6 +55,7 @@ const balanceVisibilityTimeout = ref(null);
 const isLoading = ref(true);
 const loadingProgress = ref(0);
 const isCancellationMode = ref(false);
+const isSearchMode = ref(false);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 
@@ -181,6 +182,12 @@ async function searchProducts(query) {
 }
 
 function handleSearchInput(e) {
+  if (!isSearchMode.value) {
+    searchQuery.value = '';
+    products.value = [];
+    return;
+  }
+  
   const q = (e?.target?.value ?? searchQuery.value).trim();
   searchQuery.value = q;
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
@@ -448,6 +455,7 @@ async function handleScannedCode(code) {
 
 function handleBarcodeSearch(e) {
   if (e.key !== 'Enter') return;
+  if (!isSearchMode.value) return;
   const code = searchQuery.value.trim();
   if (!code) return;
   handleScannedCode(code);
@@ -455,6 +463,8 @@ function handleBarcodeSearch(e) {
 
 function handleScanBufferKeydown(e) {
   if (!cashRegisterStore.isOpen || !cartStore.saleStarted) return;
+  if (isSearchMode.value) return;
+  
   const el = document.activeElement;
   const tag = el?.tagName?.toLowerCase();
   if (tag === 'input' || tag === 'textarea') return;
@@ -617,6 +627,25 @@ function focusSearch() {
 function handleF3ToggleCancellationMode() {
   isCancellationMode.value = !isCancellationMode.value;
   if (isCancellationMode.value) {
+    isSearchMode.value = false;
+    nextTick(focusSearch);
+  } else {
+    isCancellationMode.value = false;
+    searchQuery.value = '';
+    products.value = [];
+    nextTick(focusSearch);
+  }
+}
+
+function handleF5ToggleSearchMode() {
+  isSearchMode.value = !isSearchMode.value;
+  if (isSearchMode.value) {
+    isCancellationMode.value = false;
+    nextTick(focusSearch);
+  } else {
+    isSearchMode.value = false;
+    searchQuery.value = '';
+    products.value = [];
     nextTick(focusSearch);
   }
 }
@@ -799,11 +828,29 @@ function toggleBalanceVisibility() {
 
 function handleReloadBlock(e) {
   if (!cashRegisterStore.isOpen) return;
-  if (!cartStore.saleStarted || !cartStore.saleId) return;
   const k = e.key;
   const mod = e.ctrlKey || e.metaKey;
+  
+  if (k === 'F5') {
+    if (cartStore.saleStarted && !isIdle.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleF5ToggleSearchMode();
+      return;
+    }
+    if (!cartStore.saleStarted || !cartStore.saleId) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    feedbackMessage.value = 'Para atualizar, encerre a venda.';
+    feedbackType.value = 'warning';
+    return;
+  }
+  
+  if (!cartStore.saleStarted || !cartStore.saleId) return;
+  
   const reload =
-    k === 'F5' ||
     (mod && (k === 'r' || k === 'R')) ||
     (mod && e.shiftKey && (k === 'r' || k === 'R'));
   if (reload) {
@@ -890,6 +937,11 @@ function handleKeydown(e) {
 
   if (key === 'Escape') {
     e.preventDefault();
+    if (feedbackMessage.value) {
+      feedbackMessage.value = null;
+      feedbackType.value = 'info';
+      return;
+    }
     if (showStartSaleModal.value) {
       skipStartSale();
       return;
@@ -925,6 +977,13 @@ function handleKeydown(e) {
     if (cartStore.saleStarted) {
       if (isCancellationMode.value) {
         isCancellationMode.value = false;
+        nextTick(focusSearch);
+        return;
+      }
+      if (isSearchMode.value) {
+        isSearchMode.value = false;
+        searchQuery.value = '';
+        products.value = [];
         nextTick(focusSearch);
         return;
       }
@@ -967,12 +1026,19 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F3') {
+    e.preventDefault();
     handleF3ToggleCancellationMode();
     return;
   }
   if (key === 'F4') {
     e.preventDefault();
     handleCancelSale();
+    return;
+  }
+  if (key === 'F5') {
+    e.preventDefault();
+    e.stopPropagation();
+    handleF5ToggleSearchMode();
     return;
   }
   if (key === 'F7') {
@@ -1262,7 +1328,7 @@ onUnmounted(() => {
                   v-model="searchQuery"
                   name="pos-product-barcode-scanner"
                   type="text"
-                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
+                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar código de barras'"
                   :class="[
                     'input-base w-full text-lg pr-10',
                     isCancellationMode ? 'ring-2 ring-orange-400 focus:ring-orange-500' : ''
@@ -1286,16 +1352,19 @@ onUnmounted(() => {
             </div>
 
             <div class="min-h-0 flex-1 overflow-y-auto border border-slate-200 bg-white">
-              <div v-if="loadingProducts" class="flex h-32 items-center justify-center">
+              <div v-if="!isSearchMode" class="flex h-32 items-center justify-center">
+                <p class="text-sm text-slate-500">Pressione F5 para ativar o modo Pesquisa</p>
+              </div>
+              <div v-else-if="loadingProducts" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Buscando...</p>
               </div>
               <div v-else-if="products.length === 0 && searchQuery.length >= 2" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Nenhum produto encontrado.</p>
               </div>
-              <div v-else-if="products.length === 0" class="flex h-32 items-center justify-center">
+              <div v-else-if="products.length === 0 && isSearchMode" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Digite para buscar.</p>
               </div>
-              <div v-else class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div v-else-if="isSearchMode && products.length > 0" class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
                 <button
                   v-for="product in products"
                   :key="product.id"

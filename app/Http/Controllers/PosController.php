@@ -474,6 +474,57 @@ class PosController extends Controller
     }
 
     /**
+     * Remove um pagamento da venda.
+     */
+    public function removePayment(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_id' => ['required', 'integer', 'exists:sale_payments,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
+
+        if (! $sale) {
+            return response()->json([
+                'message' => 'Nenhuma venda em andamento.',
+            ], 400);
+        }
+
+        $sale = DB::transaction(function () use ($sale, $request): Sale {
+            $paymentId = (int) $request->input('payment_id');
+            
+            $payment = SalePayment::where('id', $paymentId)
+                ->where('sale_id', $sale->id)
+                ->first();
+
+            if (! $payment) {
+                throw new \InvalidArgumentException('Pagamento não encontrado nesta venda.');
+            }
+
+            $payment->delete();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
+
+        $totalPayments = $sale->salePayments->sum('amount');
+        $canFinish = $totalPayments >= $sale->final_amount;
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+            'total_payments' => $totalPayments,
+            'can_finish' => $canFinish,
+        ], 200);
+    }
+
+    /**
      * Finaliza a venda.
      */
     public function finish(Request $request): JsonResponse

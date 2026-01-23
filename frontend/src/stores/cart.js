@@ -166,6 +166,23 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async removePayment(paymentId) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/remove-payment', {
+          payment_id: paymentId,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao remover pagamento.';
+        throw new Error(message);
+      }
+    },
     async cancel() {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');

@@ -38,8 +38,13 @@
         <div v-else class="space-y-2">
           <div
             v-for="(payment, index) in payments"
-            :key="index"
-            class="flex items-center justify-between rounded border border-slate-200 bg-white p-3"
+            :key="payment.id || index"
+            :class="[
+              'flex items-center justify-between rounded border p-3 transition',
+              selectedPaymentIndex === index
+                ? 'border-orange-500 bg-orange-50'
+                : 'border-slate-200 bg-white'
+            ]"
           >
             <div class="flex-1">
               <p class="text-sm font-medium text-slate-800">
@@ -51,6 +56,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-slate-700">{{ formatCurrency(payment.amount) }}</span>
+              <span v-if="selectedPaymentIndex === index" class="text-xs font-medium text-orange-600">Pressione F3 para remover</span>
             </div>
           </div>
         </div>
@@ -149,7 +155,7 @@
 
           <div v-if="installmentsSelected || (newPayment.method === 'cash' || newPayment.method === 'pix') || (newPayment.method === 'debit_card')" class="space-y-3">
             <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p class="text-sm font-medium text-slate-700">Resumo do Pagamento:</p>
+              <p class="text-sm font-medium text-slate-700">Resumo:</p>
               <p class="mt-1 text-base font-semibold text-slate-900">{{ paymentSummary }}</p>
             </div>
             <div class="flex justify-end gap-2">
@@ -160,12 +166,24 @@
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="outline" @click="$emit('close')">Voltar (ESC)</Button>
+      <div v-if="isFinishing" class="border-t border-slate-200 pt-4">
+        <div class="flex flex-col items-center justify-center space-y-4 py-8">
+          <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p class="text-sm font-medium text-slate-700">Processando a compra...</p>
+        </div>
+      </div>
+      <div v-else class="flex justify-end gap-2 border-t border-slate-200 pt-4">
+        <Button
+          v-if="!canFinish"
+          variant="outline"
+          @click="$emit('close')"
+        >
+          Voltar (ESC)
+        </Button>
         <Button
           variant="primary"
           :disabled="!canFinish"
-          @click="$emit('finish')"
+          @click="handleFinish"
         >
           Finalizar Venda (F10)
         </Button>
@@ -176,6 +194,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import Swal from 'sweetalert2';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
 import Modal from '@/components/Common/Modal.vue';
@@ -201,6 +220,8 @@ const amountConfirmed = ref(false);
 const selectedMethodIndex = ref(0);
 const selectedCardTypeIndex = ref(0);
 const selectedInstallmentIndex = ref(0);
+const selectedPaymentIndex = ref(-1);
+const isFinishing = ref(false);
 
 const amountInputRef = ref(null);
 const amountFormatted = ref('');
@@ -314,7 +335,9 @@ function resetPaymentForm() {
   selectedMethodIndex.value = 0;
   selectedCardTypeIndex.value = 0;
   selectedInstallmentIndex.value = 0;
+  selectedPaymentIndex.value = -1;
   amountFormatted.value = '';
+  isFinishing.value = false;
   newPayment.value = {
     method: 'cash',
     amount: 0,
@@ -323,9 +346,28 @@ function resetPaymentForm() {
   };
 }
 
+async function handleFinish() {
+  if (!canFinish.value || isFinishing.value) return;
+  
+  isFinishing.value = true;
+  
+  try {
+    await cartStore.finish();
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    emit('finish');
+    emit('close');
+  } catch (error) {
+    console.error('Erro ao finalizar venda:', error);
+    isFinishing.value = false;
+  }
+}
+
 function formatPaymentMethod(method) {
   const methods = {
     cash: 'Dinheiro',
+    money: 'Dinheiro',
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     pix: 'PIX',
@@ -548,10 +590,33 @@ function handleKeydown(e) {
     return;
   }
 
-  if (e.key === 'F10' && canFinish.value) {
+  if (e.key === 'F3' && !showAddPayment.value && payments.value.length > 0) {
     e.preventDefault();
-    emit('finish');
+    if (selectedPaymentIndex.value === -1) {
+      selectedPaymentIndex.value = 0;
+    } else {
+      handleRemovePayment();
+    }
     return;
+  }
+
+  if (e.key === 'F10' && canFinish.value && !isFinishing.value) {
+    e.preventDefault();
+    handleFinish();
+    return;
+  }
+
+  if (selectedPaymentIndex.value >= 0 && !showAddPayment.value) {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedPaymentIndex.value = Math.max(0, selectedPaymentIndex.value - 1);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedPaymentIndex.value = Math.min(payments.value.length - 1, selectedPaymentIndex.value + 1);
+      return;
+    }
   }
 
   if (e.key === 'p' || e.key === 'P') {

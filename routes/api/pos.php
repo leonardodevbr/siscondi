@@ -14,6 +14,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('pos/identify-customer', [PosController::class, 'identifyCustomer']);
     Route::post('pos/apply-discount', [PosController::class, 'applyDiscount']);
     Route::post('pos/add-payment', [PosController::class, 'addPayment']);
+    Route::post('pos/remove-payment', [PosController::class, 'removePayment']);
     Route::post('pos/cancel', [PosController::class, 'cancel']);
     Route::post('pos/finish', [PosController::class, 'finish']);
 });
