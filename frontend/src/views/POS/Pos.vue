@@ -414,14 +414,6 @@ async function handleRemoveItem(index) {
   }
 }
 
-function handleUpdateQuantity(index, newQuantity) {
-  try {
-    cartStore.updateQuantity(index, parseInt(newQuantity, 10) || 1);
-  } catch (err) {
-    toast.error(err.message ?? 'Erro ao atualizar.');
-  }
-}
-
 function handleClearCart() {
   cartStore.reset();
 }
@@ -1114,29 +1106,11 @@ onUnmounted(() => {
                       </svg>
                     </button>
                   </div>
-                  <div class="mt-2 flex items-center gap-2" @click.stop>
-                    <button
-                      type="button"
-                      class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                      @click="handleUpdateQuantity(index, item.quantity - 1)"
-                    >
-                      -
-                    </button>
-                    <input
-                      :value="item.quantity"
-                      type="number"
-                      min="1"
-                      class="w-16 rounded border border-slate-300 px-2 py-1 text-center text-sm"
-                      @change="(e) => handleUpdateQuantity(index, parseInt(e.target.value, 10) || 1)"
-                    >
-                    <button
-                      type="button"
-                      class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                      @click="handleUpdateQuantity(index, item.quantity + 1)"
-                    >
-                      +
-                    </button>
-                    <span class="ml-auto text-sm font-semibold text-slate-800">{{ formatCurrency(item.total) }}</span>
+                  <div class="mt-2 flex items-center justify-between">
+                    <p class="text-xs text-slate-400">
+                      Para alterar quantidade, bipar o produto novamente
+                    </p>
+                    <span class="text-sm font-semibold text-slate-800">{{ formatCurrency(item.total_price) }}</span>
                   </div>
                 </div>
               </div>
