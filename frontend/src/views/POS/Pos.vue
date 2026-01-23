@@ -55,6 +55,8 @@ const balanceVisibilityTimeout = ref(null);
 const isLoading = ref(true);
 const loadingProgress = ref(0);
 const isCancellationMode = ref(false);
+const feedbackMessage = ref(null);
+const feedbackType = ref('info'); // 'info', 'error', 'warning'
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -230,7 +232,8 @@ async function processScanApi(code, quantity = 1) {
   const { data } = await api.get('/inventory/scan', { params: { code } });
   const stock = data.current_stock ?? 0;
   if (stock < quantity) {
-    toast.error(`Estoque insuficiente. Disponível: ${stock}`);
+    feedbackMessage.value = `Estoque insuficiente. Disponível: ${stock}`;
+    feedbackType.value = 'error';
     return;
   }
   
@@ -269,17 +272,20 @@ async function runProductSearchAndAdd(code, quantity = 1) {
     });
     if (!product && list.length > 0) product = list[0];
     if (!product) {
-      toast.error('Produto não encontrado.');
+      feedbackMessage.value = 'Produto não encontrado.';
+      feedbackType.value = 'error';
       return;
     }
     const variant = product.variants?.find((v) => v.barcode && String(v.barcode) === code) ?? product.variants?.[0];
     if (!variant) {
-      toast.error('Produto sem variação.');
+      feedbackMessage.value = 'Produto sem variação.';
+      feedbackType.value = 'error';
       return;
     }
     const stock = variant.current_stock ?? product.current_stock ?? 0;
     if (stock < quantity) {
-      toast.error(`Estoque insuficiente. Disponível: ${stock}`);
+      feedbackMessage.value = `Estoque insuficiente. Disponível: ${stock}`;
+      feedbackType.value = 'error';
       return;
     }
     const effectivePrice = variant.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
@@ -313,7 +319,8 @@ async function confirmCancellation(code) {
   });
 
   if (!item) {
-    toast.error('Item não encontrado na lista.');
+    feedbackMessage.value = 'Item não encontrado na lista.';
+    feedbackType.value = 'error';
     return;
   }
 
@@ -401,7 +408,8 @@ async function confirmCancellation(code) {
     nextTick(focusSearch);
   } catch (error) {
     const message = error.response?.data?.message || error.message || 'Erro ao remover item.';
-    toast.error(message);
+    feedbackMessage.value = message;
+    feedbackType.value = 'error';
     isCancellationMode.value = false;
     nextTick(focusSearch);
   }
@@ -520,18 +528,20 @@ function branchIdForSale() {
 
 async function handleFinalizeSale() {
   if (cartStore.items.length === 0) {
-    toast.error('Adicione pelo menos um item.');
+    feedbackMessage.value = 'Adicione pelo menos um item.';
+    feedbackType.value = 'error';
     return;
   }
 
   if (!cartStore.canFinish) {
-    toast.error('Adicione pagamentos suficientes para finalizar a venda.');
+    feedbackMessage.value = 'Adicione pagamentos suficientes para finalizar a venda.';
+    feedbackType.value = 'error';
     return;
   }
 
   try {
     await cartStore.finish();
-    toast.success('Venda finalizada.');
+    feedbackMessage.value = null;
     showCheckoutModal.value = false;
     await cashRegisterStore.checkStatus();
     searchQuery.value = '';
@@ -768,7 +778,7 @@ async function requestBalanceAccess() {
     if (password === correctPassword) {
       isBalanceVisible.value = true;
       hideBalanceAfterTimeout();
-      toast.success('Acesso liberado. O saldo será ocultado em 15 segundos.');
+      feedbackMessage.value = null;
     } else {
       toast.error('Senha incorreta.');
     }
@@ -799,7 +809,8 @@ function handleReloadBlock(e) {
   if (reload) {
     e.preventDefault();
     e.stopPropagation();
-    toast.warning('Para atualizar, encerre a venda.');
+    feedbackMessage.value = 'Para atualizar, encerre a venda.';
+    feedbackType.value = 'warning';
   }
 }
 
@@ -812,7 +823,6 @@ async function confirmCloseRegister() {
   closeRegisterLoading.value = true;
   try {
     await cashRegisterStore.closeRegister(v);
-    toast.success('Caixa fechado.');
     closeCloseRegisterModal();
     await router.push({ name: 'dashboard' });
   } catch (err) {
@@ -999,7 +1009,7 @@ async function handleCustomerSubmit() {
     if (data.data && data.data.length > 0) {
       const customer = data.data[0];
       await cartStore.setCustomer(customer.id);
-      toast.success('Cliente identificado.');
+      feedbackMessage.value = null;
       showCustomerModal.value = false;
       customerCpf.value = '';
       nextTick(focusSearch);
@@ -1100,7 +1110,23 @@ onUnmounted(() => {
     <PosClosedState v-if="!isLoading && !cashRegisterStore.isOpen" />
 
     <template v-else-if="!isLoading">
-      <header class="flex shrink-0 items-center justify-between gap-4 bg-slate-800 px-4 py-2 text-white">
+      <div
+        v-if="feedbackMessage"
+        :class="[
+          'fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-3 text-sm font-medium shadow-lg',
+          feedbackType === 'error' ? 'bg-red-600 text-white' : feedbackType === 'warning' ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
+        ]"
+      >
+        <span>{{ feedbackMessage }}</span>
+        <button
+          type="button"
+          class="ml-4 rounded p-1 hover:bg-black/20"
+          @click="feedbackMessage = null"
+        >
+          <XCircleIcon class="h-5 w-5" />
+        </button>
+      </div>
+      <header :class="['flex shrink-0 items-center justify-between gap-4 bg-slate-800 px-4 py-2 text-white', feedbackMessage ? 'mt-12' : '']">
         <div class="font-semibold">
           PDV
         </div>
