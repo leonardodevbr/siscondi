@@ -347,14 +347,18 @@ async function confirmCancellation(code) {
       icon: 'lock',
       input: 'password',
       inputPlaceholder: 'Senha de gerente',
+      inputName: 'manager-password-cancellation',
       inputAttributes: {
-        autocomplete: 'new-password',
+        autocomplete: 'off',
         autocapitalize: 'off',
         autocorrect: 'off',
         spellcheck: 'false',
+        name: 'manager-password-cancellation',
+        id: 'swal-manager-password-input',
         'data-lpignore': 'true',
         'data-1p-ignore': 'true',
         'data-bwignore': 'true',
+        'data-form-type': 'other',
       },
       showCancelButton: true,
       confirmButtonText: 'Confirmar',
@@ -1123,7 +1127,7 @@ onUnmounted(() => {
                 <input
                   id="product-search"
                   v-model="searchQuery"
-                  name="product-search-input"
+                  name="pos-product-barcode-scanner"
                   type="text"
                   :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
                   :class="[
