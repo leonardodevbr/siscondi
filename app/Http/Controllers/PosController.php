@@ -265,6 +265,7 @@ class PosController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'barcode' => ['required', 'string'],
+            'sale_id' => ['required', 'exists:sales,id'],
         ]);
 
         if ($validator->fails()) {
@@ -275,44 +276,56 @@ class PosController extends Controller
         }
 
         $user = $request->user();
-        $sale = $this->getActiveSale($user);
+        $saleId = (int) $request->input('sale_id');
+        $barcode = $request->input('barcode');
+
+        $sale = Sale::where('id', $saleId)
+            ->where('user_id', $user->id)
+            ->where('status', SaleStatus::OPEN)
+            ->first();
 
         if (! $sale) {
             return response()->json([
-                'message' => 'Nenhuma venda em andamento.',
-            ], 400);
+                'message' => 'Venda não encontrada ou não pertence ao usuário atual.',
+            ], 404);
         }
 
-        $barcode = $request->input('barcode');
-        $sale = DB::transaction(function () use ($sale, $barcode): Sale {
-            $item = SaleItem::where('sale_id', $sale->id)
-                ->whereHas('productVariant', function ($q) use ($barcode) {
-                    $q->where('sku', $barcode)
-                        ->orWhere('barcode', $barcode);
-                })
-                ->lockForUpdate()
-                ->first();
+        try {
+            $sale = DB::transaction(function () use ($sale, $barcode): Sale {
+                $item = SaleItem::where('sale_id', $sale->id)
+                    ->whereHas('productVariant', function ($q) use ($barcode) {
+                        $q->where('sku', $barcode)
+                            ->orWhere('barcode', $barcode);
+                    })
+                    ->with('productVariant')
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $item) {
-                throw new \InvalidArgumentException('Item não encontrado na venda atual.');
-            }
+                if (! $item) {
+                    throw new \InvalidArgumentException('Este produto não consta na venda atual.');
+                }
 
-            if ($item->quantity > 1) {
-                $item->quantity -= 1;
-                $item->total_price = $item->unit_price * $item->quantity;
-                $item->save();
-            } else {
-                $item->delete();
-            }
+                if ($item->quantity > 1) {
+                    $item->quantity -= 1;
+                    $item->total_price = $item->unit_price * $item->quantity;
+                    $item->save();
+                } else {
+                    $item->delete();
+                }
 
-            $this->recalculateSaleTotals($sale);
+                $this->recalculateSaleTotals($sale);
 
-            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
-        });
+                return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+            });
 
-        return response()->json([
-            'sale' => $this->formatSaleResponse($sale),
-        ], 200);
+            return response()->json([
+                'sale' => $this->formatSaleResponse($sale),
+            ], 200);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**

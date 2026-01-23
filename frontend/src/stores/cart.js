@@ -102,6 +102,7 @@ export const useCartStore = defineStore('cart', {
       try {
         const { data } = await api.post('/pos/remove-item-by-code', {
           barcode,
+          sale_id: this.saleId,
         });
         if (data.sale) {
           this.syncFromSale(data.sale);
