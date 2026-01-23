@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useCashRegisterStore } from '@/stores/cashRegister';
 import { useCartStore } from '@/stores/cart';
@@ -946,6 +946,23 @@ onBeforeRouteLeave((_to, _from, next) => {
   )
     .then((ok) => (ok ? next() : next(false)))
     .catch(() => next(false));
+});
+
+function scrollToBottom() {
+  nextTick(() => {
+    if (cartListRef.value) {
+      cartListRef.value.scrollTo({
+        top: cartListRef.value.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  });
+}
+
+watch(() => cartStore.items.length, () => {
+  if (cartStore.items.length > 0) {
+    scrollToBottom();
+  }
 });
 
 onMounted(async () => {
