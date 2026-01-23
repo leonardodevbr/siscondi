@@ -1197,15 +1197,15 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
-            <div class="border-b border-slate-200 p-4">
+          <div class="flex h-full flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
+            <div class="shrink-0 border-b border-slate-200 p-4">
               <h3 class="text-lg font-semibold text-slate-800">Itens da Venda</h3>
             </div>
 
             <div
               ref="cartListRef"
               tabindex="-1"
-              class="min-h-0 flex-1 overflow-y-auto p-4 outline-none"
+              class="min-h-0 flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
             >
               <div v-if="cartStore.items.length === 0" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-400">Nenhum item.</p>
@@ -1216,25 +1216,34 @@ onUnmounted(() => {
                   :key="item.id || index"
                   class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div class="mb-2">
-                    <p class="font-semibold text-slate-900">{{ formatCartItemName(item) }}</p>
+                  <div class="mb-3">
+                    <p class="truncate font-semibold text-slate-900">{{ formatCartItemName(item) }}</p>
                   </div>
-                  <div class="mb-2 flex items-center gap-3 text-sm">
-                    <span class="rounded bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">Qtd: {{ item.quantity }}</span>
-                    <span class="text-slate-600">Vl. Unit: {{ formatCurrency(item.unit_price) }}</span>
-                    <span class="ml-auto font-semibold text-slate-900">Subtotal: {{ formatCurrency(item.total_price) }}</span>
+                  <div class="mb-3 grid grid-cols-3 gap-4">
+                    <div>
+                      <p class="mb-1 text-xs uppercase text-gray-400">QTD</p>
+                      <p class="text-base font-semibold text-slate-800">{{ item.quantity }} un</p>
+                    </div>
+                    <div>
+                      <p class="mb-1 text-xs uppercase text-gray-400">VL. UNIT</p>
+                      <p class="text-base text-gray-600">{{ formatCurrency(item.unit_price) }}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="mb-1 text-xs uppercase text-gray-400">TOTAL</p>
+                      <p class="text-lg font-bold text-blue-600">{{ formatCurrency(item.total_price) }}</p>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2 text-xs text-slate-500">
+                  <div class="flex items-center gap-2 border-t border-slate-100 pt-2 text-xs text-gray-300">
                     <span v-if="item.sku">SKU: {{ item.sku }}</span>
                     <span v-if="item.sku && item.barcode">|</span>
                     <span v-if="item.barcode">Código: {{ item.barcode }}</span>
-                    <span v-if="!item.sku && !item.barcode" class="text-slate-400">-</span>
+                    <span v-if="!item.sku && !item.barcode" class="text-gray-300">-</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="border-t border-slate-200 bg-slate-50 p-4">
+            <div class="shrink-0 border-t border-slate-200 bg-slate-50 p-4">
               <div class="mb-4 flex items-center justify-between">
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
