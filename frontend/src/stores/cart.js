@@ -61,14 +61,13 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async addItem(productVariantId, quantity = 1) {
+    async addItem(barcode, quantity = 1) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada. Inicie uma venda primeiro.');
       }
       try {
         const { data } = await api.post('/pos/add-item', {
-          sale_id: this.saleId,
-          product_variant_id: productVariantId,
+          barcode,
           quantity,
         });
         if (data.sale) {
@@ -96,14 +95,13 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removeItemByCode(code) {
+    async removeItemByCode(barcode) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
         const { data } = await api.post('/pos/remove-item-by-code', {
-          sale_id: this.saleId,
-          code,
+          barcode,
         });
         if (data.sale) {
           this.syncFromSale(data.sale);
@@ -153,8 +151,7 @@ export const useCartStore = defineStore('cart', {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/payment', {
-          sale_id: this.saleId,
+        const { data } = await api.post('/pos/add-payment', {
           method,
           amount,
           installments,
@@ -188,9 +185,7 @@ export const useCartStore = defineStore('cart', {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/finish', {
-          sale_id: this.saleId,
-        });
+        const { data } = await api.post('/pos/finish');
         this.reset();
         return data;
       } catch (error) {

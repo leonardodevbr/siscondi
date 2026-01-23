@@ -16,6 +16,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
 use App\Models\StockMovement;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,23 +25,19 @@ use Illuminate\Support\Facades\Validator;
 class PosController extends Controller
 {
     /**
-     * Busca venda ativa (status='open') do usuário/caixa atual.
+     * Busca a venda aberta do usuário atual.
      */
-    public function activeSale(Request $request): JsonResponse
+    private function getActiveSale(User $user): ?Sale
     {
-        $user = $request->user();
         $cashRegister = CashRegister::where('user_id', $user->id)
             ->where('status', CashRegisterStatus::OPEN)
             ->first();
 
         if (! $cashRegister) {
-            return response()->json([
-                'sale' => null,
-                'message' => 'No open cash register',
-            ], 200);
+            return null;
         }
 
-        $sale = Sale::where('user_id', $user->id)
+        return Sale::where('user_id', $user->id)
             ->where('cash_register_id', $cashRegister->id)
             ->where('status', SaleStatus::OPEN)
             ->with([
@@ -49,6 +46,15 @@ class PosController extends Controller
                 'salePayments',
             ])
             ->first();
+    }
+
+    /**
+     * Busca venda ativa (status='open') do usuário/caixa atual.
+     */
+    public function activeSale(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
         if (! $sale) {
             return response()->json([
@@ -126,8 +132,7 @@ class PosController extends Controller
     public function addItem(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
-            'product_variant_id' => ['required', 'exists:product_variants,id'],
+            'barcode' => ['required', 'string'],
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -138,21 +143,30 @@ class PosController extends Controller
             ], 422);
         }
 
-        $sale = Sale::findOrFail($request->input('sale_id'));
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($sale->status !== SaleStatus::OPEN) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento. Inicie uma venda primeiro.',
             ], 400);
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
-            $variantId = $request->input('product_variant_id');
+        $sale = DB::transaction(function () use ($sale, $request, $user): Sale {
+            $barcode = $request->input('barcode');
             $quantity = (int) $request->input('quantity');
 
-            $variant = ProductVariant::with('product')
+            $variant = ProductVariant::where('sku', $barcode)
+                ->orWhere('barcode', $barcode)
+                ->with('product')
                 ->lockForUpdate()
-                ->findOrFail($variantId);
+                ->first();
+
+            if (! $variant) {
+                throw new \InvalidArgumentException('Produto não encontrado.');
+            }
+
+            $variantId = $variant->id;
 
             $inventory = Inventory::where('branch_id', $sale->branch_id)
                 ->where('product_variant_id', $variantId)
@@ -250,8 +264,7 @@ class PosController extends Controller
     public function removeItemByCode(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
-            'code' => ['required', 'string'],
+            'barcode' => ['required', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -261,26 +274,27 @@ class PosController extends Controller
             ], 422);
         }
 
-        $sale = Sale::findOrFail($request->input('sale_id'));
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($sale->status !== SaleStatus::OPEN) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 
-        $code = $request->input('code');
-        $sale = DB::transaction(function () use ($sale, $code): Sale {
+        $barcode = $request->input('barcode');
+        $sale = DB::transaction(function () use ($sale, $barcode): Sale {
             $item = SaleItem::where('sale_id', $sale->id)
-                ->whereHas('productVariant', function ($q) use ($code) {
-                    $q->where('sku', $code)
-                        ->orWhere('barcode', $code);
+                ->whereHas('productVariant', function ($q) use ($barcode) {
+                    $q->where('sku', $barcode)
+                        ->orWhere('barcode', $barcode);
                 })
                 ->lockForUpdate()
                 ->first();
 
             if (! $item) {
-                throw new \InvalidArgumentException('Item não encontrado na venda.');
+                throw new \InvalidArgumentException('Item não encontrado na venda atual.');
             }
 
             if ($item->quantity > 1) {
@@ -307,7 +321,6 @@ class PosController extends Controller
     public function identifyCustomer(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
             'customer_id' => ['nullable', 'exists:customers,id'],
         ]);
 
@@ -318,11 +331,12 @@ class PosController extends Controller
             ], 422);
         }
 
-        $sale = Sale::findOrFail($request->input('sale_id'));
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($sale->status !== SaleStatus::OPEN) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 
@@ -340,7 +354,6 @@ class PosController extends Controller
     public function applyDiscount(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
             'type' => ['required', 'in:percentage,fixed'],
             'value' => ['required', 'numeric', 'min:0'],
         ]);
@@ -352,11 +365,12 @@ class PosController extends Controller
             ], 422);
         }
 
-        $sale = Sale::findOrFail($request->input('sale_id'));
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($sale->status !== SaleStatus::OPEN) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 
@@ -385,10 +399,9 @@ class PosController extends Controller
     /**
      * Adiciona pagamento à venda.
      */
-    public function payment(Request $request): JsonResponse
+    public function addPayment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
             'method' => ['required', 'string', 'in:credit_card,debit_card,cash,pix'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'installments' => ['nullable', 'integer', 'min:1', 'max:12'],
@@ -401,11 +414,12 @@ class PosController extends Controller
             ], 422);
         }
 
-        $sale = Sale::findOrFail($request->input('sale_id'));
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($sale->status !== SaleStatus::OPEN) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 
@@ -439,26 +453,16 @@ class PosController extends Controller
      */
     public function finish(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
-        ]);
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($validator->fails()) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $sale = Sale::with(['items.productVariant', 'salePayments'])
-            ->findOrFail($request->input('sale_id'));
-
-        if ($sale->status !== SaleStatus::OPEN) {
-            return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 
+        $sale->load(['items.productVariant', 'salePayments']);
         $totalPayments = $sale->salePayments->sum('amount');
 
         if ($totalPayments < $sale->final_amount) {
@@ -469,8 +473,7 @@ class PosController extends Controller
             ], 400);
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
-            $user = $request->user();
+        $sale = DB::transaction(function () use ($sale, $user): Sale {
 
             foreach ($sale->items as $item) {
                 $inventory = Inventory::where('branch_id', $sale->branch_id)
@@ -522,22 +525,12 @@ class PosController extends Controller
      */
     public function cancel(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'sale_id' => ['required', 'exists:sales,id'],
-        ]);
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
 
-        if ($validator->fails()) {
+        if (! $sale) {
             return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $sale = Sale::findOrFail($request->input('sale_id'));
-
-        if ($sale->status !== SaleStatus::OPEN) {
-            return response()->json([
-                'message' => 'Sale is not open',
+                'message' => 'Nenhuma venda em andamento.',
             ], 400);
         }
 

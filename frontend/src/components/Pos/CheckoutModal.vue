@@ -1,25 +1,25 @@
 <template>
   <Modal :is-open="isOpen" title="Finalizar Venda" @close="$emit('close')">
-    <div class="space-y-4">
-      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-slate-700">Total a Pagar:</span>
-          <span class="text-xl font-bold text-slate-900">{{ formatCurrency(finalAmount) }}</span>
+      <div class="space-y-4">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-700">Total Venda:</span>
+            <span class="text-xl font-bold text-slate-900">{{ formatCurrency(finalAmount) }}</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-700">Total Pago:</span>
+            <span class="text-lg font-semibold text-green-600">{{ formatCurrency(totalPayments) }}</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between border-t border-slate-300 pt-2">
+            <span class="text-sm font-medium text-slate-700">Falta Pagar:</span>
+            <span :class="[
+              'text-lg font-bold',
+              remainingAmount <= 0 ? 'text-green-600' : 'text-red-600'
+            ]">
+              {{ formatCurrency(remainingAmount) }}
+            </span>
+          </div>
         </div>
-        <div class="mt-2 flex items-center justify-between">
-          <span class="text-sm font-medium text-slate-700">Pago:</span>
-          <span class="text-lg font-semibold text-green-600">{{ formatCurrency(totalPayments) }}</span>
-        </div>
-        <div class="mt-2 flex items-center justify-between border-t border-slate-300 pt-2">
-          <span class="text-sm font-medium text-slate-700">Restante:</span>
-          <span :class="[
-            'text-lg font-bold',
-            remainingAmount <= 0 ? 'text-green-600' : 'text-red-600'
-          ]">
-            {{ formatCurrency(remainingAmount) }}
-          </span>
-        </div>
-      </div>
 
       <div class="space-y-3">
         <div class="flex items-center justify-between text-sm">

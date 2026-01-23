@@ -234,7 +234,7 @@ async function processScanApi(code, quantity = 1) {
   }
   
   try {
-    await cartStore.addItem(data.variation_id, quantity);
+    await cartStore.addItem(code, quantity);
     
     lastScannedProduct.value = {
       id: data.product_id,
@@ -290,15 +290,18 @@ async function runProductSearchAndAdd(code, quantity = 1) {
       image: variant.image ?? product.image ?? null,
       price: effectivePrice,
     };
-    cartStore.addItem(product, quantity, variant.id);
+    
+    const barcodeToUse = variant.barcode || code;
+    await cartStore.addItem(barcodeToUse, quantity);
+    
     if (searchTimeout.value) {
       clearTimeout(searchTimeout.value);
       searchTimeout.value = null;
     }
     searchQuery.value = '';
     products.value = [];
-  } catch {
-    toast.error('Erro ao buscar produto.');
+  } catch (error) {
+    toast.error(error.message || 'Erro ao buscar produto.');
   }
 }
 
@@ -320,6 +323,8 @@ async function handleScannedCode(code) {
       nextTick(focusSearch);
     } catch (error) {
       toast.error(error.message || 'Erro ao remover item.');
+      isCancellationMode.value = false;
+      nextTick(focusSearch);
     }
     return;
   }
@@ -416,22 +421,6 @@ async function handleAddProduct(product) {
   }
 }
 
-async function handleRemoveItem(index) {
-  const item = cartStore.items[index];
-  if (!item) return;
-  
-  const confirmed = await confirm(
-    'Remover Item?',
-    'Tem certeza que deseja remover este item da venda?',
-    'Sim, Remover',
-    'red'
-  );
-  
-  if (confirmed) {
-    cartStore.removeItem(index);
-    // TODO: Solicitar senha de gerente se user.role === 'seller'
-  }
-}
 
 function handleClearCart() {
   cartStore.reset();
@@ -1047,7 +1036,7 @@ onUnmounted(() => {
                 v-model="searchQuery"
                 name="product-search-input"
                 type="text"
-                :placeholder="isCancellationMode ? 'BIPE O PRODUTO PARA REMOVER' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
+                :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar produto... (ex: x3 7891234567890)'"
                 :class="[
                   'input-base w-full text-lg',
                   isCancellationMode ? 'border-2 border-red-500 focus:border-red-600 focus:ring-red-500' : ''
@@ -1111,27 +1100,22 @@ onUnmounted(() => {
               <div v-else class="space-y-3">
                 <div
                   v-for="(item, index) in cartStore.items"
-                  :key="index"
-                  class="cursor-pointer rounded-lg border p-3 transition-colors"
-                  :class="selectedCartIndex === index ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
-                  @click="selectedCartIndex = index"
+                  :key="item.id || index"
+                  class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                      <p class="text-sm font-semibold text-slate-800">{{ formatCartItemName(item) }}</p>
-                      <p class="mt-1 text-xs text-slate-500">
-                        {{ formatCurrency(item.unit_price) }} x {{ item.quantity }}
-                      </p>
-                    </div>
+                  <div class="mb-2">
+                    <p class="font-semibold text-slate-900">{{ formatCartItemName(item) }}</p>
                   </div>
-                  <div class="mt-2 flex items-center justify-between">
-                    <div class="flex items-center gap-2 text-xs text-slate-500">
-                      <span v-if="item.sku">SKU: {{ item.sku }}</span>
-                      <span v-if="item.sku && item.barcode">|</span>
-                      <span v-if="item.barcode">Código: {{ item.barcode }}</span>
-                      <span v-if="!item.sku && !item.barcode" class="text-slate-400">-</span>
-                    </div>
-                    <span class="text-sm font-semibold text-slate-800">{{ formatCurrency(item.total_price) }}</span>
+                  <div class="mb-2 flex items-center gap-3 text-sm">
+                    <span class="rounded bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">Qtd: {{ item.quantity }}</span>
+                    <span class="text-slate-600">Vl. Unit: {{ formatCurrency(item.unit_price) }}</span>
+                    <span class="ml-auto font-semibold text-slate-900">Subtotal: {{ formatCurrency(item.total_price) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span v-if="item.sku">SKU: {{ item.sku }}</span>
+                    <span v-if="item.sku && item.barcode">|</span>
+                    <span v-if="item.barcode">Código: {{ item.barcode }}</span>
+                    <span v-if="!item.sku && !item.barcode" class="text-slate-400">-</span>
                   </div>
                 </div>
               </div>
