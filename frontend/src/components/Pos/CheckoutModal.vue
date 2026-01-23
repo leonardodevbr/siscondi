@@ -91,7 +91,7 @@
               ]"
               @click="selectMethod(method.value)"
             >
-              {{ method.label }}
+              {{ index + 1 }} - {{ method.label }}
             </button>
           </div>
         </div>
@@ -142,14 +142,20 @@
                 ]"
                 @click="selectInstallments(n)"
               >
-                {{ n }}x de {{ formatCurrency(installmentPreview(n)) }}
+                {{ n }} - {{ n }}x de {{ formatCurrency(installmentPreview(n)) }}
               </button>
             </div>
           </div>
 
-          <div v-if="(newPayment.method === 'cash' || newPayment.method === 'pix') || (newPayment.method === 'debit_card')" class="flex justify-end gap-2">
-            <Button variant="outline" size="sm" @click="cancelAddPayment">Cancelar (ESC)</Button>
-            <Button variant="primary" size="sm" @click="confirmAddPayment">Adicionar (ENTER)</Button>
+          <div v-if="installmentsSelected || (newPayment.method === 'cash' || newPayment.method === 'pix') || (newPayment.method === 'debit_card')" class="space-y-3">
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-sm font-medium text-slate-700">Resumo do Pagamento:</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ paymentSummary }}</p>
+            </div>
+            <div class="flex justify-end gap-2">
+              <Button variant="outline" size="sm" @click="cancelAddPayment">Cancelar (ESC)</Button>
+              <Button variant="primary" size="sm" @click="confirmAddPayment">Adicionar (ENTER)</Button>
+            </div>
           </div>
         </div>
       </div>
@@ -235,23 +241,68 @@ const change = computed(() => {
   return 0;
 });
 
+const paymentSummary = computed(() => {
+  const amount = newPayment.value.amount || 0;
+  if (amount <= 0) return '';
+  
+  if (newPayment.value.method === 'cash' || newPayment.value.method === 'money') {
+    return `R$ ${formatCurrency(amount)} em Espécie`;
+  }
+  
+  if (newPayment.value.method === 'pix') {
+    return `R$ ${formatCurrency(amount)} no PIX`;
+  }
+  
+  if (newPayment.value.method === 'debit_card') {
+    return `R$ ${formatCurrency(amount)} no Cartão (Débito)`;
+  }
+  
+  if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit') {
+    const installments = newPayment.value.installments || 1;
+    if (installments > 1) {
+      return `R$ ${formatCurrency(amount)} em ${installments}x no Cartão`;
+    }
+    return `R$ ${formatCurrency(amount)} no Cartão (Crédito)`;
+  }
+  
+  return `R$ ${formatCurrency(amount)}`;
+});
+
 watch(() => props.isOpen, (open) => {
   if (open) {
     resetPaymentForm();
-    const remaining = parseFloat(remainingAmount.value);
-    if (remaining > 0.01) {
-      showAddPayment.value = true;
-      amountInputVisible.value = true;
-      amountFormatted.value = formatAmountInput(remaining);
-      newPayment.value.amount = remaining;
-      nextTick(() => {
-        focusAmountInput();
-      });
-    } else {
-      showAddPayment.value = false;
-    }
+    checkAndShowPaymentInput();
   }
 });
+
+watch(remainingAmount, (newVal) => {
+  if (props.isOpen && !showAddPayment.value && newVal > 0.01) {
+    checkAndShowPaymentInput();
+  } else if (props.isOpen && showAddPayment.value && newVal > 0.01 && !amountConfirmed.value) {
+    const remaining = parseFloat(newVal);
+    amountFormatted.value = formatAmountInput(remaining);
+    newPayment.value.amount = remaining;
+    nextTick(() => {
+      focusAmountInput();
+    });
+  }
+});
+
+function checkAndShowPaymentInput() {
+  const remaining = parseFloat(remainingAmount.value);
+  if (remaining > 0.01) {
+    showAddPayment.value = true;
+    amountInputVisible.value = true;
+    amountFormatted.value = formatAmountInput(remaining);
+    newPayment.value.amount = remaining;
+    amountConfirmed.value = false;
+    nextTick(() => {
+      focusAmountInput();
+    });
+  } else {
+    showAddPayment.value = false;
+  }
+}
 
 function resetPaymentForm() {
   showAddPayment.value = false;
@@ -504,18 +555,9 @@ function handleKeydown(e) {
   }
 
   if (e.key === 'p' || e.key === 'P') {
-    if (!showAddPayment.value) {
+    if (!showAddPayment.value && remainingAmount.value > 0.01) {
       e.preventDefault();
-      showAddPayment.value = true;
-      amountConfirmed.value = false;
-      methodSelected.value = false;
-      amountInputVisible.value = true;
-      const remaining = parseFloat(remainingAmount.value);
-      amountFormatted.value = formatAmountInput(remaining);
-      newPayment.value.amount = remaining;
-      nextTick(() => {
-        focusAmountInput();
-      });
+      checkAndShowPaymentInput();
     }
     return;
   }
@@ -545,6 +587,12 @@ function handleKeydown(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
       selectMethod(paymentMethods[selectedMethodIndex.value].value);
+      return;
+    }
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= paymentMethods.length) {
+      e.preventDefault();
+      selectMethod(paymentMethods[num - 1].value);
       return;
     }
     return;
@@ -602,7 +650,7 @@ function handleKeydown(e) {
       return;
     }
     const num = parseInt(e.key);
-    if (num >= 1 && num <= 9) {
+    if (num >= 1 && num <= 12) {
       e.preventDefault();
       selectInstallments(num);
       return;
@@ -610,7 +658,7 @@ function handleKeydown(e) {
     return;
   }
 
-  if ((newPayment.value.method === 'cash' || newPayment.value.method === 'pix') || (newPayment.value.method === 'debit_card')) {
+  if (installmentsSelected.value || (newPayment.value.method === 'cash' || newPayment.value.method === 'pix') || (newPayment.value.method === 'debit_card')) {
     if (e.key === 'Enter') {
       e.preventDefault();
       confirmAddPayment();
