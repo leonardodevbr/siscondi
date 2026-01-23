@@ -143,7 +143,7 @@
               @keydown.esc.stop="cancelAddPayment"
             >
             <p v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && installmentsSelected" class="mt-1 text-xs text-slate-500">
-              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency(Math.round(((parseAmount(amountFormatted) || 0) * newPayment.installments) * 100) / 100) }}
+              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency((parseAmount(amountFormatted) || 0) * newPayment.installments) }}
             </p>
           </div>
 
@@ -200,8 +200,7 @@ const amountFormatted = ref('');
 
 const paymentMethods = [
   { value: 'cash', label: 'Dinheiro' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
+  { value: 'card', label: 'Cartão' },
   { value: 'pix', label: 'PIX' },
 ];
 
@@ -285,7 +284,8 @@ function formatAmountInput(value) {
     num = typeof value === 'number' ? value : parseFloat(value);
   }
   if (isNaN(num) || num === 0) return '';
-  const parts = num.toFixed(2).split('.');
+  const fixed = num.toFixed(2);
+  const parts = fixed.split('.');
   return `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${parts[1]}`;
 }
 
@@ -315,19 +315,21 @@ function selectMethod(method) {
   newPayment.value.method = method;
   methodSelected.value = true;
   
-  if (method === 'cash' || method === 'pix' || method === 'debit_card') {
+  if (method === 'cash' || method === 'pix') {
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
     nextTick(() => {
       amountInputVisible.value = true;
-      amountFormatted.value = formatAmountInput(String(remainingAmount.value));
-      newPayment.value.amount = remainingAmount.value;
+      const remaining = parseFloat(remainingAmount.value);
+      amountFormatted.value = formatAmountInput(remaining);
+      newPayment.value.amount = remaining;
       focusAmountInput();
     });
-  } else if (method === 'credit_card') {
+  } else if (method === 'card') {
     cardTypeSelected.value = false;
     installmentsSelected.value = false;
     newPayment.value.cardType = null;
+    newPayment.value.method = 'credit_card';
   }
 }
 
@@ -340,8 +342,8 @@ function selectCardType(type) {
     selectedCardTypeIndex.value = 0;
     nextTick(() => {
       amountInputVisible.value = true;
-      const remaining = Math.round(remainingAmount.value * 100) / 100;
-      amountFormatted.value = formatAmountInput(String(remaining));
+      const remaining = parseFloat(remainingAmount.value);
+      amountFormatted.value = formatAmountInput(remaining);
       newPayment.value.amount = remaining;
       focusAmountInput();
     });
@@ -360,9 +362,9 @@ function selectInstallments(n) {
   selectedInstallmentIndex.value = n - 1;
   nextTick(() => {
     amountInputVisible.value = true;
-    const remaining = Math.max(0, remainingAmount.value);
-    const singleValue = Math.round((remaining / n) * 100) / 100;
-    amountFormatted.value = formatAmountInput(String(singleValue));
+    const remaining = parseFloat(remainingAmount.value);
+    const singleValue = remaining / n;
+    amountFormatted.value = formatAmountInput(singleValue);
     newPayment.value.amount = singleValue;
     focusAmountInput();
   });
@@ -371,10 +373,10 @@ function selectInstallments(n) {
 function installmentPreview(n) {
   if (amountFormatted.value && parseAmount(amountFormatted.value) > 0) {
     const amount = parseAmount(amountFormatted.value);
-    return Math.round((amount / n) * 100) / 100;
+    return amount / n;
   }
-  const remaining = Math.max(0, remainingAmount.value);
-  return Math.round((remaining / n) * 100) / 100;
+  const remaining = parseFloat(remainingAmount.value);
+  return remaining / n;
 }
 
 function focusAmountInput() {
