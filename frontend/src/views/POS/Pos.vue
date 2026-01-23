@@ -347,6 +347,15 @@ async function confirmCancellation(code) {
       icon: 'lock',
       input: 'password',
       inputPlaceholder: 'Senha de gerente',
+      inputAttributes: {
+        autocomplete: 'new-password',
+        autocapitalize: 'off',
+        autocorrect: 'off',
+        spellcheck: 'false',
+        'data-lpignore': 'true',
+        'data-1p-ignore': 'true',
+        'data-bwignore': 'true',
+      },
       showCancelButton: true,
       confirmButtonText: 'Confirmar',
       cancelButtonText: 'Cancelar',
@@ -1126,6 +1135,9 @@ onUnmounted(() => {
                   autocorrect="off"
                   spellcheck="false"
                   data-form-type="other"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-bwignore="true"
                   autofocus
                   @input="handleSearchInput"
                   @keyup.enter="handleBarcodeSearch"
