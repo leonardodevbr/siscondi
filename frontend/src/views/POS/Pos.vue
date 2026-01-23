@@ -14,7 +14,8 @@ import Button from '@/components/Common/Button.vue';
 import Modal from '@/components/Common/Modal.vue';
 import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
+import Swal from 'sweetalert2';
 
 const router = useRouter();
 const cashRegisterStore = useCashRegisterStore();
@@ -46,6 +47,8 @@ const showStartSaleModal = ref(false);
 const startSaleCpfInput = ref('');
 const quantityMultiplier = ref(1);
 const lastScannedProduct = ref(null);
+const isBalanceVisible = ref(false);
+const balanceVisibilityTimeout = ref(null);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -72,7 +75,7 @@ const shortcutsSale = [
   { key: 'F4', label: 'Cancelar Venda' },
   { key: 'F7', label: 'Identificar Cliente' },
   { key: 'F10', label: 'Finalizar Venda' },
-  { key: 'ESC', label: 'Fechar / Limpar Busca' },
+  { key: 'ESC', label: 'Limpar / Fechar' },
 ];
 const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
 
@@ -247,6 +250,8 @@ async function runProductSearchAndAdd(code, quantity = 1) {
       image: variant.image ?? product.image ?? null,
     };
     cartStore.addItem(product, quantity, variant.id);
+    searchQuery.value = '';
+    products.value = [];
   } catch {
     toast.error('Erro ao buscar produto.');
   }
@@ -273,9 +278,7 @@ async function handleScannedCode(code) {
       await runProductSearchAndAdd(parsed.code, parsed.quantity);
     }
   } finally {
-    setTimeout(() => {
-      quantityMultiplier.value = 1;
-    }, 2000);
+    quantityMultiplier.value = 1;
     clearScanAndFocus();
   }
 }
@@ -342,9 +345,22 @@ function handleAddProduct(product) {
   }
 }
 
-function handleRemoveItem(index) {
-  cartStore.removeItem(index);
-  toast.info('Item removido.');
+async function handleRemoveItem(index) {
+  const item = cartStore.items[index];
+  if (!item) return;
+  
+  const confirmed = await confirm(
+    'Remover Item?',
+    'Tem certeza que deseja remover este item da venda?',
+    'Sim, Remover',
+    'red'
+  );
+  
+  if (confirmed) {
+    cartStore.removeItem(index);
+    toast.info('Item removido.');
+    // TODO: Solicitar senha de gerente se user.role === 'seller'
+  }
 }
 
 function handleUpdateQuantity(index, newQuantity) {
@@ -396,16 +412,24 @@ async function handleFinalizeSale() {
 }
 
 async function handleCancelSale() {
-  if (cartStore.items.length === 0) return;
+  if (cartStore.items.length === 0) {
+    toast.info('Não há itens para cancelar.');
+    return;
+  }
   const ok = await confirm(
     'Cancelar Venda',
     'Deseja cancelar? Todos os itens da venda serão removidos.',
     'Sim, cancelar',
-    'blue'
+    'red'
   );
   if (ok) {
     cartStore.clearForCancel();
+    lastScannedProduct.value = null;
+    lastScannedCode.value = '';
+    searchQuery.value = '';
+    products.value = [];
     toast.info('Venda cancelada.');
+    nextTick(focusSearch);
   }
 }
 
@@ -495,6 +519,82 @@ function skipStartSale() {
   nextTick(focusSearch);
 }
 
+function hideBalanceAfterTimeout() {
+  if (balanceVisibilityTimeout.value) {
+    clearTimeout(balanceVisibilityTimeout.value);
+  }
+  balanceVisibilityTimeout.value = setTimeout(() => {
+    isBalanceVisible.value = false;
+    balanceVisibilityTimeout.value = null;
+  }, 15000);
+}
+
+async function requestBalanceAccess() {
+  const user = authStore.user;
+  const isAdmin = user?.roles?.some((r) => {
+    if (typeof r === 'string') {
+      return r === 'super-admin' || r === 'admin' || r === 'manager';
+    }
+    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
+  });
+  
+  if (isAdmin) {
+    const confirmed = await confirm(
+      'Visualizar Saldo',
+      'Deseja visualizar o saldo do caixa?',
+      'Sim, visualizar',
+      'blue'
+    );
+    if (confirmed) {
+      isBalanceVisible.value = true;
+      hideBalanceAfterTimeout();
+    }
+    return;
+  }
+  
+  const { value: password } = await Swal.fire({
+    title: 'Senha de Gerente',
+    text: 'Informe a Senha de Gerente para visualizar o saldo',
+    input: 'password',
+    inputPlaceholder: 'Digite a senha',
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#2563eb',
+    cancelButtonColor: '#64748b',
+    inputValidator: (value) => {
+      if (!value) {
+        return 'Por favor, informe a senha';
+      }
+    },
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+  });
+  
+  if (password) {
+    const correctPassword = 'admin123';
+    if (password === correctPassword) {
+      isBalanceVisible.value = true;
+      hideBalanceAfterTimeout();
+      toast.success('Acesso liberado. O saldo será ocultado em 15 segundos.');
+    } else {
+      toast.error('Senha incorreta.');
+    }
+  }
+}
+
+function toggleBalanceVisibility() {
+  if (isBalanceVisible.value) {
+    isBalanceVisible.value = false;
+    if (balanceVisibilityTimeout.value) {
+      clearTimeout(balanceVisibilityTimeout.value);
+      balanceVisibilityTimeout.value = null;
+    }
+  } else {
+    requestBalanceAccess();
+  }
+}
+
 function handleReloadBlock(e) {
   if (!cashRegisterStore.isOpen) return;
   const k = e.key;
@@ -564,9 +664,13 @@ function handleKeydown(e) {
       return;
     }
     if (cartStore.saleStarted) {
-      searchQuery.value = '';
-      products.value = [];
-      focusSearch();
+      if (searchQuery.value.trim()) {
+        searchQuery.value = '';
+        products.value = [];
+        focusSearch();
+      } else {
+        focusSearch();
+      }
     }
     return;
   }
@@ -603,6 +707,7 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F4') {
+    e.preventDefault();
     handleCancelSale();
     return;
   }
@@ -670,6 +775,9 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
   window.removeEventListener('keydown', handleReloadBlock, true);
+  if (balanceVisibilityTimeout.value) {
+    clearTimeout(balanceVisibilityTimeout.value);
+  }
 });
 </script>
 
@@ -730,9 +838,21 @@ onUnmounted(() => {
 
       <div v-else class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-16">
         <div class="flex shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
-          <div>
-            <p class="text-xs text-slate-500">Saldo do Caixa</p>
-            <p class="text-xl font-bold text-slate-900">{{ formatCurrency(cashRegisterStore.balance) }}</p>
+          <div class="flex items-center gap-2">
+            <div>
+              <p class="text-xs text-slate-500">Saldo do Caixa</p>
+              <p class="text-xl font-bold text-slate-900">
+                {{ isBalanceVisible ? formatCurrency(cashRegisterStore.balance) : 'R$ ••••••' }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="cursor-pointer rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              @click="toggleBalanceVisibility"
+            >
+              <EyeIcon v-if="!isBalanceVisible" class="h-5 w-5" />
+              <EyeSlashIcon v-else class="h-5 w-5" />
+            </button>
           </div>
           <div class="text-right">
             <p class="text-xs text-slate-500">Itens da Venda</p>
@@ -743,6 +863,9 @@ onUnmounted(() => {
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
           <div class="flex flex-col space-y-4 lg:col-span-2">
             <div>
+              <div v-if="lastScannedCode && !lastScannedProduct" class="mb-1">
+                <label class="block text-xs text-slate-500">Último código: {{ lastScannedCode }}</label>
+              </div>
               <div v-if="quantityMultiplier > 1 || lastScannedProduct" class="mb-2 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
                 <div v-if="quantityMultiplier > 1" class="flex items-center gap-2 rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
                   <span>Multiplicador: {{ quantityMultiplier }}x</span>
@@ -771,10 +894,15 @@ onUnmounted(() => {
               <input
                 id="product-search"
                 v-model="searchQuery"
+                name="product-search-input"
                 type="text"
                 placeholder="Bipar ou digitar produto... (ex: x3 7891234567890)"
                 class="input-base w-full text-lg"
                 autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                data-form-type="other"
                 autofocus
                 @input="handleSearchInput"
                 @keyup.enter="handleBarcodeSearch"
