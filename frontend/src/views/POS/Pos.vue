@@ -793,6 +793,57 @@ async function confirmCloseRegister() {
   }
 }
 
+function handleShortcutClick(key) {
+  if (key === 'F1') {
+    if (isIdle.value && !showStartSaleModal.value) {
+      openStartSaleModal();
+      return;
+    }
+    if (isIdle.value && showStartSaleModal.value) {
+      skipStartSale();
+      return;
+    }
+    if (cartStore.saleStarted) {
+      showHelpModal.value = true;
+    }
+    return;
+  }
+
+  if (isIdle.value) return;
+
+  if (key === 'F2') {
+    if (!showPriceCheckModal.value) {
+      document.querySelector('#product-search')?.blur();
+      showPriceCheckModal.value = true;
+    }
+    return;
+  }
+  if (key === 'F3') {
+    handleF3ToggleCancellationMode();
+    return;
+  }
+  if (key === 'F4') {
+    handleCancelSale();
+    return;
+  }
+  if (key === 'F7') {
+    showCustomerModal.value = true;
+    customerCpf.value = '';
+    return;
+  }
+  if (key === 'F8') {
+    showDiscountModal.value = true;
+    return;
+  }
+  if (key === 'F10') {
+    if (cartStore.items.length === 0) {
+      toast.error('Adicione pelo menos um item.');
+      return;
+    }
+    showCheckoutModal.value = true;
+  }
+}
+
 function handleKeydown(e) {
   if (!cashRegisterStore.isOpen) return;
   const key = e.key;
@@ -1165,7 +1216,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+            <div class="min-h-0 flex-1 overflow-y-auto border border-slate-200 bg-white">
               <div v-if="loadingProducts" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Buscando...</p>
               </div>
@@ -1249,18 +1300,9 @@ onUnmounted(() => {
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
               </div>
-              <div class="flex flex-nowrap justify-end gap-1.5">
-                <Button variant="outline" class="border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50" @click="showHelpModal = true">
-                  F1 - Ajuda
-                </Button>
-                <Button variant="outline" class="border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50" @click="showPriceCheckModal = true">
-                  F2 - Consultar
-                </Button>
-                <Button variant="outline" class="border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50" @click="handleCancelSale">
-                  F4 - Cancelar
-                </Button>
-                <Button variant="primary" class="px-3 py-1.5 text-sm" @click="showCheckoutModal = true">
-                  F10 - Finalizar
+              <div class="flex justify-end">
+                <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="showCheckoutModal = true">
+                  F10 - Finalizar Venda
                 </Button>
               </div>
             </div>
@@ -1275,15 +1317,17 @@ onUnmounted(() => {
         </span>
       </div>
 
-      <div v-else class="fixed bottom-0 left-0 right-0 z-50 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-slate-800 px-4 py-2 text-sm text-white">
-        <span
+      <div v-else class="fixed bottom-0 left-0 right-0 z-[100] flex shrink-0 flex-nowrap items-center justify-center gap-x-1.5 bg-slate-800 px-2 py-1.5 text-xs text-white shadow-lg overflow-x-auto">
+        <button
           v-for="s in shortcuts"
           :key="s.key"
-          class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-medium ring-1 ring-slate-600"
+          type="button"
+          class="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-700 px-2 py-1 font-medium text-white transition-colors hover:bg-slate-600 active:bg-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1 focus:ring-offset-slate-800"
+          @click="handleShortcutClick(s.key)"
         >
-          <kbd class="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-xs">{{ s.key }}</kbd>
-          <span>{{ s.label }}</span>
-        </span>
+          <kbd class="rounded bg-slate-600 px-1 py-0.5 font-mono text-[10px] font-bold leading-none">{{ s.key }}</kbd>
+          <span class="whitespace-nowrap text-[11px]">{{ s.label }}</span>
+        </button>
       </div>
 
       <StockAvailabilityModal mode="price-check" :is-open="showPriceCheckModal" @close="handlePriceCheckClose" />
