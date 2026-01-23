@@ -536,6 +536,8 @@ class PosController extends Controller
                     'product_variant_id' => $item->product_variant_id,
                     'product_name' => $item->productVariant->product->name ?? 'N/A',
                     'variant_attributes' => $item->productVariant->attributes ?? [],
+                    'sku' => $item->productVariant->sku ?? null,
+                    'barcode' => $item->productVariant->barcode ?? null,
                     'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price,
                     'total_price' => (float) $item->total_price,

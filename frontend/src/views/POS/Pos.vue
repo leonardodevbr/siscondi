@@ -1107,9 +1107,12 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <div class="mt-2 flex items-center justify-between">
-                    <p class="text-xs text-slate-400">
-                      Para alterar quantidade, bipar o produto novamente
-                    </p>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                      <span v-if="item.sku">SKU: {{ item.sku }}</span>
+                      <span v-if="item.sku && item.barcode">|</span>
+                      <span v-if="item.barcode">Código: {{ item.barcode }}</span>
+                      <span v-if="!item.sku && !item.barcode" class="text-slate-400">-</span>
+                    </div>
                     <span class="text-sm font-semibold text-slate-800">{{ formatCurrency(item.total_price) }}</span>
                   </div>
                 </div>
