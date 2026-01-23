@@ -76,14 +76,14 @@ const shortcutsIdle = [{ key: 'F1', label: 'Iniciar Venda' }];
 const shortcutsSale = [
   { key: 'F1', label: 'Ajuda' },
   { key: 'F2', label: 'Consultar Preço' },
-  { key: 'F3', label: 'Remover Item' },
+  { key: 'F3', label: 'Cancelar Item' },
   { key: 'F4', label: 'Cancelar Venda' },
   { key: 'F7', label: 'Identificar Cliente' },
   { key: 'F8', label: 'Desconto/Cupom' },
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
-const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale.value));
+const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
 
 function formatVariantLabel(attributes) {
   if (!attributes || Object.keys(attributes).length === 0) {
