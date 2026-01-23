@@ -352,7 +352,7 @@ async function confirmCancellation(code) {
     const result = await Swal.fire({
       title: 'Cancelar Item',
       html: `Insira a senha de gerente para cancelar <strong>${productName}</strong>:`,
-      icon: 'lock',
+      icon: 'warning',
       input: 'password',
       inputPlaceholder: 'Senha de gerente',
       inputName: 'manager-password-cancellation',
