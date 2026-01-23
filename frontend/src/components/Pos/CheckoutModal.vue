@@ -143,7 +143,7 @@
               @keydown.esc.stop="cancelAddPayment"
             >
             <p v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && installmentsSelected" class="mt-1 text-xs text-slate-500">
-              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency((parseAmount(amountFormatted) || 0) * newPayment.installments) }}
+              Valor por parcela: {{ formatCurrency(parseAmount(amountFormatted) || 0) }} | Total: {{ formatCurrency(Math.round(((parseAmount(amountFormatted) || 0) * newPayment.installments) * 100) / 100) }}
             </p>
           </div>
 
@@ -212,9 +212,18 @@ const newPayment = ref({
   cardType: null,
 });
 
-const finalAmount = computed(() => cartStore.finalAmount);
-const totalPayments = computed(() => cartStore.totalPayments);
-const remainingAmount = computed(() => cartStore.remainingAmount);
+const finalAmount = computed(() => {
+  const val = cartStore.finalAmount;
+  return typeof val === 'string' ? parseFloat(val) : val;
+});
+const totalPayments = computed(() => {
+  const val = cartStore.totalPayments;
+  return typeof val === 'string' ? parseFloat(val) : val;
+});
+const remainingAmount = computed(() => {
+  const val = cartStore.remainingAmount;
+  return typeof val === 'string' ? parseFloat(val) : val;
+});
 const canFinish = computed(() => cartStore.canFinish);
 const payments = computed(() => cartStore.payments);
 
@@ -269,7 +278,12 @@ function parseAmount(value) {
 }
 
 function formatAmountInput(value) {
-  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value;
+  let num;
+  if (typeof value === 'string') {
+    num = parseFloat(value.replace(/\./g, '').replace(',', '.'));
+  } else {
+    num = typeof value === 'number' ? value : parseFloat(value);
+  }
   if (isNaN(num) || num === 0) return '';
   const parts = num.toFixed(2).split('.');
   return `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${parts[1]}`;
@@ -326,8 +340,9 @@ function selectCardType(type) {
     selectedCardTypeIndex.value = 0;
     nextTick(() => {
       amountInputVisible.value = true;
-      amountFormatted.value = formatAmountInput(String(remainingAmount.value));
-      newPayment.value.amount = remainingAmount.value;
+      const remaining = Math.round(remainingAmount.value * 100) / 100;
+      amountFormatted.value = formatAmountInput(String(remaining));
+      newPayment.value.amount = remaining;
       focusAmountInput();
     });
   } else {
@@ -346,7 +361,7 @@ function selectInstallments(n) {
   nextTick(() => {
     amountInputVisible.value = true;
     const remaining = Math.max(0, remainingAmount.value);
-    const singleValue = remaining / n;
+    const singleValue = Math.round((remaining / n) * 100) / 100;
     amountFormatted.value = formatAmountInput(String(singleValue));
     newPayment.value.amount = singleValue;
     focusAmountInput();
@@ -354,12 +369,12 @@ function selectInstallments(n) {
 }
 
 function installmentPreview(n) {
-  if (amountFormatted.value) {
+  if (amountFormatted.value && parseAmount(amountFormatted.value) > 0) {
     const amount = parseAmount(amountFormatted.value);
-    return amount / n;
+    return Math.round((amount / n) * 100) / 100;
   }
   const remaining = Math.max(0, remainingAmount.value);
-  return remaining / n;
+  return Math.round((remaining / n) * 100) / 100;
 }
 
 function focusAmountInput() {
