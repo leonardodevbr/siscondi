@@ -60,7 +60,7 @@
   z-index: 100000 !important;
 }
 
-// Campo tipo senha sem type=password, para o gerenciador de senhas do browser não oferecer salvar
+/* Campo tipo senha sem type=password, para o gerenciador de senhas do browser não oferecer salvar */
 .swal-manager-auth-input {
   -webkit-text-security: disc;
 }

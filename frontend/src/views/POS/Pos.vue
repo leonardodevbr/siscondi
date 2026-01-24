@@ -375,16 +375,17 @@ async function confirmCancellation(code) {
       title: 'Cancelar Item',
       html: `Insira a senha de gerente para cancelar <strong>${productName}</strong>:`,
       icon: 'warning',
-      input: 'password',
+      input: 'text',
       inputPlaceholder: 'Senha de gerente',
-      inputName: 'manager-password-cancellation',
+      customClass: {
+        input: 'swal-manager-auth-input',
+      },
       inputAttributes: {
         autocomplete: 'off',
         autocapitalize: 'off',
         autocorrect: 'off',
         spellcheck: 'false',
-        name: 'manager-password-cancellation',
-        id: 'swal-manager-password-input',
+        name: 'manager-auth-cancel',
         'data-lpignore': 'true',
         'data-1p-ignore': 'true',
         'data-bwignore': 'true',
@@ -803,22 +804,21 @@ async function requestBalanceAccess() {
   const { value: password } = await Swal.fire({
     title: 'Senha de Gerente',
     text: 'Informe a Senha de Gerente para visualizar o saldo',
-    input: 'password',
+    input: 'text',
     inputPlaceholder: 'Digite a senha',
-    inputName: 'manager-password-balance',    inputId: 'swal-manager-password-balance',
+    customClass: {
+      input: 'swal-manager-auth-input',
+    },
     inputAttributes: {
-      autocomplete: 'new-password',
+      autocomplete: 'off',
       autocapitalize: 'off',
       autocorrect: 'off',
       spellcheck: 'false',
-      name: 'manager-password-balance',
-      id: 'swal-manager-password-balance',
+      name: 'manager-auth-balance',
       'data-lpignore': 'true',
       'data-1p-ignore': 'true',
       'data-bwignore': 'true',
       'data-form-type': 'other',
-      'data-autocomplete': 'off',
-      'data-ignore': 'true',
     },
     showCancelButton: true,
     confirmButtonText: 'Confirmar',
@@ -832,21 +832,6 @@ async function requestBalanceAccess() {
     },
     allowOutsideClick: false,
     allowEscapeKey: true,
-    didOpen: () => {
-      nextTick(() => {
-        const input = document.querySelector('#swal-manager-password-balance') || document.querySelector('.swal2-input[type="password"]');
-        if (input) {
-          input.setAttribute('autocomplete', 'new-password');
-          input.setAttribute('data-lpignore', 'true');
-          input.setAttribute('data-1p-ignore', 'true');
-          input.setAttribute('data-bwignore', 'true');
-          input.setAttribute('data-form-type', 'other');
-          input.setAttribute('data-autocomplete', 'off');
-          input.setAttribute('data-ignore', 'true');
-          input.setAttribute('name', 'manager-password-balance');
-        }
-      });
-    },
   });
   
   if (password) {
