@@ -60,6 +60,7 @@ const loadingProgress = ref(0);
 const isCancellationMode = ref(false);
 const isSearchMode = ref(false);
 const cancelSearchMode = ref(false);
+const selectedCancelSearchIndex = ref(-1);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 
@@ -101,6 +102,15 @@ const cancelSearchResults = computed(() => {
     formatCartItemName(i).toLowerCase().includes(q)
   );
 });
+
+watch(cancelSearchResults, (results) => {
+  if (results.length === 0) {
+    selectedCancelSearchIndex.value = -1;
+    return;
+  }
+  const i = selectedCancelSearchIndex.value;
+  if (i < 0 || i >= results.length) selectedCancelSearchIndex.value = 0;
+}, { immediate: true });
 
 function formatVariantLabel(attributes) {
   if (!attributes || Object.keys(attributes).length === 0) {
@@ -602,11 +612,31 @@ function handleInputKeydown(e) {
   }
 }
 
-function handleBarcodeSearch(e) {
-  if (e.key !== 'Enter') return;
+function handleSearchKeydown(e) {
+  const key = e.key;
+  const inCancelSearch = isCancellationMode.value && cancelSearchMode.value;
+  const results = cancelSearchResults.value;
+  const hasResults = results.length > 0;
+  const sel = selectedCancelSearchIndex.value;
+
+  if (inCancelSearch && hasResults && (key === 'ArrowDown' || key === 'ArrowUp')) {
+    e.preventDefault();
+    if (key === 'ArrowDown') {
+      selectedCancelSearchIndex.value = sel < 0 ? 0 : Math.min(sel + 1, results.length - 1);
+    } else {
+      selectedCancelSearchIndex.value = sel <= 0 ? -1 : sel - 1;
+    }
+    return;
+  }
+
+  if (key !== 'Enter') return;
+  e.preventDefault();
+  if (inCancelSearch && hasResults && sel >= 0) {
+    confirmCancellation(results[sel]);
+    return;
+  }
   const code = searchQuery.value.trim();
   if (!code) return;
-  e.preventDefault();
   handleScannedCode(code);
 }
 
@@ -776,6 +806,7 @@ function handleF3ToggleCancellationMode() {
   isCancellationMode.value = !isCancellationMode.value;
   isSearchMode.value = false;
   cancelSearchMode.value = false;
+  selectedCancelSearchIndex.value = -1;
   searchQuery.value = '';
   products.value = [];
   if (searchTimeout.value) {
@@ -788,6 +819,7 @@ function handleF3ToggleCancellationMode() {
 function handleF5ToggleSearchMode() {
   if (isCancellationMode.value) {
     cancelSearchMode.value = !cancelSearchMode.value;
+    selectedCancelSearchIndex.value = -1;
     searchQuery.value = '';
     products.value = [];
     if (searchTimeout.value) {
@@ -1507,7 +1539,7 @@ onUnmounted(() => {
                   role="textbox"
                   aria-label="Scanner de código de barras"
                   @input="handleSearchInput"
-                  @keydown.enter.prevent="handleBarcodeSearch"
+                  @keydown="handleSearchKeydown"
                 >
               </div>
             </div>
@@ -1521,10 +1553,15 @@ onUnmounted(() => {
                 </div>
                 <div v-else class="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
                   <button
-                    v-for="cartItem in cancelSearchResults"
+                    v-for="(cartItem, idx) in cancelSearchResults"
                     :key="cartItem.id"
                     type="button"
-                    class="flex flex-col rounded-lg border border-orange-200 bg-white p-3 text-left transition hover:border-orange-400 hover:bg-orange-50"
+                    :class="[
+                      'flex flex-col rounded-lg border p-3 text-left transition',
+                      selectedCancelSearchIndex === idx
+                        ? 'border-blue-500 ring-2 ring-blue-400 bg-blue-50'
+                        : 'border-orange-200 bg-white hover:border-orange-400 hover:bg-orange-50'
+                    ]"
                     @click="confirmCancellation(cartItem)"
                   >
                     <p class="text-sm font-semibold leading-tight text-slate-800" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ formatCartItemName(cartItem) }}</p>
