@@ -183,27 +183,52 @@ async function searchProducts(query) {
 
 function handleSearchInput(e) {
   if (!isSearchMode.value) {
-    searchQuery.value = '';
-    products.value = [];
+    if (!isCancellationMode.value) {
+      const value = e?.target?.value ?? searchQuery.value;
+      if (!/^\d*$/.test(value)) {
+        searchQuery.value = value.replace(/\D/g, '');
+        return;
+      }
+    }
     return;
   }
   
-  const q = (e?.target?.value ?? searchQuery.value).trim();
+  const q = (e?.target?.value ?? searchQuery.value);
   searchQuery.value = q;
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
-  if (q.length >= 2) {
-    searchTimeout.value = setTimeout(() => searchProducts(q), 300);
+  const trimmed = q.trim();
+  if (trimmed.length >= 2) {
+    searchTimeout.value = setTimeout(() => searchProducts(trimmed), 300);
   } else {
     products.value = [];
   }
 }
 
 function clearScanAndFocus() {
-  searchQuery.value = '';
+  if (!isSearchMode.value) {
+    searchQuery.value = '';
+  }
   products.value = [];
   nextTick(() => {
     const el = document.querySelector('#product-search');
     if (el) el.focus();
+  });
+}
+
+function resetToScannerMode() {
+  isSearchMode.value = false;
+  searchQuery.value = '';
+  products.value = [];
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
+  }
+  nextTick(() => {
+    const el = document.querySelector('#product-search');
+    if (el) {
+      el.focus();
+      el.select();
+    }
   });
 }
 
@@ -257,12 +282,7 @@ async function processScanApi(code, quantity = 1) {
       image: data.image ?? null,
     };
     
-    if (searchTimeout.value) {
-      clearTimeout(searchTimeout.value);
-      searchTimeout.value = null;
-    }
-    searchQuery.value = '';
-    products.value = [];
+    resetToScannerMode();
   } catch (error) {
     toast.error(error.message || 'Erro ao adicionar item.');
     lastScannedProduct.value = null;
@@ -308,12 +328,7 @@ async function runProductSearchAndAdd(code, quantity = 1) {
     const barcodeToUse = variant.barcode || code;
     await cartStore.addItem(barcodeToUse, quantity);
     
-    if (searchTimeout.value) {
-      clearTimeout(searchTimeout.value);
-      searchTimeout.value = null;
-    }
-    searchQuery.value = '';
-    products.value = [];
+    resetToScannerMode();
   } catch (error) {
     toast.error(error.message || 'Erro ao buscar produto.');
   }
@@ -441,15 +456,52 @@ async function handleScannedCode(code) {
         await processScanApi(parsed.code, parsed.quantity);
       } catch (err) {
         const msg = err.response?.data?.message ?? 'Produto não encontrado.';
-        toast.error(msg);
+        feedbackMessage.value = msg;
+        feedbackType.value = 'error';
         lastScannedProduct.value = null;
       }
     } else {
-      await runProductSearchAndAdd(parsed.code, parsed.quantity);
+      if (isSearchMode.value) {
+        await runProductSearchAndAdd(parsed.code, parsed.quantity);
+      } else {
+        feedbackMessage.value = 'Digite no modo Pesquisa (F5) para buscar por nome.';
+        feedbackType.value = 'info';
+        lastScannedProduct.value = null;
+      }
     }
   } finally {
     quantityMultiplier.value = 1;
-    clearScanAndFocus();
+    if (!isSearchMode.value) {
+      clearScanAndFocus();
+    }
+  }
+}
+
+function handleInputKeydown(e) {
+  if (isSearchMode.value) {
+    return;
+  }
+  
+  if (isCancellationMode.value) {
+    return;
+  }
+  
+  const key = e.key;
+  
+  if (key === 'Enter' || key === 'Backspace' || key === 'Delete' || key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown' || key === 'Home' || key === 'End' || key === 'Tab' || key === 'Escape') {
+    return;
+  }
+  
+  if (e.ctrlKey || e.metaKey) {
+    if (key === 'a' || key === 'A' || key === 'c' || key === 'C' || key === 'v' || key === 'V' || key === 'x' || key === 'X') {
+      return;
+    }
+  }
+  
+  if (!/^\d$/.test(key)) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
   }
 }
 
@@ -514,12 +566,7 @@ async function handleAddProduct(product) {
       price: effectivePrice,
     };
     
-    if (searchTimeout.value) {
-      clearTimeout(searchTimeout.value);
-      searchTimeout.value = null;
-    }
-    searchQuery.value = '';
-    products.value = [];
+    resetToScannerMode();
   } catch (err) {
     toast.error(err.message ?? 'Erro ao adicionar.');
     lastScannedProduct.value = null;
@@ -905,7 +952,7 @@ function handleShortcutClick(key) {
     return;
   }
   if (key === 'F3') {
-    handleF3ToggleCancellationMode();
+    if (!showCheckoutModal.value) handleF3ToggleCancellationMode();
     return;
   }
   if (key === 'F4') {
@@ -1026,6 +1073,7 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F3') {
+    if (showCheckoutModal.value) return;
     e.preventDefault();
     handleF3ToggleCancellationMode();
     return;
@@ -1277,10 +1325,11 @@ onUnmounted(() => {
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
           <div class="flex min-h-0 flex-col space-y-4 lg:col-span-2">
             <div>
-              <div v-if="lastScannedCode && !lastScannedProduct" class="mb-1">
-                <label class="block text-xs text-slate-500">Último código: {{ lastScannedCode }}</label>
+              <div v-if="lastScannedCode && !lastScannedProduct" class="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <label class="block text-xs font-medium text-slate-600">Último código bipado:</label>
+                <p class="mt-1 text-sm font-semibold text-slate-800">{{ lastScannedCode }}</p>
               </div>
-              <div v-if="quantityMultiplier > 1 || lastScannedProduct" class="mb-2 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div v-if="lastScannedProduct" class="mb-2 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
                 <div v-if="quantityMultiplier > 1" class="flex items-center gap-2 rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
                   <span>Multiplicador: {{ quantityMultiplier }}x</span>
                 </div>
@@ -1297,6 +1346,7 @@ onUnmounted(() => {
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-semibold text-slate-800 leading-tight">{{ lastScannedProduct.name }}</p>
+                    <p v-if="lastScannedCode" class="text-xs text-slate-400 mt-0.5">Código: {{ lastScannedCode }}</p>
                     <div class="mt-1">
                       <p class="text-xl font-bold text-blue-600">
                         {{ formatCurrency(lastScannedProduct.price ?? 0) }}
@@ -1320,6 +1370,9 @@ onUnmounted(() => {
                 <div v-if="isCancellationMode" class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                   <TrashIcon class="h-5 w-5 text-orange-400" />
                 </div>
+                <div v-else-if="isSearchMode" class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                  <MagnifyingGlassIcon class="h-5 w-5 text-blue-400" />
+                </div>
                 <div v-else class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                   <MagnifyingGlassIcon class="h-5 w-5 text-slate-400" />
                 </div>
@@ -1328,11 +1381,12 @@ onUnmounted(() => {
                   v-model="searchQuery"
                   name="pos-product-barcode-scanner"
                   type="text"
-                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : 'Bipar ou digitar código de barras'"
+                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : isSearchMode ? 'Digite para buscar ou bipar com multiplicador (ex: 2x 7891234567890)' : 'Bipar código de barras (F5 para modo Pesquisa)'"
                   :class="[
                     'input-base w-full text-lg pr-10',
                     isCancellationMode ? 'ring-2 ring-orange-400 focus:ring-orange-500' : ''
                   ]"
+                  :maxlength="isSearchMode ? undefined : 13"
                   autocomplete="one-time-code"
                   autocapitalize="off"
                   autocorrect="off"

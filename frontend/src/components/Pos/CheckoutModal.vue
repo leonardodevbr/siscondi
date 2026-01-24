@@ -56,7 +56,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-slate-700">{{ formatCurrency(payment.amount) }}</span>
-              <span v-if="selectedPaymentIndex === index" class="text-xs font-medium text-orange-600">Pressione F3 para remover</span>
+              <span v-if="selectedPaymentIndex === index && paymentRemovalAuthorized" class="text-xs font-medium text-orange-600">F3 para remover • ESC para desativar</span>
             </div>
           </div>
         </div>
@@ -222,6 +222,7 @@ const selectedCardTypeIndex = ref(0);
 const selectedInstallmentIndex = ref(0);
 const selectedPaymentIndex = ref(-1);
 const isFinishing = ref(false);
+const paymentRemovalAuthorized = ref(false);
 
 const amountInputRef = ref(null);
 const amountFormatted = ref('');
@@ -336,6 +337,7 @@ function resetPaymentForm() {
   selectedCardTypeIndex.value = 0;
   selectedInstallmentIndex.value = 0;
   selectedPaymentIndex.value = -1;
+  paymentRemovalAuthorized.value = false;
   amountFormatted.value = '';
   isFinishing.value = false;
   newPayment.value = {
@@ -536,21 +538,13 @@ async function confirmAddPayment() {
       finalAmount,
       newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' ? newPayment.value.installments : 1
     );
-    
-    const newRemaining = parseFloat(remainingAmount.value) - finalAmount;
-    
-    if (newRemaining > 0.01) {
-      resetPaymentForm();
+
+    resetPaymentForm();
+    const stillRemaining = parseFloat(remainingAmount.value);
+    if (stillRemaining > 0.01) {
       nextTick(() => {
-        showAddPayment.value = true;
-        amountInputVisible.value = true;
-        amountFormatted.value = formatAmountInput(newRemaining);
-        newPayment.value.amount = newRemaining;
-        amountConfirmed.value = false;
-        focusAmountInput();
+        checkAndShowPaymentInput();
       });
-    } else {
-      resetPaymentForm();
     }
   } catch (error) {
     console.error('Erro ao adicionar pagamento:', error);
@@ -566,6 +560,55 @@ function cancelAddPayment(e) {
   resetPaymentForm();
 }
 
+async function authorizePaymentRemoval() {
+  const result = await Swal.fire({
+    title: 'Remover Pagamento',
+    html: 'Insira a senha de gerente para autorizar a remoção de pagamentos:',
+    icon: 'warning',
+    input: 'password',
+    inputPlaceholder: 'Senha de gerente',
+    inputAttributes: {
+      autocomplete: 'new-password',
+      'data-lpignore': 'true',
+      'data-1p-ignore': 'true',
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#ea580c',
+    focusConfirm: false,
+    inputValidator: (value) => (value ? null : 'Informe a senha.'),
+  });
+  if (!result.isConfirmed) return;
+  const ok = result.value === 'admin123';
+  if (!ok) {
+    toast.error('Senha incorreta.');
+    return;
+  }
+  paymentRemovalAuthorized.value = true;
+  selectedPaymentIndex.value = 0;
+}
+
+async function removeSelectedPayment() {
+  const idx = selectedPaymentIndex.value;
+  if (idx < 0 || idx >= payments.value.length) return;
+  const payment = payments.value[idx];
+  const id = payment.id;
+  if (!id) return;
+  try {
+    await cartStore.removePayment(id);
+    if (payments.value.length <= 1) {
+      selectedPaymentIndex.value = -1;
+      paymentRemovalAuthorized.value = false;
+    } else {
+      selectedPaymentIndex.value = Math.max(0, idx - 1);
+    }
+  } catch (err) {
+    const msg = err?.message || err?.response?.data?.message || 'Erro ao remover pagamento.';
+    toast.error(msg);
+  }
+}
+
 function handleModalClose() {
   if (!showAddPayment.value) {
     emit('close');
@@ -576,26 +619,39 @@ function handleKeydown(e) {
   if (!props.isOpen) return;
 
   if (e.key === 'Escape') {
-    if (showAddPayment.value) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      cancelAddPayment(e);
-      return;
-    }
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
+    if (showAddPayment.value) {
+      cancelAddPayment(e);
+      return;
+    }
+    if (selectedPaymentIndex.value >= 0 && payments.value.length > 0) {
+      selectedPaymentIndex.value = -1;
+      return;
+    }
     emit('close');
     return;
   }
 
-  if (e.key === 'F3' && !showAddPayment.value && payments.value.length > 0) {
+  if (e.key === 'F9' && (e.metaKey || e.ctrlKey) && !showAddPayment.value && payments.value.length > 0) {
     e.preventDefault();
-    if (selectedPaymentIndex.value === -1) {
-      selectedPaymentIndex.value = 0;
-    } else {
-      handleRemovePayment();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    authorizePaymentRemoval();
+    return;
+  }
+
+  if (e.key === 'F3' && props.isOpen) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (!showAddPayment.value && payments.value.length > 0 && paymentRemovalAuthorized.value) {
+      if (selectedPaymentIndex.value === -1) {
+        selectedPaymentIndex.value = 0;
+      } else {
+        removeSelectedPayment();
+      }
     }
     return;
   }

@@ -55,7 +55,11 @@
   z-index: 99999 !important;
 }
 
-/* SweetAlert2 Custom Styles */
+/* SweetAlert2 - sempre acima de modais (Modal usa z-index 9999) */
+.swal2-container {
+  z-index: 100000 !important;
+}
+
 .swal2-popup {
   @apply rounded-xl;
 }
