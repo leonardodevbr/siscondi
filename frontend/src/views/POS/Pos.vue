@@ -342,6 +342,16 @@ async function runProductSearchAndAdd(code, quantity = 1) {
   }
 }
 
+function clearCancellationAndFocus() {
+  searchQuery.value = '';
+  products.value = [];
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
+  }
+  nextTick(focusSearch);
+}
+
 async function confirmCancellation(code) {
   const item = cartStore.items.find((i) => {
     const itemCode = i.barcode || i.sku;
@@ -351,6 +361,7 @@ async function confirmCancellation(code) {
   if (!item) {
     feedbackMessage.value = 'Item não encontrado na lista.';
     feedbackType.value = 'error';
+    clearCancellationAndFocus();
     return;
   }
 
@@ -363,7 +374,6 @@ async function confirmCancellation(code) {
   });
 
   const productName = formatCartItemName(item);
-
   let confirmed = false;
 
   if (isAdmin) {
@@ -417,32 +427,29 @@ async function confirmCancellation(code) {
         confirmed = true;
       } else {
         toast.error('Senha incorreta.');
+        clearCancellationAndFocus();
         return;
       }
     }
   }
 
   if (!confirmed) {
+    clearCancellationAndFocus();
     return;
   }
 
   try {
-    await cartStore.removeItemByCode(code);
+    const barcodeToSend = item.barcode || item.sku || code;
+    await cartStore.removeItemByCode(barcodeToSend);
     toast.success('Item removido.');
     isCancellationMode.value = false;
-    if (searchTimeout.value) {
-      clearTimeout(searchTimeout.value);
-      searchTimeout.value = null;
-    }
-    searchQuery.value = '';
-    products.value = [];
-    nextTick(focusSearch);
+    clearCancellationAndFocus();
   } catch (error) {
     const message = error.response?.data?.message || error.message || 'Erro ao remover item.';
     feedbackMessage.value = message;
     feedbackType.value = 'error';
     isCancellationMode.value = false;
-    nextTick(focusSearch);
+    clearCancellationAndFocus();
   }
 }
 
@@ -451,6 +458,12 @@ async function handleScannedCode(code) {
   if (!c) return;
 
   if (isCancellationMode.value) {
+    searchQuery.value = '';
+    products.value = [];
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
     await confirmCancellation(c);
     return;
   }
@@ -692,15 +705,14 @@ function focusSearch() {
 
 function handleF3ToggleCancellationMode() {
   isCancellationMode.value = !isCancellationMode.value;
-  if (isCancellationMode.value) {
-    isSearchMode.value = false;
-    nextTick(focusSearch);
-  } else {
-    isCancellationMode.value = false;
-    searchQuery.value = '';
-    products.value = [];
-    nextTick(focusSearch);
+  isSearchMode.value = false;
+  searchQuery.value = '';
+  products.value = [];
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
   }
+  nextTick(focusSearch);
 }
 
 function handleF5ToggleSearchMode() {
