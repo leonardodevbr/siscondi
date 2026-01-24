@@ -56,7 +56,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-slate-700">{{ formatCurrency(payment.amount) }}</span>
-              <span v-if="selectedPaymentIndex === index && paymentRemovalAuthorized" class="text-xs font-medium text-orange-600">F3 para remover • ESC para desativar</span>
+              <span v-if="selectedPaymentIndex === index && paymentRemovalAuthorized" class="text-xs font-medium text-orange-600">ENTER para remover • ESC para desativar</span>
             </div>
           </div>
         </div>
@@ -629,6 +629,7 @@ function handleKeydown(e) {
     }
     if (selectedPaymentIndex.value >= 0 && payments.value.length > 0) {
       selectedPaymentIndex.value = -1;
+      paymentRemovalAuthorized.value = false;
       return;
     }
     emit('close');
@@ -643,27 +644,13 @@ function handleKeydown(e) {
     return;
   }
 
-  if (e.key === 'F3' && props.isOpen) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    if (!showAddPayment.value && payments.value.length > 0 && paymentRemovalAuthorized.value) {
-      if (selectedPaymentIndex.value === -1) {
-        selectedPaymentIndex.value = 0;
-      } else {
-        removeSelectedPayment();
-      }
-    }
-    return;
-  }
-
   if (e.key === 'F10' && canFinish.value && !isFinishing.value) {
     e.preventDefault();
     handleFinish();
     return;
   }
 
-  if (selectedPaymentIndex.value >= 0 && !showAddPayment.value) {
+  if (selectedPaymentIndex.value >= 0 && !showAddPayment.value && paymentRemovalAuthorized.value) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       selectedPaymentIndex.value = Math.max(0, selectedPaymentIndex.value - 1);
@@ -672,6 +659,11 @@ function handleKeydown(e) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       selectedPaymentIndex.value = Math.min(payments.value.length - 1, selectedPaymentIndex.value + 1);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      removeSelectedPayment();
       return;
     }
   }

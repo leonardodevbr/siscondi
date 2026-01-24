@@ -1073,7 +1073,6 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F3') {
-    if (showCheckoutModal.value) return;
     e.preventDefault();
     handleF3ToggleCancellationMode();
     return;
