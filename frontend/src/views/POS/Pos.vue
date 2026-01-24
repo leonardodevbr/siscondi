@@ -205,13 +205,14 @@ function handleSearchInput(e) {
 }
 
 function clearScanAndFocus() {
-  if (!isSearchMode.value) {
-    searchQuery.value = '';
-  }
+  searchQuery.value = '';
   products.value = [];
   nextTick(() => {
     const el = document.querySelector('#product-search');
-    if (el) el.focus();
+    if (el) {
+      el.focus();
+      el.select?.();
+    }
   });
 }
 
@@ -261,17 +262,23 @@ function parseQuantityMultiplier(input) {
 }
 
 async function processScanApi(code, quantity = 1) {
-  const { data } = await api.get('/inventory/scan', { params: { code } });
+  let data;
+  try {
+    const res = await api.get('/inventory/scan', { params: { code } });
+    data = res.data;
+  } catch (err) {
+    lastScannedProduct.value = null;
+    throw err;
+  }
   const stock = data.current_stock ?? 0;
   if (stock < quantity) {
     feedbackMessage.value = `Estoque insuficiente. Disponível: ${stock}`;
     feedbackType.value = 'error';
+    lastScannedProduct.value = null;
     return;
   }
-  
   try {
     await cartStore.addItem(code, quantity);
-    
     lastScannedProduct.value = {
       id: data.product_id,
       name: data.name,
@@ -281,7 +288,6 @@ async function processScanApi(code, quantity = 1) {
       price: data.price ?? 0,
       image: data.image ?? null,
     };
-    
     resetToScannerMode();
   } catch (error) {
     toast.error(error.message || 'Erro ao adicionar item.');
@@ -299,20 +305,23 @@ async function runProductSearchAndAdd(code, quantity = 1) {
     });
     if (!product && list.length > 0) product = list[0];
     if (!product) {
-      feedbackMessage.value = 'Produto não encontrado.';
+      feedbackMessage.value = 'Produto não cadastrado.';
       feedbackType.value = 'error';
+      lastScannedProduct.value = null;
       return;
     }
     const variant = product.variants?.find((v) => v.barcode && String(v.barcode) === code) ?? product.variants?.[0];
     if (!variant) {
       feedbackMessage.value = 'Produto sem variação.';
       feedbackType.value = 'error';
+      lastScannedProduct.value = null;
       return;
     }
     const stock = variant.current_stock ?? product.current_stock ?? 0;
     if (stock < quantity) {
       feedbackMessage.value = `Estoque insuficiente. Disponível: ${stock}`;
       feedbackType.value = 'error';
+      lastScannedProduct.value = null;
       return;
     }
     const effectivePrice = variant.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
@@ -324,13 +333,12 @@ async function runProductSearchAndAdd(code, quantity = 1) {
       image: variant.image ?? product.image ?? null,
       price: effectivePrice,
     };
-    
     const barcodeToUse = variant.barcode || code;
     await cartStore.addItem(barcodeToUse, quantity);
-    
     resetToScannerMode();
   } catch (error) {
     toast.error(error.message || 'Erro ao buscar produto.');
+    lastScannedProduct.value = null;
   }
 }
 
@@ -441,22 +449,28 @@ async function confirmCancellation(code) {
 async function handleScannedCode(code) {
   const c = String(code).trim();
   if (!c) return;
-  
+
   if (isCancellationMode.value) {
     await confirmCancellation(c);
     return;
   }
-  
+
   const parsed = parseQuantityMultiplier(c);
   quantityMultiplier.value = parsed.quantity;
   lastScannedCode.value = parsed.code;
+  searchQuery.value = '';
+  products.value = [];
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
+  }
 
   try {
     if (viaScan(parsed.code)) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
       } catch (err) {
-        const msg = err.response?.data?.message ?? 'Produto não encontrado.';
+        const msg = err.response?.data?.message ?? 'Produto não cadastrado.';
         feedbackMessage.value = msg;
         feedbackType.value = 'error';
         lastScannedProduct.value = null;
@@ -472,9 +486,13 @@ async function handleScannedCode(code) {
     }
   } finally {
     quantityMultiplier.value = 1;
-    if (!isSearchMode.value) {
-      clearScanAndFocus();
-    }
+    nextTick(() => {
+      const el = document.querySelector('#product-search');
+      if (el) {
+        el.focus();
+        el.select?.();
+      }
+    });
   }
 }
 
@@ -508,9 +526,9 @@ function handleInputKeydown(e) {
 
 function handleBarcodeSearch(e) {
   if (e.key !== 'Enter') return;
-  if (!isSearchMode.value) return;
   const code = searchQuery.value.trim();
   if (!code) return;
+  e.preventDefault();
   handleScannedCode(code);
 }
 
@@ -1384,7 +1402,7 @@ onUnmounted(() => {
                   role="textbox"
                   aria-label="Scanner de código de barras"
                   @input="handleSearchInput"
-                  @keyup.enter="handleBarcodeSearch"
+                  @keydown.enter.prevent="handleBarcodeSearch"
                 >
               </div>
             </div>
