@@ -298,7 +298,7 @@ watch(() => props.isOpen, (open) => {
 });
 
 watch(remainingAmount, (newVal) => {
-  if (props.isOpen && !showAddPayment.value && newVal > 0.01) {
+  if (props.isOpen && !showAddPayment.value && !paymentRemovalAuthorized.value && newVal > 0.01) {
     checkAndShowPaymentInput();
   } else if (props.isOpen && showAddPayment.value && newVal > 0.01 && !amountConfirmed.value) {
     const remaining = parseFloat(newVal);
@@ -597,11 +597,12 @@ async function removeSelectedPayment() {
   if (!id) return;
   try {
     await cartStore.removePayment(id);
-    if (payments.value.length <= 1) {
+    toast.success('Pagamento removido.');
+    if (payments.value.length === 0) {
       selectedPaymentIndex.value = -1;
       paymentRemovalAuthorized.value = false;
     } else {
-      selectedPaymentIndex.value = Math.max(0, idx - 1);
+      selectedPaymentIndex.value = 0;
     }
   } catch (err) {
     const msg = err?.message || err?.response?.data?.message || 'Erro ao remover pagamento.';

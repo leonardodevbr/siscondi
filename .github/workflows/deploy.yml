@@ -3,7 +3,7 @@ name: Deploy to Servers
 on:
   push:
     branches:
-      - main  # Gatilho para o deploy em produção, ao fazer push na branch 'main'
+      - main
 
 jobs:
   deploy-branix:
@@ -37,11 +37,9 @@ jobs:
 
       - name: Prepare deployment package 
         run: |
-          echo "Preparando pacote de implantação com abordagem alternativa..."
-          
-          # Criar arquivo de implantação direto sem diretório temporário
-          echo "Criando arquivo zip para implantação..."
-          zip -r deployment.zip . -x "*.git*" -x "deployment.zip"
+          echo "Preparando pacote de implantação..."
+          # Exclui .git, node_modules e vendor locais para o upload ser mais rápido
+          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "frontend/node_modules/*" -x "vendor/*"
           
           echo "Arquivo de implantação criado com sucesso"
           ls -la deployment.zip
@@ -54,39 +52,60 @@ jobs:
         run: |
           echo "Enviando pacote de implantação para o servidor..."
           scp -v -P $SSH_PORT -o StrictHostKeyChecking=no deployment.zip $USERNAME@$HOST:~/
-          
           echo "Upload concluído com sucesso."
 
-      - name: Extract files on server
+      - name: Extract, Build and Optimize on Server
         env:
           HOST: ${{ secrets.HOST }}
           USERNAME: ${{ secrets.USERNAME }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
         run: |
-          echo "Extraindo arquivos no servidor..."
+          echo "Conectando ao servidor para processamento..."
           ssh -p $SSH_PORT -o StrictHostKeyChecking=no $USERNAME@$HOST << EOF
-            echo "Criando diretório, se não existir..."
+            
+            # 1. Preparar Diretório
+            echo "Criando diretório se necessário..."
             mkdir -p ${{ env.DEPLOY_DIR }}
             
-            echo "Movendo pacote de implantação para o diretório de destino..."
+            echo "Movendo e extraindo..."
             mv ~/deployment.zip ${{ env.DEPLOY_DIR }}/
-            
-            echo "Mudando para o diretório de destino..."
             cd ${{ env.DEPLOY_DIR }}
-            
-            echo "Extraindo pacote de implantação..."
             unzip -o deployment.zip
-            
-            echo "Limpando..."
             rm deployment.zip
             
-            echo "Executando comandos pós-implantação..."
-            php artisan optimize:clear
-            php artisan migrate --force
-            php artisan cache:clear
-            php artisan route:clear
+            # 2. Composer (Backend)
+            echo "Executando Composer Install..."
+            # Flags otimizadas para produção
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             
-            echo "Extração concluída com sucesso."
+            # 3. NPM (Frontend)
+            echo "Iniciando build do Frontend..."
+            if [ -d "frontend" ]; then
+              cd frontend
+              echo "Instalando dependências Node..."
+              npm install
+              
+              echo "Compilando assets (Build)..."
+              npm run build
+              
+              # Volta para a raiz do projeto para rodar o artisan
+              cd .. 
+            else
+              echo "AVISO: Diretório 'frontend' não encontrado. Pulando etapa de build."
+            fi
+            
+            # 4. Comandos Laravel e Permissões
+            echo "Executando comandos do Artisan..."
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+            # Garante permissões de escrita (ajuste conforme seu usuário/grupo do servidor web, ex: www-data)
+            chmod -R 775 storage bootstrap/cache
+            
+            echo "Deploy concluído com sucesso!"
           EOF
 
       - name: Notify deployment
