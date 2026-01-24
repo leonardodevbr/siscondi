@@ -112,6 +112,23 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async removeItemById(itemId) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/remove-item-by-code', {
+          item_id: itemId,
+          sale_id: this.saleId,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao remover item.';
+        throw new Error(message);
+      }
+    },
     async setCustomer(customerId) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');

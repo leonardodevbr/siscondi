@@ -259,13 +259,14 @@ class PosController extends Controller
     }
 
     /**
-     * Remove todas as unidades do item da venda por código de barras/SKU.
+     * Remove todas as unidades do item da venda por código de barras/SKU ou por item_id (pesquisa por nome).
      */
     public function removeItemByCode(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'barcode' => ['required', 'string'],
             'sale_id' => ['required', 'exists:sales,id'],
+            'barcode' => ['required_without:item_id', 'nullable', 'string'],
+            'item_id' => ['required_without:barcode', 'nullable', 'integer', 'exists:sale_items,id'],
         ]);
 
         if ($validator->fails()) {
@@ -278,6 +279,7 @@ class PosController extends Controller
         $user = $request->user();
         $saleId = (int) $request->input('sale_id');
         $barcode = $request->input('barcode');
+        $itemId = $request->input('item_id') ? (int) $request->input('item_id') : null;
 
         $sale = Sale::where('id', $saleId)
             ->where('user_id', $user->id)
@@ -291,15 +293,16 @@ class PosController extends Controller
         }
 
         try {
-            $sale = DB::transaction(function () use ($sale, $barcode): Sale {
-                $item = SaleItem::where('sale_id', $sale->id)
-                    ->whereHas('productVariant', function ($q) use ($barcode) {
-                        $q->where('sku', $barcode)
-                            ->orWhere('barcode', $barcode);
-                    })
-                    ->with('productVariant')
-                    ->lockForUpdate()
-                    ->first();
+            $sale = DB::transaction(function () use ($sale, $barcode, $itemId): Sale {
+                $item = $itemId
+                    ? SaleItem::where('sale_id', $sale->id)->where('id', $itemId)->lockForUpdate()->first()
+                    : SaleItem::where('sale_id', $sale->id)
+                        ->whereHas('productVariant', function ($q) use ($barcode) {
+                            $q->where('sku', $barcode)->orWhere('barcode', $barcode);
+                        })
+                        ->with('productVariant')
+                        ->lockForUpdate()
+                        ->first();
 
                 if (! $item) {
                     throw new \InvalidArgumentException('Este produto não consta na venda atual.');

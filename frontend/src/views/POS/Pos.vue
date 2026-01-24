@@ -45,17 +45,21 @@ const closeRegisterLoading = ref(false);
 const isFullscreen = ref(false);
 const selectedCartIndex = ref(null);
 const cartListRef = ref(null);
+const highlightedItemId = ref(null);
+const highlightItemTimeout = ref(null);
 const customerCpf = ref('');
 const showStartSaleModal = ref(false);
 const startSaleCpfInput = ref('');
 const quantityMultiplier = ref(1);
 const lastScannedProduct = ref(null);
+const lastScanError = ref(null);
 const isBalanceVisible = ref(false);
 const balanceVisibilityTimeout = ref(null);
 const isLoading = ref(true);
 const loadingProgress = ref(0);
 const isCancellationMode = ref(false);
 const isSearchMode = ref(false);
+const cancelSearchMode = ref(false);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 
@@ -88,6 +92,15 @@ const shortcutsSale = [
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
 const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
+
+const cancelSearchResults = computed(() => {
+  if (!cancelSearchMode.value || !isCancellationMode.value) return [];
+  const q = searchQuery.value.trim().toLowerCase();
+  if (q.length < 1) return [];
+  return cartStore.items.filter((i) =>
+    formatCartItemName(i).toLowerCase().includes(q)
+  );
+});
 
 function formatVariantLabel(attributes) {
   if (!attributes || Object.keys(attributes).length === 0) {
@@ -220,6 +233,7 @@ function resetToScannerMode() {
   isSearchMode.value = false;
   searchQuery.value = '';
   products.value = [];
+  lastScanError.value = null;
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
     searchTimeout.value = null;
@@ -261,6 +275,35 @@ function parseQuantityMultiplier(input) {
   return { quantity: 1, code: trimmed };
 }
 
+function snapshotCartForHighlight() {
+  return cartStore.items.map((i) => ({ id: i.id, quantity: i.quantity }));
+}
+
+function scheduleHighlight(itemId) {
+  if (highlightItemTimeout.value) clearTimeout(highlightItemTimeout.value);
+  highlightedItemId.value = itemId;
+  highlightItemTimeout.value = setTimeout(() => {
+    highlightedItemId.value = null;
+    highlightItemTimeout.value = null;
+  }, 2200);
+}
+
+function highlightAddedItem(prev) {
+  const next = cartStore.items;
+  const byId = Object.fromEntries((prev ?? []).map((p) => [p.id, p]));
+  for (const it of next) {
+    const p = byId[it.id];
+    if (!p) {
+      scheduleHighlight(it.id);
+      return;
+    }
+    if (it.quantity > p.quantity) {
+      scheduleHighlight(it.id);
+      return;
+    }
+  }
+}
+
 async function processScanApi(code, quantity = 1) {
   let data;
   try {
@@ -278,7 +321,10 @@ async function processScanApi(code, quantity = 1) {
     return;
   }
   try {
+    const prev = snapshotCartForHighlight();
     await cartStore.addItem(code, quantity);
+    highlightAddedItem(prev);
+    lastScanError.value = null;
     lastScannedProduct.value = {
       id: data.product_id,
       name: data.name,
@@ -334,7 +380,10 @@ async function runProductSearchAndAdd(code, quantity = 1) {
       price: effectivePrice,
     };
     const barcodeToUse = variant.barcode || code;
+    const prev = snapshotCartForHighlight();
     await cartStore.addItem(barcodeToUse, quantity);
+    highlightAddedItem(prev);
+    lastScanError.value = null;
     resetToScannerMode();
   } catch (error) {
     toast.error(error.message || 'Erro ao buscar produto.');
@@ -352,11 +401,22 @@ function clearCancellationAndFocus() {
   nextTick(focusSearch);
 }
 
-async function confirmCancellation(code) {
-  const item = cartStore.items.find((i) => {
-    const itemCode = i.barcode || i.sku;
-    return itemCode && String(itemCode) === String(code);
-  });
+async function confirmCancellation(codeOrItem) {
+  const byItem = typeof codeOrItem === 'object' && codeOrItem?.id;
+  if (byItem) {
+    searchQuery.value = '';
+    products.value = [];
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
+  }
+  const item = byItem
+    ? codeOrItem
+    : cartStore.items.find((i) => {
+        const itemCode = i.barcode || i.sku;
+        return itemCode && String(itemCode) === String(codeOrItem);
+      });
 
   if (!item) {
     feedbackMessage.value = 'Item não encontrado na lista.';
@@ -441,8 +501,12 @@ async function confirmCancellation(code) {
   }
 
   try {
-    const barcodeToSend = item.barcode || item.sku || code;
-    await cartStore.removeItemByCode(barcodeToSend);
+    if (byItem) {
+      await cartStore.removeItemById(item.id);
+    } else {
+      const barcodeToSend = item.barcode || item.sku || codeOrItem;
+      await cartStore.removeItemByCode(barcodeToSend);
+    }
     toast.success(qty === 1 ? 'Item removido.' : 'Itens removidos.');
     isCancellationMode.value = false;
     clearCancellationAndFocus();
@@ -473,6 +537,7 @@ async function handleScannedCode(code) {
   const parsed = parseQuantityMultiplier(c);
   quantityMultiplier.value = parsed.quantity;
   lastScannedCode.value = parsed.code;
+  lastScanError.value = null;
   searchQuery.value = '';
   products.value = [];
   if (searchTimeout.value) {
@@ -485,9 +550,7 @@ async function handleScannedCode(code) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
       } catch (err) {
-        const msg = err.response?.data?.message ?? 'Produto não cadastrado.';
-        feedbackMessage.value = msg;
-        feedbackType.value = 'error';
+        lastScanError.value = 'PRODUTO NÃO CADASTRADO';
         lastScannedProduct.value = null;
       }
     } else {
@@ -587,10 +650,12 @@ async function handleAddProduct(product) {
       return;
     }
     
+    const prev = snapshotCartForHighlight();
     await cartStore.addItem(v.id, 1);
-    
+    highlightAddedItem(prev);
     const stock = v?.current_stock ?? product.current_stock ?? product.stock_quantity ?? 0;
     const effectivePrice = v.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
+    lastScanError.value = null;
     lastScannedProduct.value = {
       ...product,
       variant_id: v.id,
@@ -599,7 +664,6 @@ async function handleAddProduct(product) {
       image: v.image ?? product.image ?? null,
       price: effectivePrice,
     };
-    
     resetToScannerMode();
   } catch (err) {
     toast.error(err.message ?? 'Erro ao adicionar.');
@@ -639,6 +703,7 @@ async function handleFinalizeSale() {
     products.value = [];
     lastScannedProduct.value = null;
     lastScannedCode.value = '';
+    lastScanError.value = null;
     nextTick(focusSearch);
   } catch (err) {
     const msg = err.response?.data?.message ?? err.message ?? 'Erro ao finalizar venda.';
@@ -651,6 +716,7 @@ async function handleCancelSale() {
     cartStore.reset();
     lastScannedProduct.value = null;
     lastScannedCode.value = '';
+    lastScanError.value = null;
     searchQuery.value = '';
     products.value = [];
     quantityMultiplier.value = 1;
@@ -670,6 +736,7 @@ async function handleCancelSale() {
       toast.success('Venda cancelada.');
       lastScannedProduct.value = null;
       lastScannedCode.value = '';
+      lastScanError.value = null;
       searchQuery.value = '';
       products.value = [];
       quantityMultiplier.value = 1;
@@ -708,6 +775,7 @@ function focusSearch() {
 function handleF3ToggleCancellationMode() {
   isCancellationMode.value = !isCancellationMode.value;
   isSearchMode.value = false;
+  cancelSearchMode.value = false;
   searchQuery.value = '';
   products.value = [];
   if (searchTimeout.value) {
@@ -718,6 +786,17 @@ function handleF3ToggleCancellationMode() {
 }
 
 function handleF5ToggleSearchMode() {
+  if (isCancellationMode.value) {
+    cancelSearchMode.value = !cancelSearchMode.value;
+    searchQuery.value = '';
+    products.value = [];
+    if (searchTimeout.value) {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = null;
+    }
+    nextTick(focusSearch);
+    return;
+  }
   isSearchMode.value = !isSearchMode.value;
   if (isSearchMode.value) {
     isCancellationMode.value = false;
@@ -1213,9 +1292,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
   window.removeEventListener('keydown', handleReloadBlock, true);
-  if (balanceVisibilityTimeout.value) {
-    clearTimeout(balanceVisibilityTimeout.value);
-  }
+  if (balanceVisibilityTimeout.value) clearTimeout(balanceVisibilityTimeout.value);
+  if (highlightItemTimeout.value) clearTimeout(highlightItemTimeout.value);
 });
 </script>
 
@@ -1341,7 +1419,17 @@ onUnmounted(() => {
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
           <div class="flex min-h-0 flex-col space-y-4 lg:col-span-2">
             <div>
-              <div v-if="lastScannedCode && !lastScannedProduct" class="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div v-if="lastScannedCode && !lastScannedProduct && lastScanError" class="mb-2 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-red-100">
+                  <XCircleIcon class="h-8 w-8 text-red-500" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600">Último código bipado:</p>
+                  <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ lastScannedCode }}</p>
+                  <p class="mt-2 text-base font-bold text-red-600">PRODUTO NÃO CADASTRADO</p>
+                </div>
+              </div>
+              <div v-else-if="lastScannedCode && !lastScannedProduct" class="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <label class="block text-xs font-medium text-slate-600">Último código bipado:</label>
                 <p class="mt-1 text-sm font-semibold text-slate-800">{{ lastScannedCode }}</p>
               </div>
@@ -1377,10 +1465,11 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
-              <div v-if="isCancellationMode" class="mb-2">
+              <div v-if="isCancellationMode" class="mb-2 flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 rounded bg-orange-100 px-2 py-1 text-xs font-bold text-orange-600">
                   MODO CANCELAMENTO (ESC para sair)
                 </span>
+                <span v-if="!cancelSearchMode" class="text-xs text-slate-500">F5 para pesquisar por nome</span>
               </div>
               <div class="relative">
                 <div v-if="isCancellationMode" class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -1397,12 +1486,14 @@ onUnmounted(() => {
                   v-model="searchQuery"
                   name="pos-product-barcode-scanner"
                   type="text"
-                  :placeholder="isCancellationMode ? 'BIPE O ITEM PARA CANCELAR' : isSearchMode ? 'Digite para buscar ou bipar com multiplicador (ex: 2x 7891234567890)' : 'Bipar código de barras (F5 para modo Pesquisa)'"
+                  :placeholder="isCancellationMode
+                    ? (cancelSearchMode ? 'Digite o nome do item para cancelar' : 'Bipe o código ou F5 para pesquisar por nome')
+                    : (isSearchMode ? 'Digite para buscar ou bipar com multiplicador (ex: 2x 7891234567890)' : 'Bipar código de barras (F5 para modo Pesquisa)')"
                   :class="[
                     'input-base w-full text-lg pr-10',
                     isCancellationMode ? 'ring-2 ring-orange-400 focus:ring-orange-500' : ''
                   ]"
-                  :maxlength="isSearchMode ? undefined : 13"
+                  :maxlength="(isSearchMode || cancelSearchMode) ? undefined : 13"
                   autocomplete="one-time-code"
                   autocapitalize="off"
                   autocorrect="off"
@@ -1422,7 +1513,26 @@ onUnmounted(() => {
             </div>
 
             <div class="min-h-0 flex-1 overflow-y-auto border border-slate-200 bg-white">
-              <div v-if="!isSearchMode" class="flex h-32 items-center justify-center">
+              <template v-if="isCancellationMode && cancelSearchMode">
+                <div v-if="cancelSearchResults.length === 0" class="flex h-32 flex-col items-center justify-center gap-1">
+                  <p class="text-sm text-slate-500">
+                    {{ searchQuery.trim().length >= 1 ? 'Nenhum item encontrado na venda.' : 'Digite o nome do item para buscar.' }}
+                  </p>
+                </div>
+                <div v-else class="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <button
+                    v-for="cartItem in cancelSearchResults"
+                    :key="cartItem.id"
+                    type="button"
+                    class="flex flex-col rounded-lg border border-orange-200 bg-white p-3 text-left transition hover:border-orange-400 hover:bg-orange-50"
+                    @click="confirmCancellation(cartItem)"
+                  >
+                    <p class="text-sm font-semibold leading-tight text-slate-800" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ formatCartItemName(cartItem) }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ cartItem.quantity }} un · {{ formatCurrency(cartItem.unit_price ?? 0) }}</p>
+                  </button>
+                </div>
+              </template>
+              <div v-else-if="!isSearchMode" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Pressione F5 para ativar o modo Pesquisa</p>
               </div>
               <div v-else-if="loadingProducts" class="flex h-32 items-center justify-center">
@@ -1474,7 +1584,12 @@ onUnmounted(() => {
                 <div
                   v-for="(item, index) in cartStore.items"
                   :key="item.id || index"
-                  class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                  :class="[
+                    'rounded-lg border bg-white p-4 shadow-sm transition-all duration-200',
+                    highlightedItemId === item.id
+                      ? 'border-emerald-500 ring-2 ring-emerald-400 ring-offset-1'
+                      : 'border-slate-200'
+                  ]"
                 >
                   <div class="mb-3">
                     <p class="truncate font-semibold text-slate-900">{{ formatCartItemName(item) }}</p>
