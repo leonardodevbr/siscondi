@@ -374,12 +374,14 @@ async function confirmCancellation(code) {
   });
 
   const productName = formatCartItemName(item);
+  const qty = item.quantity ?? 1;
+  const qtyLabel = qty === 1 ? '1 un' : `${qty} un`;
   let confirmed = false;
 
   if (isAdmin) {
     const result = await Swal.fire({
       title: 'Confirmar Cancelamento',
-      html: `Deseja remover <strong>1 un</strong> de <strong>${productName}</strong>?`,
+      html: `Deseja remover <strong>${qtyLabel}</strong> de <strong>${productName}</strong>?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Sim, Remover',
@@ -441,7 +443,7 @@ async function confirmCancellation(code) {
   try {
     const barcodeToSend = item.barcode || item.sku || code;
     await cartStore.removeItemByCode(barcodeToSend);
-    toast.success('Item removido.');
+    toast.success(qty === 1 ? 'Item removido.' : 'Itens removidos.');
     isCancellationMode.value = false;
     clearCancellationAndFocus();
   } catch (error) {

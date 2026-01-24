@@ -259,7 +259,7 @@ class PosController extends Controller
     }
 
     /**
-     * Remove item da venda por código de barras/SKU.
+     * Remove todas as unidades do item da venda por código de barras/SKU.
      */
     public function removeItemByCode(Request $request): JsonResponse
     {
@@ -305,13 +305,7 @@ class PosController extends Controller
                     throw new \InvalidArgumentException('Este produto não consta na venda atual.');
                 }
 
-                if ($item->quantity > 1) {
-                    $item->quantity -= 1;
-                    $item->total_price = $item->unit_price * $item->quantity;
-                    $item->save();
-                } else {
-                    $item->delete();
-                }
+                $item->delete();
 
                 $this->recalculateSaleTotals($sale);
 
