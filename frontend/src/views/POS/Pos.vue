@@ -68,6 +68,13 @@ const isIdleScanLoading = ref(false);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
+const manualDiscountPercent = computed(() => {
+  const total = Number(cartStore.totalAmount) || 0;
+  const discount = Number(cartStore.discountAmount) || 0;
+  if (total <= 0) return '0';
+  return ((discount / total) * 100).toFixed(1);
+});
+
 const isIdle = computed(() => !cartStore.saleStarted);
 const operatorName = computed(() => authStore.user?.name ?? 'Operador');
 const branchName = computed(() => {
@@ -2031,7 +2038,13 @@ onUnmounted(() => {
                   Desconto manual aplicado
                 </p>
                 <p class="mt-1 text-xs text-blue-700">
+                  Subtotal: {{ formatCurrency(cartStore.totalAmount) }}
+                </p>
+                <p class="mt-0.5 text-xs text-blue-700">
                   Desconto: {{ formatCurrency(cartStore.discountAmount) }}
+                  <span v-if="cartStore.totalAmount > 0" class="text-blue-600">
+                    ({{ manualDiscountPercent }}%)
+                  </span>
                 </p>
               </div>
               <div class="mb-4 flex items-center justify-between">
