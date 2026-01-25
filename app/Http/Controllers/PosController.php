@@ -605,49 +605,86 @@ class PosController extends Controller
         $categoryIds = $coupon->categories->pluck('id')->all();
         $hasProductOrCategoryRestriction = count($productIds) > 0 || count($categoryIds) > 0;
 
-        $baseAmount = $totalAmount;
-        if ($hasProductOrCategoryRestriction) {
-            $baseAmount = 0;
+        $sale = DB::transaction(function () use ($sale, $coupon, $totalAmount, $productIds, $categoryIds, $hasProductOrCategoryRestriction): Sale {
+            foreach ($sale->items as $item) {
+                $item->discount_amount = 0;
+                $item->save();
+            }
+
+            if (! $hasProductOrCategoryRestriction) {
+                $baseAmount = $totalAmount;
+                if ($coupon->min_purchase_amount !== null && $baseAmount < (float) $coupon->min_purchase_amount) {
+                    throw new \InvalidArgumentException('O total da venda não atinge o valor mínimo para este cupom.');
+                }
+                $discountAmount = $coupon->type->value === 'percentage'
+                    ? $baseAmount * ((float) $coupon->value / 100)
+                    : (float) $coupon->value;
+                if ($coupon->type->value === 'percentage' && $coupon->max_discount_amount !== null) {
+                    $discountAmount = min($discountAmount, (float) $coupon->max_discount_amount);
+                }
+                $discountAmount = min($discountAmount, $totalAmount);
+                $sale->coupon_id = $coupon->id;
+                $sale->coupon_code = $coupon->code;
+                $sale->discount_amount = $discountAmount;
+                $sale->final_amount = (float) $sale->total_amount - $discountAmount;
+                $sale->save();
+                return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);
+            }
+
+            $eligibleItems = [];
             foreach ($sale->items as $item) {
                 $product = $item->productVariant?->product;
                 if (! $product) {
                     continue;
                 }
+                if ($product->hasActivePromotion()) {
+                    continue;
+                }
                 $matchProduct = count($productIds) === 0 || in_array((int) $product->id, $productIds, true);
                 $matchCategory = count($categoryIds) === 0 || ($product->category_id && in_array((int) $product->category_id, $categoryIds, true));
                 if ($matchProduct || $matchCategory) {
-                    $baseAmount += (float) $item->total_price;
+                    $eligibleItems[] = $item;
                 }
             }
-            if ($baseAmount <= 0) {
-                return response()->json([
-                    'message' => 'Nenhum item do carrinho é elegível a este cupom (restrição por produto ou categoria).',
-                ], 422);
+
+            if (count($eligibleItems) === 0) {
+                throw new \InvalidArgumentException('Nenhum item do carrinho é elegível a este cupom (restrição por produto/categoria ou itens já em promoção).');
             }
-        }
 
-        if ($coupon->min_purchase_amount !== null && $baseAmount < (float) $coupon->min_purchase_amount) {
-            return response()->json([
-                'message' => 'O total da venda não atinge o valor mínimo para este cupom.',
-                'min_purchase' => (float) $coupon->min_purchase_amount,
-            ], 422);
-        }
+            $eligibleTotal = array_sum(array_map(fn ($i) => (float) $i->total_price, $eligibleItems));
+            if ($coupon->min_purchase_amount !== null && $eligibleTotal < (float) $coupon->min_purchase_amount) {
+                throw new \InvalidArgumentException('O total dos itens elegíveis não atinge o valor mínimo para este cupom.');
+            }
 
-        $discountAmount = $coupon->type->value === 'percentage'
-            ? $baseAmount * ((float) $coupon->value / 100)
-            : (float) $coupon->value;
+            $maxDiscount = $coupon->type->value === 'percentage'
+                ? $eligibleTotal * ((float) $coupon->value / 100)
+                : (float) $coupon->value;
+            if ($coupon->type->value === 'percentage' && $coupon->max_discount_amount !== null) {
+                $maxDiscount = min($maxDiscount, (float) $coupon->max_discount_amount);
+            }
+            $maxDiscount = min($maxDiscount, $eligibleTotal);
 
-        if ($coupon->type->value === 'percentage' && $coupon->max_discount_amount !== null) {
-            $discountAmount = min($discountAmount, (float) $coupon->max_discount_amount);
-        }
+            usort($eligibleItems, fn ($a, $b) => (float) $b->total_price <=> (float) $a->total_price);
+            $remaining = $maxDiscount;
+            foreach ($eligibleItems as $item) {
+                if ($remaining <= 0) {
+                    break;
+                }
+                $itemTotal = (float) $item->total_price;
+                $itemDiscount = $coupon->type->value === 'percentage'
+                    ? min($remaining, $itemTotal * ((float) $coupon->value / 100))
+                    : min($remaining, $itemTotal * ($maxDiscount / $eligibleTotal));
+                $itemDiscount = round(min($itemDiscount, $remaining), 2);
+                $item->discount_amount = $itemDiscount;
+                $item->save();
+                $remaining -= $itemDiscount;
+            }
 
-        $discountAmount = min($discountAmount, $totalAmount);
-
-        $sale = DB::transaction(function () use ($sale, $coupon, $discountAmount): Sale {
+            $totalDiscount = $sale->items->sum('discount_amount');
             $sale->coupon_id = $coupon->id;
             $sale->coupon_code = $coupon->code;
-            $sale->discount_amount = $discountAmount;
-            $sale->final_amount = (float) $sale->total_amount - $discountAmount;
+            $sale->discount_amount = $totalDiscount;
+            $sale->final_amount = (float) $sale->total_amount - $totalDiscount;
             $sale->save();
 
             return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);

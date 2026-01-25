@@ -21,6 +21,7 @@ class SaleItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'discount_amount',
     ];
 
     /**
@@ -30,6 +31,7 @@ class SaleItem extends Model
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
     ];
 
     /**
