@@ -2125,6 +2125,7 @@ onUnmounted(() => {
 
       <Modal :is-open="showDiscountModal" title="Aplicar Desconto / Cupom" @close="closeDiscount">
         <DiscountModalContent
+          :is-open="showDiscountModal"
           @apply="handleApplyDiscount"
           @close="closeDiscount"
           @coupon-applied="onCouponApplied"

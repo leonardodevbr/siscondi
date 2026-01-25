@@ -1,5 +1,9 @@
 <template>
-  <div class="space-y-4" @keydown="handleKeydown">
+  <div
+    class="space-y-4"
+    tabindex="-1"
+    @keydown="handleKeydown"
+  >
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div class="flex items-center justify-between">
         <span class="text-sm font-medium text-slate-700">Subtotal:</span>
@@ -15,22 +19,27 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex border-b border-slate-200">
+    <!-- Tabs: [1] Desconto Manual | [2] Cupom -->
+    <div class="flex border-b border-slate-200" role="tablist" aria-label="Tipo de desconto">
       <button
         type="button"
+        role="tab"
+        :aria-selected="activeTab === 'manual'"
         :class="[
           'flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors',
           activeTab === 'manual'
             ? 'border-blue-500 text-blue-600'
             : 'border-transparent text-slate-500 hover:text-slate-700',
         ]"
-        @click="activeTab = 'manual'"
+        @click="switchToManualTab"
       >
+        <span class="mr-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs font-mono text-slate-600">1</span>
         Desconto manual
       </button>
       <button
         type="button"
+        role="tab"
+        :aria-selected="activeTab === 'coupon'"
         :class="[
           'flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors',
           activeTab === 'coupon'
@@ -39,20 +48,23 @@
         ]"
         @click="switchToCouponTab"
       >
+        <span class="mr-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs font-mono text-slate-600">2</span>
         Cupom promocional
       </button>
     </div>
 
     <!-- Aba 1: Desconto Manual -->
-    <div v-show="activeTab === 'manual'" class="space-y-3">
+    <div v-show="activeTab === 'manual'" role="tabpanel" class="space-y-3">
       <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700">
+        <label class="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700">
           Tipo de Desconto
-          <span class="ml-1 text-xs font-normal text-slate-500">[F2] Alternar</span>
+          <span class="text-xs font-normal text-slate-500" aria-hidden="true">[F2]</span>
         </label>
         <select
           v-model="discountType"
+          aria-label="Tipo de desconto: porcentagem ou valor fixo. Pressione F2 para alternar."
           class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          @keydown="(e) => e.key === 'F2' && onF2ToggleManual(e)"
         >
           <option value="percentage">Porcentagem (%)</option>
           <option value="fixed">Valor Fixo (R$)</option>
@@ -70,6 +82,7 @@
           :step="discountType === 'percentage' ? 1 : 0.01"
           :min="0"
           :max="discountType === 'percentage' ? 100 : totalAmount"
+          :aria-label="discountType === 'percentage' ? 'Porcentagem de desconto' : 'Valor do desconto em reais'"
           class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           :placeholder="discountType === 'percentage' ? 'Ex: 10' : 'Ex: 5.50'"
         >
@@ -84,24 +97,22 @@
         </p>
       </div>
 
-      <p class="text-xs text-slate-500 border-t border-slate-200 pt-2">
-        ENTER aplicar · ESC fechar · F2 alternar tipo
-      </p>
-
       <div class="flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="outline" @click="$emit('close')">Fechar (ESC)</Button>
+        <Button variant="outline" @click="$emit('close')">
+          Fechar <span class="ml-1 text-xs text-slate-400">[ESC]</span>
+        </Button>
         <Button
           variant="primary"
           :disabled="!discountValue || discountValue <= 0"
           @click="applyManualDiscount"
         >
-          Aplicar (ENTER)
+          Aplicar <span class="ml-1 text-xs opacity-90">[ENTER]</span>
         </Button>
       </div>
     </div>
 
     <!-- Aba 2: Cupom Promocional -->
-    <div v-show="activeTab === 'coupon'" class="space-y-3">
+    <div v-show="activeTab === 'coupon'" role="tabpanel" class="space-y-3">
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Código do cupom</label>
         <input
@@ -109,6 +120,7 @@
           v-model="couponCode"
           type="text"
           maxlength="50"
+          aria-label="Código do cupom promocional"
           class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
           placeholder="Ex: VERÃO10"
           @input="couponCode = ($event.target.value || '').toUpperCase()"
@@ -123,19 +135,22 @@
             ? 'border-green-200 bg-green-50 text-green-800'
             : 'border-red-200 bg-red-50 text-red-800',
         ]"
+        role="alert"
       >
         {{ couponFeedback.message }}
       </div>
 
       <div class="flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="outline" @click="$emit('close')">Fechar (ESC)</Button>
+        <Button variant="outline" @click="$emit('close')">
+          Fechar <span class="ml-1 text-xs text-slate-400">[ESC]</span>
+        </Button>
         <Button
           variant="primary"
           :disabled="couponApplying || !couponCode.trim()"
           @click="applyCoupon"
         >
           <span v-if="couponApplying">Validando...</span>
-          <span v-else>Validar / Aplicar</span>
+          <span v-else>Validar / Aplicar <span class="ml-1 text-xs opacity-90">[ENTER]</span></span>
         </Button>
       </div>
     </div>
@@ -147,6 +162,13 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
+
+const props = defineProps({
+  isOpen: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const emit = defineEmits(['apply', 'close', 'coupon-applied']);
 
@@ -180,9 +202,32 @@ function toggleDiscountType() {
   discountType.value = discountType.value === 'percentage' ? 'fixed' : 'percentage';
 }
 
+function focusAndSelectManualInput() {
+  const el = manualInputRef.value;
+  if (el && typeof el.focus === 'function') {
+    el.focus();
+    el.select?.();
+  }
+}
+
+/** F2: alterna tipo e foca/seleciona o input de valor para digitar na hora */
+function onF2ToggleManual(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  toggleDiscountType();
+  nextTick(focusAndSelectManualInput);
+}
+
 function applyManualDiscount() {
   if (!discountValue.value || discountValue.value <= 0) return;
   emit('apply', discountType.value, discountValue.value);
+}
+
+function switchToManualTab() {
+  activeTab.value = 'manual';
+  nextTick(focusAndSelectManualInput);
 }
 
 function switchToCouponTab() {
@@ -227,6 +272,18 @@ function handleKeydown(e) {
     return;
   }
 
+  if (key === '1' || key === '2') {
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select';
+    if (!isTyping) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (key === '1') switchToManualTab();
+      else switchToCouponTab();
+      return;
+    }
+  }
+
   if (activeTab.value === 'coupon') {
     if (key === 'Enter') {
       e.preventDefault();
@@ -246,9 +303,7 @@ function handleKeydown(e) {
   }
 
   if (key === 'F2') {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleDiscountType();
+    onF2ToggleManual(e);
     return;
   }
 
@@ -257,20 +312,42 @@ function handleKeydown(e) {
     if (tag === 'input') return;
     e.preventDefault();
     e.stopPropagation();
-    toggleDiscountType();
+    onF2ToggleManual(e);
     return;
   }
 }
 
 watch(activeTab, (tab) => {
-  if (tab === 'coupon') {
-    nextTick(() => couponInputRef.value?.focus());
+  nextTick(() => {
+    if (tab === 'manual') {
+      focusAndSelectManualInput();
+    } else if (tab === 'coupon') {
+      couponInputRef.value?.focus();
+    }
+  });
+});
+
+watch(() => props.isOpen, (open) => {
+  if (open) {
+    nextTick(() => {
+      if (activeTab.value === 'manual') {
+        focusAndSelectManualInput();
+      } else {
+        couponInputRef.value?.focus();
+      }
+    });
   }
 });
 
 onMounted(() => {
-  nextTick(() => {
-    if (activeTab.value === 'manual') manualInputRef.value?.focus();
-  });
+  if (props.isOpen) {
+    nextTick(() => {
+      if (activeTab.value === 'manual') {
+        focusAndSelectManualInput();
+      } else {
+        couponInputRef.value?.focus();
+      }
+    });
+  }
 });
 </script>
