@@ -1261,11 +1261,45 @@ function applyCpfCnpjMask(val) {
   return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + (d.length > 12 ? '-' + d.slice(12, 14) : '');
 }
 
+function getCustomerMaskedDoc(c) {
+  const doc = String(c?.cpf_cnpj ?? c?.document ?? '').replace(/\D/g, '');
+  if (doc.length === 11) return `${doc.slice(0, 3)}.***.***-${doc.slice(-2)}`;
+  if (doc.length >= 14) return `${doc.slice(0, 2)}.***.***/****-${doc.slice(-2)}`;
+  return doc || '—';
+}
+
 async function handleIdentifyCustomer() {
   if (!cartStore.saleStarted || !cartStore.saleId) {
     feedbackMessage.value = 'Inicie uma venda primeiro.';
     feedbackType.value = 'error';
     return;
+  }
+
+  const current = cartStore.customer;
+  const hasDoc = current && String(current?.cpf_cnpj ?? current?.document ?? '').replace(/\D/g, '').length >= 11;
+
+  if (hasDoc) {
+    const name = (current?.name || '—').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const maskedDoc = getCustomerMaskedDoc(current);
+    const replaceResult = await Swal.fire({
+      title: 'Cliente já identificado',
+      html: `
+        <div class="swal-customer-preview">
+          <p class="mb-1"><strong>Nome:</strong> ${name}</p>
+          <p><strong>CPF/CNPJ:</strong> ${maskedDoc}</p>
+        </div>
+        <p class="swal-customer-preview-question">Deseja substituir ou corrigir o cliente vinculado?</p>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, alterar (ENTER)',
+      cancelButtonText: 'Não, manter (ESC)',
+      footer: '<p class="swal-cpf-shortcuts">ENTER para alterar · ESC para manter</p>',
+    });
+    if (!replaceResult.isConfirmed) {
+      nextTick(focusSearch);
+      return;
+    }
   }
 
   const result = await Swal.fire({
