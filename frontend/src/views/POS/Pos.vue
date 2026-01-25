@@ -1273,7 +1273,6 @@ async function handleIdentifyCustomer() {
     html: `
       <label for="swal-cpf-input" class="swal-cpf-label">CPF ou CNPJ</label>
       <input id="swal-cpf-input" class="swal2-input -ml-0.5 mt-0.5 swal2-input w-full" placeholder="Digite o documento" autocomplete="one-time-code" data-lpignore="true" data-form-type="other" maxlength="18">
-      <p class="swal-cpf-shortcuts">ENTER para buscar · ESC para cancelar</p>
     `,
     showCancelButton: true,
     confirmButtonText: 'Buscar (ENTER)',
