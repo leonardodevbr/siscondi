@@ -258,14 +258,28 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    /**
+     * Finaliza a venda na API. Em sucesso, limpa o estado imediatamente e retorna
+     * o objeto da venda finalizada (ex.: para impressão de cupom). Não faz sync/refresh após.
+     *
+     * @returns {Promise<{sale: object|null}>}
+     */
     async finish() {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
         const { data } = await api.post('/pos/finish');
-        this.reset();
-        return data;
+        const completedSale = data?.sale ?? null;
+        this.saleId = null;
+        this.items = [];
+        this.customer = null;
+        this.totalAmount = 0;
+        this.discountAmount = 0;
+        this.finalAmount = 0;
+        this.payments = [];
+        this.saleStarted = false;
+        return { sale: completedSale, ...data };
       } catch (error) {
         const message = error.response?.data?.message || 'Erro ao finalizar venda.';
         throw new Error(message);

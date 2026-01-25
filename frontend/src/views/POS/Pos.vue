@@ -63,6 +63,7 @@ const cancelSearchMode = ref(false);
 const selectedCancelSearchIndex = ref(-1);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
+const isIdleScanLoading = ref(false);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -284,11 +285,14 @@ async function handleIdleScan(code) {
 
   const parsed = parseQuantityMultiplier(c);
   const branchId = branchIdForSale();
+  isIdleScanLoading.value = true;
   try {
     await cartStore.startSale(null, branchId);
   } catch (err) {
     toast.error(err.message ?? 'Erro ao iniciar venda.');
     return;
+  } finally {
+    isIdleScanLoading.value = false;
   }
 
   quantityMultiplier.value = parsed.quantity;
@@ -769,34 +773,22 @@ function branchIdForSale() {
   return id ? Number(id) : null;
 }
 
-async function handleFinalizeSale() {
-  if (cartStore.items.length === 0) {
-    feedbackMessage.value = 'Adicione pelo menos um item.';
-    feedbackType.value = 'error';
-    return;
-  }
-
-  if (!cartStore.canFinish) {
-    feedbackMessage.value = 'Adicione pagamentos suficientes para finalizar a venda.';
-    feedbackType.value = 'error';
-    return;
-  }
-
-  try {
-    await cartStore.finish();
-    feedbackMessage.value = null;
-    showCheckoutModal.value = false;
-    await cashRegisterStore.checkStatus();
-    searchQuery.value = '';
-    products.value = [];
-    lastScannedProduct.value = null;
-    lastScannedCode.value = '';
-    lastScanError.value = null;
-    nextTick(focusSearch);
-  } catch (err) {
-    const msg = err.response?.data?.message ?? err.message ?? 'Erro ao finalizar venda.';
-    toast.error(msg);
-  }
+/**
+ * Chamado pelo CheckoutModal após cartStore.finish() ter sido executado com sucesso.
+ * Apenas limpa a UI e fecha o modal; não chama a API (evita 404/422 por estado residual).
+ *
+ * @param {object|null} _completedSale - venda finalizada, para uso futuro (ex.: impressão)
+ */
+async function onCheckoutFinished(_completedSale) {
+  showCheckoutModal.value = false;
+  feedbackMessage.value = null;
+  searchQuery.value = '';
+  products.value = [];
+  lastScannedProduct.value = null;
+  lastScannedCode.value = '';
+  lastScanError.value = null;
+  await cashRegisterStore.checkStatus();
+  nextTick(focusSearch);
 }
 
 async function handleCancelSale() {
@@ -1318,10 +1310,6 @@ function handleKeydown(e) {
   }
 }
 
-async function confirmCheckout() {
-  await handleFinalizeSale();
-}
-
 function applyCpfCnpjMask(val) {
   const d = String(val ?? '').replace(/\D/g, '').slice(0, 14);
   if (d.length <= 11) {
@@ -1629,7 +1617,16 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <div v-if="isIdle" class="flex min-h-0 flex-1 flex-col pb-16">
+      <div v-if="isIdle" class="flex min-h-0 flex-1 flex-col pb-16 relative">
+        <div
+          v-if="isIdleScanLoading"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-100/90"
+        >
+          <p class="text-lg font-semibold text-slate-700">Iniciando Venda...</p>
+          <div class="h-1 w-48 rounded-full bg-slate-200 overflow-hidden">
+            <div class="h-full w-1/2 animate-pulse rounded-full bg-blue-500" />
+          </div>
+        </div>
         <div class="flex flex-1 flex-col items-center justify-center gap-6 px-4">
           <div class="text-center">
             <h2 class="text-4xl font-bold text-slate-800">
@@ -1953,7 +1950,7 @@ onUnmounted(() => {
         </ul>
       </Modal>
 
-      <CheckoutModal :is-open="showCheckoutModal" @close="closeCheckout" @finish="confirmCheckout" />
+      <CheckoutModal :is-open="showCheckoutModal" @close="closeCheckout" @finish="onCheckoutFinished" />
 
       <Modal :is-open="showCustomerModal" title="Identificar Cliente" @close="closeCustomer">
         <form class="space-y-4" @submit.prevent="handleCustomerSubmit">

@@ -183,7 +183,7 @@
         <Button
           variant="primary"
           :disabled="!canFinish"
-          @click="handleFinish"
+          @click="onFinalizeClick"
         >
           Finalizar Venda (F10)
         </Button>
@@ -195,10 +195,13 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import Swal from 'sweetalert2';
+import { useToast } from 'vue-toastification';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
 import Modal from '@/components/Common/Modal.vue';
 import Button from '@/components/Common/Button.vue';
+
+const toast = useToast();
 
 const props = defineProps({
   isOpen: {
@@ -349,20 +352,29 @@ function resetPaymentForm() {
   };
 }
 
+function onFinalizeClick(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+  handleFinish();
+}
+
 async function handleFinish() {
   if (!canFinish.value || isFinishing.value) return;
-  
+
   isFinishing.value = true;
-  
+
   try {
-    await cartStore.finish();
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    emit('finish');
+    const result = await cartStore.finish();
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    emit('finish', result?.sale ?? null);
     emit('close');
   } catch (error) {
     console.error('Erro ao finalizar venda:', error);
+    toast.error(error?.message ?? 'Erro ao finalizar venda.');
+  } finally {
     isFinishing.value = false;
   }
 }
@@ -665,6 +677,16 @@ function handleKeydown(e) {
 
   if (e.key === 'F10' && canFinish.value && !isFinishing.value) {
     e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    handleFinish();
+    return;
+  }
+
+  if (!showAddPayment.value && canFinish.value && !isFinishing.value && e.key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
     handleFinish();
     return;
   }
