@@ -185,23 +185,34 @@ async function checkCashRegisterStatus() {
 async function initializePDV() {
   isLoading.value = true;
   loadingProgress.value = 0;
-  
+
+  try {
+    await checkCashRegisterStatus();
+  } catch {
+    isLoading.value = false;
+    return;
+  }
+
+  if (!cashRegisterStore.isOpen) {
+    isLoading.value = false;
+    return;
+  }
+
+  // Caixa aberto: barra só aqui, ao identificar possível compra em andamento (cartStore.init)
   const progressInterval = setInterval(() => {
     if (loadingProgress.value < 90) {
       loadingProgress.value += 2;
     }
   }, 30);
-  
+
   const minTime = new Promise((resolve) => setTimeout(resolve, 1500));
-  const statusCheck = checkCashRegisterStatus();
-  
-  await Promise.all([minTime, statusCheck]);
-  
+  const initCart = cartStore.init();
+
+  await Promise.all([minTime, initCart]);
+
   clearInterval(progressInterval);
   loadingProgress.value = 100;
-  
   await new Promise((resolve) => setTimeout(resolve, 200));
-  
   isLoading.value = false;
 }
 
@@ -1528,7 +1539,6 @@ watch(isIdle, (idle) => {
 onMounted(async () => {
   await initializePDV();
   if (cashRegisterStore.isOpen) {
-    await cartStore.init();
     await nextTick();
     focusSearch();
   }
@@ -1554,8 +1564,13 @@ onUnmounted(() => {
     >
       <div class="text-center">
         <h1 class="mb-4 text-3xl font-bold text-slate-800">Adonai System</h1>
-        <p class="mb-6 text-lg text-slate-600">Verificando Status do Caixa...</p>
-        <div class="mx-auto w-64 rounded-full bg-slate-200">
+        <p class="mb-6 text-lg text-slate-600">
+          {{ cashRegisterStore.isOpen ? 'Verificando Status do Caixa...' : 'Carregando...' }}
+        </p>
+        <div
+          v-if="cashRegisterStore.isOpen"
+          class="mx-auto w-64 rounded-full bg-slate-200"
+        >
           <div
             class="h-2 rounded-full bg-blue-600 transition-all duration-300"
             :style="{ width: `${loadingProgress}%` }"
@@ -1623,9 +1638,6 @@ onUnmounted(() => {
           class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-100/90"
         >
           <p class="text-lg font-semibold text-slate-700">Iniciando Venda...</p>
-          <div class="h-1 w-48 rounded-full bg-slate-200 overflow-hidden">
-            <div class="h-full w-1/2 animate-pulse rounded-full bg-blue-500" />
-          </div>
         </div>
         <div class="flex flex-1 flex-col items-center justify-center gap-6 px-4">
           <div class="text-center">
