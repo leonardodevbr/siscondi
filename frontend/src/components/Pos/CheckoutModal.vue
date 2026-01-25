@@ -686,14 +686,6 @@ function handleKeydown(e) {
     return;
   }
 
-  if (!showAddPayment.value && canFinish.value && !isFinishing.value && e.key === 'Enter') {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    handleFinish();
-    return;
-  }
-
   if (selectedPaymentIndex.value >= 0 && !showAddPayment.value && paymentRemovalAuthorized.value) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
