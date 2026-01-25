@@ -298,6 +298,8 @@ watch(() => props.isOpen, (open) => {
   if (open) {
     resetPaymentForm();
     checkAndShowPaymentInput();
+  } else {
+    resetPaymentForm();
   }
 });
 

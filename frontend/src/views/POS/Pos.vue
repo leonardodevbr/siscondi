@@ -822,31 +822,20 @@ function branchIdForSale() {
 
 /**
  * Chamado pelo CheckoutModal após cartStore.finish() ter sido executado com sucesso.
- * Apenas limpa a UI e fecha o modal; não chama a API (evita 404/422 por estado residual).
+ * Fecha o modal e atualiza status do caixa. A limpeza do estado local (clearLocalState)
+ * é feita pelo watch em cartStore.saleId quando a store chama resetState().
  *
  * @param {object|null} _completedSale - venda finalizada, para uso futuro (ex.: impressão)
  */
 async function onCheckoutFinished(_completedSale) {
   showCheckoutModal.value = false;
-  feedbackMessage.value = null;
-  searchQuery.value = '';
-  products.value = [];
-  lastScannedProduct.value = null;
-  lastScannedCode.value = '';
-  lastScanError.value = null;
   await cashRegisterStore.checkStatus();
-  nextTick(focusSearch);
 }
 
 async function handleCancelSale() {
   if (!cartStore.saleId) {
-    cartStore.reset();
-    lastScannedProduct.value = null;
-    lastScannedCode.value = '';
-    lastScanError.value = null;
-    searchQuery.value = '';
-    products.value = [];
-    quantityMultiplier.value = 1;
+    cartStore.resetState();
+    clearLocalState();
     return;
   }
 
@@ -868,13 +857,7 @@ async function handleCancelSale() {
     try {
       await cartStore.cancel();
       toast.success('Venda cancelada.');
-      lastScannedProduct.value = null;
-      lastScannedCode.value = '';
-      lastScanError.value = null;
-      searchQuery.value = '';
-      products.value = [];
-      quantityMultiplier.value = 1;
-      nextTick(focusSearch);
+      // resetState() na store dispara o watch(saleId) -> clearLocalState() + focusSearch
     } catch (error) {
       toast.error(error.message || 'Erro ao cancelar venda.');
     }
@@ -904,6 +887,35 @@ function closeCustomer() {
 function focusSearch() {
   const el = document.querySelector('#product-search');
   if (el) el.focus();
+}
+
+/**
+ * Limpa refs locais do PDV para evitar estado zumbi entre vendas.
+ * Chamado quando a store reseta (venda finalizada ou cancelada).
+ */
+function clearLocalState() {
+  searchQuery.value = '';
+  lastScannedCode.value = '';
+  products.value = [];
+  customerCpf.value = '';
+  startSaleCpfInput.value = '';
+  quantityMultiplier.value = 1;
+  lastScannedProduct.value = null;
+  lastScanError.value = null;
+  feedbackMessage.value = null;
+  feedbackType.value = 'info';
+  isCancellationMode.value = false;
+  isSearchMode.value = false;
+  cancelSearchMode.value = false;
+  selectedCancelSearchIndex.value = -1;
+  selectedSearchProductIndex.value = 0;
+  highlightedItemId.value = null;
+  selectedCartIndex.value = null;
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+    searchTimeout.value = null;
+  }
+  nextTick(focusSearch);
 }
 
 function handleF3ToggleCancellationMode() {
@@ -1580,6 +1592,15 @@ watch(
 watch(isIdle, (idle) => {
   if (!idle) nextTick(focusSearch);
 });
+
+watch(
+  () => cartStore.saleId,
+  (newVal, oldVal) => {
+    if (oldVal != null && newVal == null) {
+      clearLocalState();
+    }
+  }
+);
 
 onMounted(async () => {
   syncFullscreenState();

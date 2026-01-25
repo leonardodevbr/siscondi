@@ -252,7 +252,7 @@ export const useCartStore = defineStore('cart', {
         const { data } = await api.post('/pos/cancel', {
           sale_id: this.saleId,
         });
-        this.reset();
+        this.resetState();
         return data;
       } catch (error) {
         const message = error.response?.data?.message || 'Erro ao cancelar venda.';
@@ -272,19 +272,26 @@ export const useCartStore = defineStore('cart', {
       try {
         const { data } = await api.post('/pos/finish');
         const completedSale = data?.sale ?? null;
-        this.saleId = null;
-        this.items = [];
-        this.customer = null;
-        this.totalAmount = 0;
-        this.discountAmount = 0;
-        this.finalAmount = 0;
-        this.payments = [];
-        this.saleStarted = false;
+        this.resetState();
         return { sale: completedSale, ...data };
       } catch (error) {
         const message = error.response?.data?.message || 'Erro ao finalizar venda.';
         throw new Error(message);
       }
+    },
+    /**
+     * Hard reset: zera todo o estado do carrinho/venda. Usado após finish e cancel.
+     * Garante que nenhum dado residual polua a próxima operação.
+     */
+    resetState() {
+      this.saleId = null;
+      this.items = [];
+      this.customer = null;
+      this.totalAmount = 0;
+      this.discountAmount = 0;
+      this.finalAmount = 0;
+      this.payments = [];
+      this.saleStarted = false;
     },
     syncFromSale(sale) {
       this.saleId = sale.id;
@@ -296,14 +303,7 @@ export const useCartStore = defineStore('cart', {
       this.payments = sale.payments || [];
     },
     reset() {
-      this.saleId = null;
-      this.items = [];
-      this.customer = null;
-      this.totalAmount = 0;
-      this.discountAmount = 0;
-      this.finalAmount = 0;
-      this.payments = [];
-      this.saleStarted = false;
+      this.resetState();
     },
   },
 });
