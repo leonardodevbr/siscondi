@@ -10,8 +10,55 @@ export const useCashRegisterStore = defineStore('cashRegister', {
     initialBalance: 0,
     loading: false,
     error: null,
+    /** Detalhamento para o modal de saldo (preenchido por fetchSummary) */
+    summary: null,
   }),
+  getters: {
+    balanceSummary(state) {
+      if (state.summary) return state.summary;
+      return {
+        initialBalance: state.initialBalance,
+        totalCash: 0,
+        totalPix: 0,
+        totalCard: 0,
+        supply: 0,
+        bleed: 0,
+        totalInDrawer: state.balance,
+      };
+    },
+  },
   actions: {
+    async fetchSummary() {
+      if (!this.isOpen) {
+        this.summary = null;
+        return null;
+      }
+      try {
+        const response = await api.get('/cash-register/status');
+        const { is_open, cash_register } = response.data;
+        if (!is_open || !cash_register) {
+          this.summary = null;
+          return null;
+        }
+        const initial = parseFloat(cash_register.initial_balance) || 0;
+        const total = parseFloat(cash_register.current_balance) || 0;
+        this.balance = total;
+        this.initialBalance = initial;
+        this.summary = {
+          initialBalance: initial,
+          totalCash: 0,
+          totalPix: 0,
+          totalCard: 0,
+          supply: 0,
+          bleed: 0,
+          totalInDrawer: total,
+        };
+        return this.summary;
+      } catch {
+        this.summary = null;
+        return null;
+      }
+    },
     async checkStatus() {
       this.loading = true;
       this.error = null;

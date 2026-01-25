@@ -47,7 +47,7 @@
           <span class="font-medium">2</span> – Cupom promocional
         </button>
       </div>
-      <p class="mt-2 text-xs text-slate-500">Pressione 1 ou 2 para escolher • ESC para fechar</p>
+      <p class="mt-2 text-xs text-slate-500">1 ou 2 para escolher • ↑↓ setas • ENTER confirma • ESC fecha</p>
     </div>
 
     <!-- Passo 2a: Desconto manual -->
@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, watch, onBeforeUnmount } from 'vue';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
 import Button from '@/components/Common/Button.vue';
@@ -262,6 +262,48 @@ async function applyCoupon() {
   }
 }
 
+/** Listener em document (captura) para a tela de escolha — o modal está em teleport e o foco pode estar fora */
+function onChoiceKeydownDocument(e) {
+  if (step.value !== 'choice') return;
+  const key = e.key;
+  if (key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    emit('close');
+    return;
+  }
+  if (key === '1') {
+    e.preventDefault();
+    e.stopPropagation();
+    chooseManual();
+    return;
+  }
+  if (key === '2') {
+    e.preventDefault();
+    e.stopPropagation();
+    chooseCoupon();
+    return;
+  }
+  if (key === 'ArrowDown') {
+    e.preventDefault();
+    e.stopPropagation();
+    selectedChoiceIndex.value = 1;
+    return;
+  }
+  if (key === 'ArrowUp') {
+    e.preventDefault();
+    e.stopPropagation();
+    selectedChoiceIndex.value = 0;
+    return;
+  }
+  if (key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    if (selectedChoiceIndex.value === 0) chooseManual();
+    else chooseCoupon();
+  }
+}
+
 function handleKeydown(e) {
   const key = e.key;
 
@@ -336,5 +378,21 @@ watch(step, (s) => {
     if (s === 'manual') focusAndSelectManualInput();
     else if (s === 'coupon') couponInputRef.value?.focus();
   });
+});
+
+watch(
+  () => props.isOpen && step.value === 'choice',
+  (listen) => {
+    if (listen) {
+      document.addEventListener('keydown', onChoiceKeydownDocument, true);
+    } else {
+      document.removeEventListener('keydown', onChoiceKeydownDocument, true);
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onChoiceKeydownDocument, true);
 });
 </script>

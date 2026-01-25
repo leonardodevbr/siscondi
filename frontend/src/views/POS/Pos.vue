@@ -15,7 +15,8 @@ import PosClosedState from '@/components/Pos/PosClosedState.vue';
 import StockAvailabilityModal from '@/components/Products/StockAvailabilityModal.vue';
 import CheckoutModal from '@/components/Pos/CheckoutModal.vue';
 import DiscountModalContent from '@/components/Pos/DiscountModalContent.vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import ShowBalanceModal from '@/components/Pos/ShowBalanceModal.vue';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon, TrashIcon, MagnifyingGlassIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -65,6 +66,10 @@ const selectedSearchProductIndex = ref(0);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 const isIdleScanLoading = ref(false);
+const showOperationsMenu = ref(false);
+const showBalanceModal = ref(false);
+const operationsMenuRef = ref(null);
+const operationsMenuIndex = ref(0);
 
 const cartTotal = computed(() => cartStore.subtotal);
 
@@ -112,9 +117,11 @@ const shortcutsSale = [
   { key: 'F1', label: 'Ajuda' },
   { key: 'F2', label: 'Consultar Preço' },
   { key: 'F3', label: 'Cancelar Item' },
-  { key: 'F4', label: 'Cancelar Venda' },
+  { key: 'F4', label: 'Ver Saldo' },
+  { key: 'F6', label: 'Cancelar Venda' },
   { key: 'F7', label: 'Identificar Cliente' },
   { key: 'F8', label: 'Desconto/Cupom' },
+  { key: 'F9', label: 'Menu' },
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
@@ -752,6 +759,8 @@ function handleSearchKeydown(e) {
 function handleScanBufferKeydown(e) {
   if (!cashRegisterStore.isOpen) return;
   if (showDiscountModal.value) return;
+  if (showBalanceModal.value) return;
+  if (showOperationsMenu.value) return;
 
   const key = e.key;
   const now = Date.now();
@@ -1022,6 +1031,93 @@ function closeCloseRegisterModal() {
   closeRegisterFinalBalance.value = '';
 }
 
+const menuOptions = computed(() => {
+  const list = [
+    { action: 'balance', label: 'Ver Saldo', shortcut: 'F4' },
+  ];
+  if (cartStore.saleStarted) {
+    list.push({ action: 'cancelSale', label: 'Cancelar Venda', shortcut: 'F6' });
+  }
+  list.push({ action: 'closeRegister', label: 'Fechar Caixa', shortcut: null, danger: true });
+  return list;
+});
+
+function runMenuAction(action) {
+  showOperationsMenu.value = false;
+  if (action === 'balance') {
+    showBalanceModal.value = true;
+  } else if (action === 'cancelSale') {
+    handleCancelSale();
+  } else if (action === 'closeRegister') {
+    openCloseRegisterModal();
+  }
+}
+
+function handleOperationsMenuKeydown(e) {
+  const key = e.key;
+  if (key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    showOperationsMenu.value = false;
+    return;
+  }
+  if (key === 'F4') {
+    e.preventDefault();
+    e.stopPropagation();
+    runMenuAction('balance');
+    return;
+  }
+  if (key === 'F6' && cartStore.saleStarted) {
+    e.preventDefault();
+    e.stopPropagation();
+    runMenuAction('cancelSale');
+    return;
+  }
+  if (key === 'ArrowDown') {
+    e.preventDefault();
+    e.stopPropagation();
+    operationsMenuIndex.value = Math.min(operationsMenuIndex.value + 1, menuOptions.value.length - 1);
+    return;
+  }
+  if (key === 'ArrowUp') {
+    e.preventDefault();
+    e.stopPropagation();
+    operationsMenuIndex.value = Math.max(0, operationsMenuIndex.value - 1);
+    return;
+  }
+  if (key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    const opt = menuOptions.value[operationsMenuIndex.value];
+    if (opt) runMenuAction(opt.action);
+    return;
+  }
+  const num = parseInt(key, 10);
+  if (num >= 1 && num <= menuOptions.value.length) {
+    e.preventDefault();
+    e.stopPropagation();
+    const opt = menuOptions.value[num - 1];
+    if (opt) runMenuAction(opt.action);
+  }
+}
+
+function openBalanceModalFromMenu() {
+  runMenuAction('balance');
+}
+
+function handleCancelSaleFromMenu() {
+  runMenuAction('cancelSale');
+}
+
+function openCloseRegisterFromMenu() {
+  runMenuAction('closeRegister');
+}
+
+function toggleOperationsMenu() {
+  showOperationsMenu.value = !showOperationsMenu.value;
+  operationsMenuIndex.value = 0;
+}
+
 function openStartSaleModal() {
   startSaleCpfInput.value = '';
   showStartSaleModal.value = true;
@@ -1241,7 +1337,16 @@ function handleShortcutClick(key) {
     return;
   }
   if (key === 'F4') {
-    handleCancelSale();
+    showBalanceModal.value = true;
+    return;
+  }
+  if (key === 'F6') {
+    if (cartStore.saleStarted) handleCancelSale();
+    return;
+  }
+  if (key === 'F9') {
+    showOperationsMenu.value = !showOperationsMenu.value;
+    operationsMenuIndex.value = 0;
     return;
   }
   if (key === 'F7') {
@@ -1351,11 +1456,29 @@ function handleKeydown(e) {
     return;
   }
 
+  if (showOperationsMenu.value) {
+    handleOperationsMenuKeydown(e);
+    return;
+  }
   if (showDiscountModal.value) return;
+  if (showBalanceModal.value) return;
 
   if (!isF) return;
   e.preventDefault();
 
+  if (key === 'F4') {
+    showBalanceModal.value = true;
+    return;
+  }
+  if (key === 'F6') {
+    if (cartStore.saleStarted) handleCancelSale();
+    return;
+  }
+  if (key === 'F9') {
+    showOperationsMenu.value = !showOperationsMenu.value;
+    operationsMenuIndex.value = 0;
+    return;
+  }
   if (key === 'F1') {
     if (isIdle.value && !showStartSaleModal.value) {
       openStartSaleModal();
@@ -1383,11 +1506,6 @@ function handleKeydown(e) {
   if (key === 'F3') {
     e.preventDefault();
     handleF3ToggleCancellationMode();
-    return;
-  }
-  if (key === 'F4') {
-    e.preventDefault();
-    handleCancelSale();
     return;
   }
   if (key === 'F5') {
@@ -1641,9 +1759,17 @@ watch(
   }
 );
 
+function handleClickOutsideOperationsMenu(e) {
+  const el = operationsMenuRef.value;
+  if (showOperationsMenu.value && el && !el.contains(e.target)) {
+    showOperationsMenu.value = false;
+  }
+}
+
 onMounted(async () => {
   syncFullscreenState();
   document.addEventListener('fullscreenchange', syncFullscreenState);
+  document.addEventListener('click', handleClickOutsideOperationsMenu);
   await initializePDV();
   if (cashRegisterStore.isOpen) {
     await nextTick();
@@ -1656,6 +1782,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState);
+  document.removeEventListener('click', handleClickOutsideOperationsMenu);
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
   window.removeEventListener('keydown', handleReloadBlock, true);
@@ -1719,7 +1846,7 @@ onUnmounted(() => {
             <span class="font-bold text-blue-600">Cliente: {{ formattedCustomerLabel }}</span>
           </template>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="relative flex items-center gap-2" ref="operationsMenuRef">
           <button
             type="button"
             class="rounded p-1.5 text-slate-300 transition hover:bg-slate-700 hover:text-white"
@@ -1731,12 +1858,44 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
-            class="flex items-center gap-2 rounded bg-red-600 px-3 py-1.5 text-sm font-medium hover:bg-red-700"
-            @click="openCloseRegisterModal"
+            class="flex items-center gap-1.5 rounded px-2 py-1.5 text-slate-300 transition hover:bg-slate-700 hover:text-white"
+            :class="{ 'bg-slate-600 text-white': showOperationsMenu }"
+            title="Menu de operações (F9)"
+            aria-haspopup="true"
+            :aria-expanded="showOperationsMenu"
+            @click="toggleOperationsMenu"
           >
-            <XCircleIcon class="h-5 w-5" />
-            Fechar Caixa
+            <EllipsisVerticalIcon class="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span class="hidden text-sm font-medium sm:inline">Menu</span>
           </button>
+          <div
+            v-show="showOperationsMenu"
+            class="absolute right-0 top-full z-[300] mt-1 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            role="menu"
+          >
+            <button
+              v-for="(opt, idx) in menuOptions"
+              :key="opt.action"
+              type="button"
+              role="menuitem"
+              :class="[
+                'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm',
+                operationsMenuIndex === idx
+                  ? 'bg-blue-50 text-blue-800'
+                  : opt.danger
+                    ? 'text-red-600 hover:bg-red-50'
+                    : 'text-slate-700 hover:bg-slate-100',
+              ]"
+              @click="runMenuAction(opt.action)"
+            >
+              <span class="flex items-center gap-2">
+                <EyeIcon v-if="opt.action === 'balance'" class="h-4 w-4 shrink-0 text-slate-500" />
+                <XCircleIcon v-else class="h-4 w-4 shrink-0" :class="opt.danger ? 'text-red-500' : 'text-slate-500'" />
+                {{ opt.label }}
+              </span>
+              <span v-if="opt.shortcut" class="text-xs text-slate-400">{{ opt.shortcut }}</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1771,29 +1930,6 @@ onUnmounted(() => {
       </div>
 
       <div v-else class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-16">
-        <div class="flex shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
-          <div class="flex items-center gap-2">
-            <div>
-              <p class="text-xs text-slate-500">Saldo do Caixa</p>
-              <p class="text-xl font-bold text-slate-900">
-                {{ isBalanceVisible ? formatCurrency(cashRegisterStore.balance) : 'R$ ••••••' }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="cursor-pointer rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-              @click="toggleBalanceVisibility"
-            >
-              <EyeIcon v-if="!isBalanceVisible" class="h-5 w-5" />
-              <EyeSlashIcon v-else class="h-5 w-5" />
-            </button>
-          </div>
-          <div class="text-right">
-            <p class="text-xs text-slate-500">Itens da Venda</p>
-            <p class="text-xl font-bold text-slate-900">{{ cartStore.totalCount }}</p>
-          </div>
-        </div>
-
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
           <div class="flex min-h-0 flex-col space-y-4 lg:col-span-2">
             <div>
@@ -1951,8 +2087,11 @@ onUnmounted(() => {
           </div>
 
           <div class="flex h-full max-h-full flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
-            <div class="shrink-0 border-b border-slate-200 p-4">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
               <h3 class="text-lg font-semibold text-slate-800">Itens da Venda</h3>
+              <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                {{ cartStore.items.length }} {{ cartStore.items.length === 1 ? 'item' : 'itens' }}
+              </span>
             </div>
 
             <div
@@ -2144,6 +2283,8 @@ onUnmounted(() => {
           @coupon-applied="onCouponApplied"
         />
       </Modal>
+
+      <ShowBalanceModal :is-open="showBalanceModal" @close="showBalanceModal = false" />
 
       <Modal :is-open="showCloseRegisterModal" title="Fechar Caixa" @close="closeCloseRegisterModal">
         <div class="space-y-4">
