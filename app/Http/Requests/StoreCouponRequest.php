@@ -15,6 +15,13 @@ class StoreCouponRequest extends FormRequest
         return $this->user()?->can('marketing.manage') ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('code') && is_string($this->code)) {
+            $this->merge(['code' => strtoupper(trim($this->code))]);
+        }
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
@@ -31,6 +38,7 @@ class StoreCouponRequest extends FormRequest
             'type' => ['required', Rule::enum(CouponType::class)],
             'value' => ['required', 'numeric', 'min:0.01'],
             'min_purchase_amount' => ['nullable', 'numeric', 'min:0'],
+            'max_discount_amount' => ['nullable', 'numeric', 'min:0'],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after:starts_at'],
             'usage_limit' => ['nullable', 'integer', 'min:1'],

@@ -16,6 +16,7 @@ import SuppliersIndex from '@/views/Suppliers/Index.vue';
 import ExpensesIndex from '@/views/Expenses/Index.vue';
 import ReportsIndex from '@/views/Reports/Index.vue';
 import CouponsIndex from '@/views/Coupons/Index.vue';
+import CouponForm from '@/views/Coupons/Form.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
 import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
@@ -113,6 +114,18 @@ const routes = [
         path: 'coupons',
         name: 'coupons',
         component: CouponsIndex,
+        meta: { roles: ['super-admin', 'manager'] },
+      },
+      {
+        path: 'coupons/create',
+        name: 'coupons.create',
+        component: CouponForm,
+        meta: { roles: ['super-admin', 'manager'] },
+      },
+      {
+        path: 'coupons/:id/edit',
+        name: 'coupons.edit',
+        component: CouponForm,
         meta: { roles: ['super-admin', 'manager'] },
       },
       {

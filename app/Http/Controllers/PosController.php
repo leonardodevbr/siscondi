@@ -9,6 +9,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Models\CashRegister;
+use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
@@ -19,6 +20,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Settings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -495,6 +497,18 @@ class PosController extends Controller
             ], 400);
         }
 
+        $type = $request->input('type');
+        $value = (float) $request->input('value');
+
+        if ($type === 'percentage') {
+            $maxPercent = (int) Settings::get('sales.max_discount_percent', 50);
+            if ($value > $maxPercent) {
+                return response()->json([
+                    'message' => "Desconto excede o limite permitido de {$maxPercent}%.",
+                ], 422);
+            }
+        }
+
         $sale = DB::transaction(function () use ($sale, $request): Sale {
             $type = $request->input('type');
             $value = (float) $request->input('value');
@@ -502,14 +516,114 @@ class PosController extends Controller
             if ($type === 'percentage') {
                 $discountAmount = $sale->total_amount * ($value / 100);
             } else {
-                $discountAmount = min($value, $sale->total_amount);
+                $discountAmount = min($value, (float) $sale->total_amount);
             }
 
+            $sale->coupon_id = null;
+            $sale->coupon_code = null;
             $sale->discount_amount = $discountAmount;
-            $sale->final_amount = $sale->total_amount - $discountAmount;
+            $sale->final_amount = (float) $sale->total_amount - $discountAmount;
             $sale->save();
 
             return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+        ], 200);
+    }
+
+    /**
+     * Aplica cupom promocional na venda.
+     */
+    public function applyCoupon(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'exists:sales,id'],
+            'coupon_code' => ['required', 'string', 'max:50'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $saleId = (int) $request->input('sale_id');
+        $code = strtoupper(trim((string) $request->input('coupon_code')));
+
+        $sale = Sale::where('id', $saleId)
+            ->where('user_id', $user->id)
+            ->where('status', SaleStatus::OPEN)
+            ->with(['items.productVariant.product', 'customer', 'salePayments'])
+            ->first();
+
+        if (! $sale) {
+            return response()->json([
+                'message' => 'Nenhuma venda em andamento.',
+            ], 400);
+        }
+
+        $coupon = Coupon::where('code', $code)->first();
+
+        if (! $coupon) {
+            return response()->json([
+                'message' => 'Cupom não encontrado.',
+            ], 404);
+        }
+
+        if (! $coupon->active) {
+            return response()->json([
+                'message' => 'Cupom inativo.',
+            ], 422);
+        }
+
+        $now = now();
+        if ($coupon->starts_at && $now->isBefore($coupon->starts_at)) {
+            return response()->json([
+                'message' => 'Cupom ainda não está na validade.',
+            ], 422);
+        }
+        if ($coupon->expires_at && $now->isAfter($coupon->expires_at)) {
+            return response()->json([
+                'message' => 'Cupom expirado.',
+            ], 422);
+        }
+
+        if ($coupon->usage_limit !== null && $coupon->used_count >= $coupon->usage_limit) {
+            return response()->json([
+                'message' => 'Cupom sem estoque de uso.',
+            ], 422);
+        }
+
+        $totalAmount = (float) $sale->total_amount;
+        if ($coupon->min_purchase_amount !== null && $totalAmount < (float) $coupon->min_purchase_amount) {
+            return response()->json([
+                'message' => 'O total da venda não atinge o valor mínimo para este cupom.',
+                'min_purchase' => (float) $coupon->min_purchase_amount,
+            ], 422);
+        }
+
+        $discountAmount = $coupon->type->value === 'percentage'
+            ? $totalAmount * ((float) $coupon->value / 100)
+            : (float) $coupon->value;
+
+        if ($coupon->type->value === 'percentage' && $coupon->max_discount_amount !== null) {
+            $discountAmount = min($discountAmount, (float) $coupon->max_discount_amount);
+        }
+
+        $discountAmount = min($discountAmount, $totalAmount);
+
+        $sale = DB::transaction(function () use ($sale, $coupon, $discountAmount): Sale {
+            $sale->coupon_id = $coupon->id;
+            $sale->coupon_code = $coupon->code;
+            $sale->discount_amount = $discountAmount;
+            $sale->final_amount = (float) $sale->total_amount - $discountAmount;
+            $sale->save();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);
         });
 
         return response()->json([
@@ -684,6 +798,10 @@ class PosController extends Controller
 
             $sale->status = $hasPixPayment ? SaleStatus::PENDING_PAYMENT : SaleStatus::COMPLETED;
             $sale->save();
+
+            if (! $hasPixPayment && $sale->coupon_id) {
+                Coupon::where('id', $sale->coupon_id)->increment('used_count');
+            }
 
             if (! $hasPixPayment && $sale->cashRegister) {
                 $cashRegister = $sale->cashRegister;

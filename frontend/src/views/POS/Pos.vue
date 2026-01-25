@@ -744,6 +744,7 @@ function handleSearchKeydown(e) {
 
 function handleScanBufferKeydown(e) {
   if (!cashRegisterStore.isOpen) return;
+  if (showDiscountModal.value) return;
 
   const key = e.key;
   const now = Date.now();
@@ -882,6 +883,26 @@ function closeCheckout() {
 function closeCustomer() {
   showCustomerModal.value = false;
   nextTick(focusSearch);
+}
+
+function closeDiscount() {
+  showDiscountModal.value = false;
+  nextTick(focusSearch);
+}
+
+async function handleApplyDiscount(type, value) {
+  try {
+    await cartStore.applyDiscount(type, value);
+    toast.success('Desconto aplicado.');
+    closeDiscount();
+  } catch (err) {
+    toast.error(err?.message ?? 'Erro ao aplicar desconto.');
+  }
+}
+
+function onCouponApplied() {
+  toast.success('Cupom aplicado com sucesso.');
+  closeDiscount();
 }
 
 function focusSearch() {
@@ -1313,6 +1334,8 @@ function handleKeydown(e) {
     }
     return;
   }
+
+  if (showDiscountModal.value) return;
 
   if (!isF) return;
   e.preventDefault();
@@ -2054,7 +2077,11 @@ onUnmounted(() => {
       </Modal>
 
       <Modal :is-open="showDiscountModal" title="Aplicar Desconto / Cupom" @close="closeDiscount">
-        <DiscountModalContent @apply="handleApplyDiscount" @close="closeDiscount" />
+        <DiscountModalContent
+          @apply="handleApplyDiscount"
+          @close="closeDiscount"
+          @coupon-applied="onCouponApplied"
+        />
       </Modal>
 
       <Modal :is-open="showCloseRegisterModal" title="Fechar Caixa" @close="closeCloseRegisterModal">

@@ -19,6 +19,7 @@ class Coupon extends Model
         'code',
         'type',
         'value',
+        'max_discount_amount',
         'min_purchase_amount',
         'starts_at',
         'expires_at',
@@ -84,10 +85,14 @@ class Coupon extends Model
     public function calculateDiscount(float $totalAmount): float
     {
         if ($this->type === CouponType::PERCENTAGE) {
-            return $totalAmount * ((float) $this->value / 100);
+            $discount = $totalAmount * ((float) $this->value / 100);
+            if ($this->max_discount_amount !== null) {
+                $discount = min($discount, (float) $this->max_discount_amount);
+            }
+            return min($discount, $totalAmount);
         }
 
-        return (float) $this->value;
+        return min((float) $this->value, $totalAmount);
     }
 
     public function incrementUsage(): void

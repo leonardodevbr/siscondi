@@ -208,6 +208,28 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async applyCoupon(couponCode) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      const code = String(couponCode ?? '').trim();
+      if (!code) {
+        throw new Error('Informe o código do cupom.');
+      }
+      try {
+        const { data } = await api.post('/pos/apply-coupon', {
+          sale_id: this.saleId,
+          coupon_code: code,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao aplicar cupom.';
+        throw new Error(message);
+      }
+    },
     async addPayment(method, amount, installments = 1) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
