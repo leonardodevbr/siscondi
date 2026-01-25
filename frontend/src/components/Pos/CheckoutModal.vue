@@ -135,7 +135,7 @@
 
           <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="cancelAddPayment">
             <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
-            <div class="space-y-1 max-h-60 overflow-y-auto">
+            <div ref="installmentsListRef" class="space-y-1 max-h-60 overflow-y-auto">
               <button
                 v-for="(n, index) in Array.from({ length: 12 }, (_, i) => i + 1)"
                 :key="n"
@@ -225,6 +225,7 @@ const isFinishing = ref(false);
 const paymentRemovalAuthorized = ref(false);
 
 const amountInputRef = ref(null);
+const installmentsListRef = ref(null);
 const amountFormatted = ref('');
 
 const paymentMethods = [
@@ -499,6 +500,15 @@ function installmentPreview(n) {
   return Math.round((singleValue * 100)) / 100;
 }
 
+function scrollSelectedInstallmentIntoView() {
+  const list = installmentsListRef.value;
+  const idx = selectedInstallmentIndex.value;
+  const child = list?.children?.[idx];
+  if (child instanceof HTMLElement) {
+    child.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
 function focusAmountInput() {
   nextTick(() => {
     if (amountInputRef.value) {
@@ -759,12 +769,14 @@ function handleKeydown(e) {
       e.preventDefault();
       selectedInstallmentIndex.value = Math.max(0, selectedInstallmentIndex.value - 1);
       newPayment.value.installments = selectedInstallmentIndex.value + 1;
+      nextTick(() => scrollSelectedInstallmentIntoView());
       return;
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       selectedInstallmentIndex.value = Math.min(11, selectedInstallmentIndex.value + 1);
       newPayment.value.installments = selectedInstallmentIndex.value + 1;
+      nextTick(() => scrollSelectedInstallmentIntoView());
       return;
     }
     if (e.key === 'Enter') {

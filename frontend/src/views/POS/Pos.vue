@@ -1272,12 +1272,12 @@ async function handleIdentifyCustomer() {
     title: 'Identificar Cliente',
     html: `
       <label for="swal-cpf-input" class="swal-cpf-label">CPF ou CNPJ</label>
-      <input id="swal-cpf-input" class="swal2-input" placeholder="Digite o documento" autocomplete="one-time-code" data-lpignore="true" data-form-type="other" maxlength="18">
-      <p class="swal-cpf-shortcuts">Enter para buscar · Esc para cancelar</p>
+      <input id="swal-cpf-input" class="swal2-input -ml-0.5 mt-0.5 swal2-input w-full" placeholder="Digite o documento" autocomplete="one-time-code" data-lpignore="true" data-form-type="other" maxlength="18">
+      <p class="swal-cpf-shortcuts">ENTER para buscar · ESC para cancelar</p>
     `,
     showCancelButton: true,
-    confirmButtonText: 'Buscar (Enter)',
-    cancelButtonText: 'Cancelar (Esc)',
+    confirmButtonText: 'Buscar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
     customClass: {
       input: 'swal-manager-auth-input',
     },
@@ -1340,12 +1340,24 @@ async function handleQuickRegister(document) {
     input: 'text',
     inputPlaceholder: 'Nome do Cliente (Opcional)',
     showCancelButton: true,
-    confirmButtonText: 'Sim, cadastrar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Sim, cadastrar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
+    footer: '<p class="swal-cpf-shortcuts">ENTER para cadastrar · ESC para cancelar</p>',
     inputAttributes: {
       autocomplete: 'off',
       'data-lpignore': 'true',
       'data-form-type': 'other',
+    },
+    didOpen: () => {
+      const input = Swal.getInput();
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            Swal.clickConfirm();
+          }
+        });
+      }
     },
   });
 
