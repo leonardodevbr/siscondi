@@ -362,14 +362,24 @@ class PosController extends Controller
         $customerId = $request->input('customer_id');
 
         if ($document) {
-            $cleanDocument = preg_replace('/\D/', '', $document);
+            $cleanDoc = preg_replace('/[^0-9]/', '', $document);
 
-            $customer = Customer::where('cpf_cnpj', $cleanDocument)->first();
+            $formattedDoc = $cleanDoc;
+            if (strlen($cleanDoc) === 11) {
+                $formattedDoc = preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $cleanDoc);
+            } elseif (strlen($cleanDoc) === 14) {
+                $formattedDoc = preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $cleanDoc);
+            }
+
+            $customer = Customer::query()
+                ->where('cpf_cnpj', $cleanDoc)
+                ->orWhere('cpf_cnpj', $formattedDoc)
+                ->first();
 
             if (! $customer) {
                 return response()->json([
                     'message' => 'Cliente não encontrado',
-                    'document_searched' => $cleanDocument,
+                    'document_searched' => $cleanDoc,
                 ], 404);
             }
 
