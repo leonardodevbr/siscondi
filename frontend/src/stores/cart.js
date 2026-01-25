@@ -10,6 +10,7 @@ export const useCartStore = defineStore('cart', {
     discountAmount: 0,
     finalAmount: 0,
     payments: [],
+    coupon: null,
     saleStarted: false,
   }),
   getters: {
@@ -313,6 +314,7 @@ export const useCartStore = defineStore('cart', {
       this.discountAmount = 0;
       this.finalAmount = 0;
       this.payments = [];
+      this.coupon = null;
       this.saleStarted = false;
     },
     syncFromSale(sale) {
@@ -323,6 +325,22 @@ export const useCartStore = defineStore('cart', {
       this.discountAmount = sale.discount_amount || 0;
       this.finalAmount = sale.final_amount || 0;
       this.payments = sale.payments || [];
+      this.coupon = sale.coupon ?? null;
+    },
+    async removeCoupon() {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/remove-coupon', { sale_id: this.saleId });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao remover cupom.';
+        throw new Error(message);
+      }
     },
     reset() {
       this.resetState();

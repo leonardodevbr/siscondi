@@ -128,6 +128,85 @@
             </div>
           </div>
           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">Produtos elegíveis</label>
+            <p class="text-xs text-slate-500 mb-2">Deixe vazio para todos. Se escolher algum, o cupom só valerá para itens desses produtos.</p>
+            <select
+              v-model="form.product_ids"
+              multiple
+              class="input-base w-full min-h-[80px]"
+              size="4"
+            >
+              <option v-for="p in productOptions" :key="p.id" :value="p.id">
+                {{ p.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">Categorias elegíveis</label>
+            <p class="text-xs text-slate-500 mb-2">Deixe vazio para todas. Se escolher alguma, o cupom só valerá para itens dessas categorias.</p>
+            <select
+              v-model="form.category_ids"
+              multiple
+              class="input-base w-full min-h-[80px]"
+              size="4"
+            >
+              <option v-for="c in categoryOptions" :key="c.id" :value="c.id">
+                {{ c.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">Tipos de pagamento aceitos</label>
+            <p class="text-xs text-slate-500 mb-2">Deixe vazio para aceitar todos. Se marcar algum, o cupom só valerá para os selecionados.</p>
+            <div class="flex flex-wrap gap-4">
+              <label class="flex items-center gap-2">
+                <input
+                  v-model="form.allowed_payment_methods"
+                  type="checkbox"
+                  value="money"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">Dinheiro</span>
+              </label>
+              <label class="flex items-center gap-2">
+                <input
+                  v-model="form.allowed_payment_methods"
+                  type="checkbox"
+                  value="pix"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">PIX</span>
+              </label>
+              <label class="flex items-center gap-2">
+                <input
+                  v-model="form.allowed_payment_methods"
+                  type="checkbox"
+                  value="credit_card"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">Cartão de Crédito</span>
+              </label>
+              <label class="flex items-center gap-2">
+                <input
+                  v-model="form.allowed_payment_methods"
+                  type="checkbox"
+                  value="debit_card"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">Cartão de Débito</span>
+              </label>
+              <label class="flex items-center gap-2">
+                <input
+                  v-model="form.allowed_payment_methods"
+                  type="checkbox"
+                  value="store_credit"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">Crédito Loja</span>
+              </label>
+            </div>
+          </div>
+          <div>
             <Toggle v-model="form.active" label="Cupom ativo" />
           </div>
         </div>
@@ -179,8 +258,14 @@ const form = ref({
   usage_limit: null,
   starts_at: '',
   expires_at: '',
+  allowed_payment_methods: [],
+  product_ids: [],
+  category_ids: [],
   active: true,
 });
+
+const productOptions = ref([]);
+const categoryOptions = ref([]);
 
 function normalizeCode() {
   const v = form.value.code || '';
@@ -211,6 +296,9 @@ async function loadCoupon() {
       usage_limit: c.usage_limit != null ? Number(c.usage_limit) : null,
       starts_at: c.starts_at ? c.starts_at.slice(0, 16) : '',
       expires_at: c.expires_at ? c.expires_at.slice(0, 16) : '',
+      allowed_payment_methods: Array.isArray(c.allowed_payment_methods) ? [...c.allowed_payment_methods] : [],
+      product_ids: Array.isArray(c.product_ids) ? [...c.product_ids] : [],
+      category_ids: Array.isArray(c.category_ids) ? [...c.category_ids] : [],
       active: c.active !== false,
     };
     if (form.value.min_purchase_amount != null || form.value.usage_limit != null || form.value.starts_at || form.value.expires_at) {
@@ -232,6 +320,15 @@ async function handleSubmit() {
     usage_limit: form.value.usage_limit != null && form.value.usage_limit !== '' ? Number(form.value.usage_limit) : null,
     starts_at: toIsoDateTime(form.value.starts_at),
     expires_at: toIsoDateTime(form.value.expires_at),
+    allowed_payment_methods: Array.isArray(form.value.allowed_payment_methods) && form.value.allowed_payment_methods.length > 0
+      ? form.value.allowed_payment_methods
+      : null,
+    product_ids: Array.isArray(form.value.product_ids) && form.value.product_ids.length > 0
+      ? form.value.product_ids
+      : [],
+    category_ids: Array.isArray(form.value.category_ids) && form.value.category_ids.length > 0
+      ? form.value.category_ids
+      : [],
     active: form.value.active,
   };
 
@@ -259,7 +356,22 @@ async function handleSubmit() {
   }
 }
 
+async function loadOptions() {
+  try {
+    const [prodRes, catRes] = await Promise.all([
+      api.get('/products', { params: { per_page: 500 } }),
+      api.get('/categories', { params: { per_page: 500 } }),
+    ]);
+    productOptions.value = prodRes.data?.data ?? prodRes.data ?? [];
+    categoryOptions.value = catRes.data?.data ?? catRes.data ?? [];
+  } catch {
+    productOptions.value = [];
+    categoryOptions.value = [];
+  }
+}
+
 onMounted(() => {
+  loadOptions();
   loadCoupon();
 });
 </script>

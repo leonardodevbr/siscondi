@@ -46,6 +46,8 @@ class PosController extends Controller
                 'items.productVariant.product',
                 'customer',
                 'salePayments',
+                'coupon.products',
+                'coupon.categories',
             ])
             ->first();
     }
@@ -566,7 +568,7 @@ class PosController extends Controller
             ], 400);
         }
 
-        $coupon = Coupon::where('code', $code)->first();
+        $coupon = Coupon::with(['products', 'categories'])->where('code', $code)->first();
 
         if (! $coupon) {
             return response()->json([
@@ -599,7 +601,32 @@ class PosController extends Controller
         }
 
         $totalAmount = (float) $sale->total_amount;
-        if ($coupon->min_purchase_amount !== null && $totalAmount < (float) $coupon->min_purchase_amount) {
+        $productIds = $coupon->products->pluck('id')->all();
+        $categoryIds = $coupon->categories->pluck('id')->all();
+        $hasProductOrCategoryRestriction = count($productIds) > 0 || count($categoryIds) > 0;
+
+        $baseAmount = $totalAmount;
+        if ($hasProductOrCategoryRestriction) {
+            $baseAmount = 0;
+            foreach ($sale->items as $item) {
+                $product = $item->productVariant?->product;
+                if (! $product) {
+                    continue;
+                }
+                $matchProduct = count($productIds) === 0 || in_array((int) $product->id, $productIds, true);
+                $matchCategory = count($categoryIds) === 0 || ($product->category_id && in_array((int) $product->category_id, $categoryIds, true));
+                if ($matchProduct || $matchCategory) {
+                    $baseAmount += (float) $item->total_price;
+                }
+            }
+            if ($baseAmount <= 0) {
+                return response()->json([
+                    'message' => 'Nenhum item do carrinho é elegível a este cupom (restrição por produto ou categoria).',
+                ], 422);
+            }
+        }
+
+        if ($coupon->min_purchase_amount !== null && $baseAmount < (float) $coupon->min_purchase_amount) {
             return response()->json([
                 'message' => 'O total da venda não atinge o valor mínimo para este cupom.',
                 'min_purchase' => (float) $coupon->min_purchase_amount,
@@ -607,7 +634,7 @@ class PosController extends Controller
         }
 
         $discountAmount = $coupon->type->value === 'percentage'
-            ? $totalAmount * ((float) $coupon->value / 100)
+            ? $baseAmount * ((float) $coupon->value / 100)
             : (float) $coupon->value;
 
         if ($coupon->type->value === 'percentage' && $coupon->max_discount_amount !== null) {
@@ -621,6 +648,41 @@ class PosController extends Controller
             $sale->coupon_code = $coupon->code;
             $sale->discount_amount = $discountAmount;
             $sale->final_amount = (float) $sale->total_amount - $discountAmount;
+            $sale->save();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);
+        });
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+        ], 200);
+    }
+
+    /**
+     * Remove o cupom aplicado à venda.
+     */
+    public function removeCoupon(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $sale = $this->getActiveSale($user);
+
+        if (! $sale) {
+            return response()->json([
+                'message' => 'Nenhuma venda em andamento.',
+            ], 400);
+        }
+
+        if (! $sale->coupon_id) {
+            return response()->json([
+                'message' => 'Não há cupom aplicado nesta venda.',
+            ], 400);
+        }
+
+        $sale = DB::transaction(function () use ($sale): Sale {
+            $sale->coupon_id = null;
+            $sale->coupon_code = null;
+            $sale->discount_amount = 0;
+            $sale->final_amount = (float) $sale->total_amount;
             $sale->save();
 
             return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);
@@ -658,20 +720,27 @@ class PosController extends Controller
             ], 400);
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
-            $method = $request->input('method');
-            
-            // Converter 'cash' para 'money' (valor do enum)
-            if ($method === 'cash') {
-                $method = 'money';
+        $method = $request->input('method');
+        if ($method === 'cash') {
+            $method = 'money';
+        }
+        $validMethods = array_map(fn ($case) => $case->value, PaymentMethod::cases());
+        if (! in_array($method, $validMethods, true)) {
+            return response()->json([
+                'message' => "Método de pagamento inválido: {$method}",
+            ], 422);
+        }
+
+        if ($sale->coupon_id && $sale->coupon) {
+            $allowed = $sale->coupon->allowed_payment_methods;
+            if (is_array($allowed) && count($allowed) > 0 && ! in_array($method, $allowed, true)) {
+                return response()->json([
+                    'message' => 'Este cupom aceita apenas os seguintes pagamentos: ' . implode(', ', $allowed) . '. Remova o cupom para usar outros.',
+                ], 422);
             }
-            
-            // Validar se o método é um valor válido do enum
-            $validMethods = array_map(fn($case) => $case->value, PaymentMethod::cases());
-            if (!in_array($method, $validMethods, true)) {
-                throw new \InvalidArgumentException("Método de pagamento inválido: {$method}");
-            }
-            
+        }
+
+        $sale = DB::transaction(function () use ($sale, $request, $method): Sale {
             $amount = (float) $request->input('amount');
             $installments = (int) ($request->input('installments') ?? 1);
 
@@ -682,7 +751,7 @@ class PosController extends Controller
                 'installments' => $installments,
             ]);
 
-            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'coupon']);
         });
 
         $totalPayments = $sale->salePayments->sum('amount');
@@ -871,7 +940,69 @@ class PosController extends Controller
      */
     private function formatSaleResponse(Sale $sale): array
     {
+        $sale->loadMissing('coupon');
+        if ($sale->coupon) {
+            $sale->coupon->loadMissing(['products', 'categories']);
+        }
         $totalPayments = $sale->salePayments->sum('amount');
+
+        $couponPayload = null;
+        if ($sale->coupon_id && $sale->coupon) {
+            $c = $sale->coupon;
+            $rules = [];
+            if ($c->min_purchase_amount !== null) {
+                $rules[] = 'Mín. compra: R$ ' . number_format((float) $c->min_purchase_amount, 2, ',', '.');
+            }
+            if ($c->type->value === 'percentage' && $c->max_discount_amount !== null) {
+                $rules[] = 'Teto desconto: R$ ' . number_format((float) $c->max_discount_amount, 2, ',', '.');
+            }
+            if ($c->usage_limit !== null) {
+                $rules[] = 'Usos: ' . ($c->used_count ?? 0) . '/' . $c->usage_limit;
+            }
+            if ($c->starts_at) {
+                $rules[] = 'Válido de: ' . $c->starts_at->format('d/m/Y');
+            }
+            if ($c->expires_at) {
+                $rules[] = 'Válido até: ' . $c->expires_at->format('d/m/Y');
+            }
+            $allowed = $c->allowed_payment_methods;
+            if (is_array($allowed) && count($allowed) > 0) {
+                $labels = [
+                    'money' => 'Dinheiro',
+                    'pix' => 'PIX',
+                    'credit_card' => 'Cartão de Crédito',
+                    'debit_card' => 'Cartão de Débito',
+                    'store_credit' => 'Crédito Loja',
+                ];
+                $rules[] = 'Pagamento: ' . implode(', ', array_map(fn ($m) => $labels[$m] ?? $m, $allowed));
+            }
+            $nProducts = $c->relationLoaded('products') ? $c->products->count() : 0;
+            $nCategories = $c->relationLoaded('categories') ? $c->categories->count() : 0;
+            if ($nProducts > 0 || $nCategories > 0) {
+                $parts = [];
+                if ($nProducts > 0) {
+                    $parts[] = $nProducts . ' produto(s)';
+                }
+                if ($nCategories > 0) {
+                    $parts[] = $nCategories . ' categoria(s)';
+                }
+                $rules[] = 'Elegível: ' . implode(', ', $parts);
+            }
+            $couponPayload = [
+                'id' => $c->id,
+                'code' => $c->code,
+                'type' => $c->type->value,
+                'value' => (float) $c->value,
+                'min_purchase_amount' => $c->min_purchase_amount !== null ? (float) $c->min_purchase_amount : null,
+                'max_discount_amount' => $c->max_discount_amount !== null ? (float) $c->max_discount_amount : null,
+                'usage_limit' => $c->usage_limit,
+                'used_count' => $c->used_count,
+                'starts_at' => $c->starts_at?->toIso8601String(),
+                'expires_at' => $c->expires_at?->toIso8601String(),
+                'allowed_payment_methods' => is_array($allowed) ? $allowed : null,
+                'rules_summary' => $rules,
+            ];
+        }
 
         return [
             'id' => $sale->id,
@@ -889,6 +1020,7 @@ class PosController extends Controller
             'final_amount' => (float) $sale->final_amount,
             'status' => $sale->status->value,
             'coupon_code' => $sale->coupon_code,
+            'coupon' => $couponPayload,
             'items' => $sale->items->map(function (SaleItem $item) {
                 return [
                     'id' => $item->id,

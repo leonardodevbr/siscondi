@@ -905,6 +905,15 @@ function onCouponApplied() {
   closeDiscount();
 }
 
+async function handleRemoveCoupon() {
+  try {
+    await cartStore.removeCoupon();
+    toast.success('Cupom removido.');
+  } catch (err) {
+    toast.error(err?.message ?? 'Erro ao remover cupom.');
+  }
+}
+
 function focusSearch() {
   const el = document.querySelector('#product-search');
   if (el) el.focus();
@@ -1987,9 +1996,36 @@ onUnmounted(() => {
             </div>
 
             <div class="shrink-0 border-t border-slate-200 bg-slate-50 p-4 rounded-b-md">
+              <div
+                v-if="cartStore.coupon"
+                class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-green-800">
+                      Cupom aplicado: {{ cartStore.coupon.code }}
+                    </p>
+                    <p class="mt-1 text-xs text-green-700">
+                      Desconto: {{ formatCurrency(cartStore.discountAmount) }}
+                    </p>
+                    <ul v-if="cartStore.coupon.rules_summary && cartStore.coupon.rules_summary.length" class="mt-2 space-y-0.5 text-xs text-green-700">
+                      <li v-for="(rule, i) in cartStore.coupon.rules_summary" :key="i">
+                        {{ rule }}
+                      </li>
+                    </ul>
+                  </div>
+                  <button
+                    type="button"
+                    class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 underline"
+                    @click="handleRemoveCoupon"
+                  >
+                    Remover cupom
+                  </button>
+                </div>
+              </div>
               <div class="mb-4 flex items-center justify-between">
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
-                <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
+                <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartStore.finalAmount || cartTotal) }}</span>
               </div>
               <div class="flex justify-end">
                 <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="handleF10Finalize">

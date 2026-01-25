@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\CouponType;
+use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Coupon extends Model
 {
@@ -26,6 +29,7 @@ class Coupon extends Model
         'usage_limit',
         'used_count',
         'active',
+        'allowed_payment_methods',
     ];
 
     /**
@@ -34,12 +38,14 @@ class Coupon extends Model
     protected $casts = [
         'type' => CouponType::class,
         'value' => 'decimal:2',
+        'max_discount_amount' => 'decimal:2',
         'min_purchase_amount' => 'decimal:2',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'usage_limit' => 'integer',
         'used_count' => 'integer',
         'active' => 'boolean',
+        'allowed_payment_methods' => 'array',
     ];
 
     protected static function boot(): void
@@ -98,5 +104,21 @@ class Coupon extends Model
     public function incrementUsage(): void
     {
         $this->increment('used_count');
+    }
+
+    /**
+     * @return BelongsToMany<Product, Coupon>
+     */
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'coupon_product');
+    }
+
+    /**
+     * @return BelongsToMany<Category, Coupon>
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'coupon_category');
     }
 }

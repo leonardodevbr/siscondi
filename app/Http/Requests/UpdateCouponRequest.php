@@ -45,6 +45,12 @@ class UpdateCouponRequest extends FormRequest
             'expires_at' => ['nullable', 'date', 'after:starts_at'],
             'usage_limit' => ['nullable', 'integer', 'min:1'],
             'active' => ['sometimes', 'boolean'],
+            'allowed_payment_methods' => ['nullable', 'array'],
+            'allowed_payment_methods.*' => ['string', Rule::in(['money', 'pix', 'credit_card', 'debit_card', 'store_credit'])],
+            'product_ids' => ['nullable', 'array'],
+            'product_ids.*' => ['integer', 'exists:products,id'],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => ['integer', 'exists:categories,id'],
         ];
     }
 }

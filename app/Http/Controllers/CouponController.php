@@ -34,23 +34,38 @@ class CouponController extends Controller
 
     public function store(StoreCouponRequest $request): JsonResponse
     {
-        $coupon = Coupon::create($request->validated());
+        $data = collect($request->validated());
+        $productIds = $data->pull('product_ids') ?? [];
+        $categoryIds = $data->pull('category_ids') ?? [];
+        $coupon = Coupon::create($data->all());
+        $coupon->products()->sync($productIds);
+        $coupon->categories()->sync($categoryIds);
 
-        return response()->json(new CouponResource($coupon), 201);
+        return response()->json(new CouponResource($coupon->load(['products', 'categories'])), 201);
     }
 
     public function show(Coupon $coupon): JsonResponse
     {
         $this->authorize('marketing.manage');
+        $coupon->load(['products', 'categories']);
 
         return response()->json(new CouponResource($coupon));
     }
 
     public function update(UpdateCouponRequest $request, Coupon $coupon): JsonResponse
     {
-        $coupon->update($request->validated());
+        $data = collect($request->validated());
+        $productIds = $data->pull('product_ids');
+        $categoryIds = $data->pull('category_ids');
+        $coupon->update($data->all());
+        if ($productIds !== null) {
+            $coupon->products()->sync($productIds);
+        }
+        if ($categoryIds !== null) {
+            $coupon->categories()->sync($categoryIds);
+        }
 
-        return response()->json(new CouponResource($coupon));
+        return response()->json(new CouponResource($coupon->load(['products', 'categories'])));
     }
 
     public function destroy(Coupon $coupon): JsonResponse

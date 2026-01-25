@@ -6,6 +6,10 @@
           <span class="text-sm font-medium text-slate-700">Total Venda:</span>
           <span class="text-xl font-bold text-slate-900">{{ formatCurrency(finalAmount) }}</span>
         </div>
+        <div v-if="cartStore.coupon" class="mt-2 flex items-center justify-between text-green-700">
+          <span class="text-sm font-medium">Cupom {{ cartStore.coupon.code }}:</span>
+          <span class="text-sm font-semibold">- {{ formatCurrency(cartStore.discountAmount) }}</span>
+        </div>
         <div class="mt-2 flex items-center justify-between">
           <span class="text-sm font-medium text-slate-700">Total Pago:</span>
           <span class="text-lg font-semibold text-green-600">{{ formatCurrency(totalPayments) }}</span>
@@ -22,6 +26,27 @@
         <div v-if="change > 0" class="mt-2 flex items-center justify-between border-t border-slate-300 pt-2">
           <span class="text-sm font-medium text-slate-700">Troco:</span>
           <span class="text-lg font-bold text-blue-600">{{ formatCurrency(change) }}</span>
+        </div>
+      </div>
+
+      <div
+        v-if="cartStore.coupon && !isFinishing"
+        class="rounded-lg border border-green-200 bg-green-50 p-3"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-green-800">Cupom {{ cartStore.coupon.code }} aplicado</p>
+            <ul v-if="cartStore.coupon.rules_summary && cartStore.coupon.rules_summary.length" class="mt-1 space-y-0.5 text-xs text-green-700">
+              <li v-for="(rule, i) in cartStore.coupon.rules_summary" :key="i">{{ rule }}</li>
+            </ul>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 underline"
+            @click="handleRemoveCouponInCheckout"
+          >
+            Remover cupom
+          </button>
         </div>
       </div>
 
@@ -84,9 +109,15 @@
 
         <div v-else-if="!methodSelected" class="space-y-2">
           <p class="text-xs text-slate-600 mb-2">Selecione o método de pagamento:</p>
-          <div class="space-y-1">
+          <p v-if="couponPaymentRestriction" class="mb-2 text-xs text-amber-700">
+            Este cupom aceita apenas: {{ couponPaymentRestriction }}
+          </p>
+          <div v-if="effectivePaymentMethods.length === 0" class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Nenhum método de pagamento compatível com o cupom. Remova o cupom acima para continuar.
+          </div>
+          <div v-else class="space-y-1">
             <button
-              v-for="(method, index) in paymentMethods"
+              v-for="(method, index) in effectivePaymentMethods"
               :key="method.value"
               type="button"
               :class="[
@@ -233,10 +264,33 @@ const installmentsListRef = ref(null);
 const amountFormatted = ref('');
 
 const paymentMethods = [
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'card', label: 'Cartão' },
-  { value: 'pix', label: 'PIX' },
+  { value: 'cash', label: 'Dinheiro', apiValues: ['money'] },
+  { value: 'card', label: 'Cartão', apiValues: ['credit_card', 'debit_card'] },
+  { value: 'pix', label: 'PIX', apiValues: ['pix'] },
 ];
+
+const effectivePaymentMethods = computed(() => {
+  const allowed = cartStore.coupon?.allowed_payment_methods;
+  if (!Array.isArray(allowed) || allowed.length === 0) {
+    return paymentMethods;
+  }
+  return paymentMethods.filter((m) =>
+    m.apiValues.some((av) => allowed.includes(av))
+  );
+});
+
+const couponPaymentRestriction = computed(() => {
+  const allowed = cartStore.coupon?.allowed_payment_methods;
+  if (!Array.isArray(allowed) || allowed.length === 0) return '';
+  const labels = {
+    money: 'Dinheiro',
+    pix: 'PIX',
+    credit_card: 'Cartão de Crédito',
+    debit_card: 'Cartão de Débito',
+    store_credit: 'Crédito Loja',
+  };
+  return allowed.map((a) => labels[a] ?? a).join(', ');
+});
 
 const newPayment = ref({
   method: 'cash',
@@ -316,6 +370,13 @@ watch(remainingAmount, (newVal) => {
     });
   }
 });
+
+watch(effectivePaymentMethods, (methods) => {
+  const n = methods.length;
+  if (n > 0 && selectedMethodIndex.value >= n) {
+    selectedMethodIndex.value = n - 1;
+  }
+}, { deep: true });
 
 function checkAndShowPaymentInput() {
   const remaining = parseFloat(remainingAmount.value);
@@ -587,6 +648,16 @@ function cancelAddPayment(e) {
   resetPaymentForm();
 }
 
+async function handleRemoveCouponInCheckout() {
+  try {
+    await cartStore.removeCoupon();
+    toast.success('Cupom removido.');
+    selectedMethodIndex.value = 0;
+  } catch (err) {
+    toast.error(err?.message ?? 'Erro ao remover cupom.');
+  }
+}
+
 async function authorizePaymentRemoval() {
   const result = await Swal.fire({
     title: 'Remover Pagamento',
@@ -734,18 +805,18 @@ function handleKeydown(e) {
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      selectedMethodIndex.value = Math.min(paymentMethods.length - 1, selectedMethodIndex.value + 1);
+      selectedMethodIndex.value = Math.min(effectivePaymentMethods.value.length - 1, selectedMethodIndex.value + 1);
       return;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      selectMethod(paymentMethods[selectedMethodIndex.value].value);
+      selectMethod(effectivePaymentMethods.value[selectedMethodIndex.value].value);
       return;
     }
     const num = parseInt(e.key);
-    if (num >= 1 && num <= paymentMethods.length) {
+    if (num >= 1 && num <= effectivePaymentMethods.value.length) {
       e.preventDefault();
-      selectMethod(paymentMethods[num - 1].value);
+      selectMethod(effectivePaymentMethods.value[num - 1].value);
       return;
     }
     return;
