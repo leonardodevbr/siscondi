@@ -146,6 +146,49 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async identifyCustomer(document) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/identify-customer', {
+          sale_id: this.saleId,
+          document,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        if (error.response?.status === 404) {
+          const err = new Error('Cliente não encontrado');
+          err.status = 404;
+          err.document = error.response?.data?.document_searched || document;
+          throw err;
+        }
+        const message = error.response?.data?.message || 'Erro ao identificar cliente.';
+        throw new Error(message);
+      }
+    },
+    async quickRegisterCustomer(document, name = null) {
+      if (!this.saleId) {
+        throw new Error('Venda não iniciada.');
+      }
+      try {
+        const { data } = await api.post('/pos/quick-customer', {
+          sale_id: this.saleId,
+          document,
+          name,
+        });
+        if (data.sale) {
+          this.syncFromSale(data.sale);
+        }
+        return data;
+      } catch (error) {
+        const message = error.response?.data?.message || 'Erro ao cadastrar cliente.';
+        throw new Error(message);
+      }
+    },
     async applyDiscount(type, value) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');

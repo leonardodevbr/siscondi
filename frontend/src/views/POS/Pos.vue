@@ -81,6 +81,23 @@ const customerLabel = computed(() => {
   return c.document;
 });
 
+const formattedCustomerLabel = computed(() => {
+  const c = cartStore.customer;
+  if (!c || !c.cpf_cnpj) return 'Consumidor Final';
+  
+  const firstName = c.name ? c.name.split(' ')[0] : 'Cliente';
+  const doc = String(c.cpf_cnpj).replace(/\D/g, '');
+  
+  if (doc.length >= 11) {
+    const first3 = doc.substring(0, 3);
+    const last2 = doc.substring(doc.length - 2);
+    const maskedDoc = `${first3}.***.***-${last2}`;
+    return `${firstName} - ${maskedDoc}`;
+  }
+  
+  return firstName;
+});
+
 const shortcutsIdle = [{ key: 'F1', label: 'Iniciar Venda' }];
 const shortcutsSale = [
   { key: 'F1', label: 'Ajuda' },
@@ -1088,8 +1105,7 @@ function handleShortcutClick(key) {
     return;
   }
   if (key === 'F7') {
-    showCustomerModal.value = true;
-    customerCpf.value = '';
+    handleIdentifyCustomer();
     return;
   }
   if (key === 'F8') {
@@ -1217,8 +1233,7 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F7') {
-    showCustomerModal.value = true;
-    customerCpf.value = '';
+    handleIdentifyCustomer();
     return;
   }
   if (key === 'F8') {
@@ -1238,27 +1253,96 @@ async function confirmCheckout() {
   await handleFinalizeSale();
 }
 
-async function handleCustomerSubmit() {
-  const cpf = customerCpf.value?.replace(/\D/g, '').trim();
-  if (!cpf) {
-    toast.error('Informe o CPF.');
+async function handleIdentifyCustomer() {
+  if (!cartStore.saleStarted || !cartStore.saleId) {
+    feedbackMessage.value = 'Inicie uma venda primeiro.';
+    feedbackType.value = 'error';
     return;
   }
-  
+
+  const result = await Swal.fire({
+    title: 'Identificar Cliente',
+    html: '<input id="swal-cpf-input" class="swal2-input" placeholder="CPF/CNPJ" autocomplete="one-time-code" data-lpignore="true" data-form-type="other">',
+    showCancelButton: true,
+    confirmButtonText: 'Buscar',
+    cancelButtonText: 'Cancelar',
+    customClass: {
+      input: 'swal-manager-auth-input',
+    },
+    preConfirm: () => {
+      const input = document.getElementById('swal-cpf-input');
+      const value = input?.value?.trim();
+      if (!value) {
+        Swal.showValidationMessage('Informe o CPF/CNPJ');
+        return false;
+      }
+      return value;
+    },
+    didOpen: () => {
+      const input = document.getElementById('swal-cpf-input');
+      if (input) {
+        input.focus();
+        input.setAttribute('inputmode', 'numeric');
+      }
+    },
+  });
+
+  if (!result.isConfirmed || !result.value) {
+    nextTick(focusSearch);
+    return;
+  }
+
+  const document = result.value.replace(/\D/g, '');
+
   try {
-    const { data } = await api.get('/customers', { params: { document: cpf } });
-    if (data.data && data.data.length > 0) {
-      const customer = data.data[0];
-      await cartStore.setCustomer(customer.id);
-      feedbackMessage.value = null;
-      showCustomerModal.value = false;
-      customerCpf.value = '';
-      nextTick(focusSearch);
-    } else {
-      toast.error('Cliente não encontrado.');
-    }
+    await cartStore.identifyCustomer(document);
+    feedbackMessage.value = `Cliente identificado: ${formattedCustomerLabel.value}`;
+    feedbackType.value = 'info';
+    nextTick(focusSearch);
   } catch (error) {
-    toast.error(error.message || 'Erro ao identificar cliente.');
+    if (error.status === 404) {
+      await handleQuickRegister(error.document || document);
+    } else {
+      feedbackMessage.value = error.message || 'Erro ao identificar cliente.';
+      feedbackType.value = 'error';
+      nextTick(focusSearch);
+    }
+  }
+}
+
+async function handleQuickRegister(document) {
+  const result = await Swal.fire({
+    title: 'Cliente Novo',
+    text: 'CPF não cadastrado. Deseja informar o nome?',
+    icon: 'question',
+    input: 'text',
+    inputPlaceholder: 'Nome do Cliente (Opcional)',
+    showCancelButton: true,
+    confirmButtonText: 'Salvar',
+    cancelButtonText: 'Cancelar',
+    inputAttributes: {
+      autocomplete: 'off',
+      'data-lpignore': 'true',
+      'data-form-type': 'other',
+    },
+  });
+
+  if (!result.isConfirmed) {
+    nextTick(focusSearch);
+    return;
+  }
+
+  const name = result.value?.trim() || null;
+
+  try {
+    await cartStore.quickRegisterCustomer(document, name);
+    feedbackMessage.value = `Cliente cadastrado: ${formattedCustomerLabel.value}`;
+    feedbackType.value = 'info';
+    nextTick(focusSearch);
+  } catch (error) {
+    feedbackMessage.value = error.message || 'Erro ao cadastrar cliente.';
+    feedbackType.value = 'error';
+    nextTick(focusSearch);
   }
 }
 
@@ -1376,7 +1460,7 @@ onUnmounted(() => {
           <span>{{ branchName }}</span>
           <template v-if="cartStore.saleStarted">
             <span class="text-slate-400">|</span>
-            <span>Cliente: {{ customerLabel }}</span>
+            <span class="font-bold text-blue-600">Cliente: {{ formattedCustomerLabel }}</span>
           </template>
         </div>
         <div class="flex items-center gap-2">

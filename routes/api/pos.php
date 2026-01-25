@@ -12,6 +12,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('pos/remove-item', [PosController::class, 'removeItem']);
     Route::post('pos/remove-item-by-code', [PosController::class, 'removeItemByCode']);
     Route::post('pos/identify-customer', [PosController::class, 'identifyCustomer']);
+    Route::post('pos/quick-customer', [PosController::class, 'quickRegisterCustomer']);
     Route::post('pos/apply-discount', [PosController::class, 'applyDiscount']);
     Route::post('pos/add-payment', [PosController::class, 'addPayment']);
     Route::post('pos/remove-payment', [PosController::class, 'removePayment']);

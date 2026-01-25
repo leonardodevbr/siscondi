@@ -326,12 +326,14 @@ class PosController extends Controller
     }
 
     /**
-     * Identifica cliente na venda.
+     * Identifica cliente na venda por CPF/CNPJ ou ID.
      */
     public function identifyCustomer(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
+            'document' => ['nullable', 'string'],
             'customer_id' => ['nullable', 'exists:customers,id'],
+            'sale_id' => ['required', 'exists:sales,id'],
         ]);
 
         if ($validator->fails()) {
@@ -342,7 +344,13 @@ class PosController extends Controller
         }
 
         $user = $request->user();
-        $sale = $this->getActiveSale($user);
+        $saleId = (int) $request->input('sale_id');
+
+        $sale = Sale::where('id', $saleId)
+            ->where('user_id', $user->id)
+            ->where('status', SaleStatus::OPEN)
+            ->with(['items.productVariant.product', 'customer', 'salePayments'])
+            ->first();
 
         if (! $sale) {
             return response()->json([
@@ -350,12 +358,105 @@ class PosController extends Controller
             ], 400);
         }
 
-        $sale->customer_id = $request->input('customer_id');
-        $sale->save();
+        $document = $request->input('document');
+        $customerId = $request->input('customer_id');
+
+        if ($document) {
+            $cleanDocument = preg_replace('/\D/', '', $document);
+
+            $customer = Customer::where('cpf_cnpj', $cleanDocument)->first();
+
+            if (! $customer) {
+                return response()->json([
+                    'message' => 'Cliente não encontrado',
+                    'document_searched' => $cleanDocument,
+                ], 404);
+            }
+
+            $customerId = $customer->id;
+        }
+
+        $sale = DB::transaction(function () use ($sale, $customerId): Sale {
+            $sale->customer_id = $customerId;
+            $sale->save();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
 
         return response()->json([
-            'sale' => $this->formatSaleResponse($sale->fresh(['items.productVariant.product', 'customer', 'salePayments'])),
+            'sale' => $this->formatSaleResponse($sale),
         ], 200);
+    }
+
+    /**
+     * Cadastro rápido de cliente no PDV.
+     */
+    public function quickRegisterCustomer(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'document' => ['required', 'string'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'sale_id' => ['required', 'exists:sales,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $saleId = (int) $request->input('sale_id');
+
+        $sale = Sale::where('id', $saleId)
+            ->where('user_id', $user->id)
+            ->where('status', SaleStatus::OPEN)
+            ->with(['items.productVariant.product', 'customer', 'salePayments'])
+            ->first();
+
+        if (! $sale) {
+            return response()->json([
+                'message' => 'Nenhuma venda em andamento.',
+            ], 400);
+        }
+
+        $document = preg_replace('/\D/', '', $request->input('document'));
+        $name = $request->input('name');
+
+        if (! $name || trim($name) === '') {
+            $name = 'Cliente ' . $document;
+        }
+
+        $existingCustomer = Customer::where('cpf_cnpj', $document)->first();
+
+        if ($existingCustomer) {
+            return response()->json([
+                'message' => 'Cliente já cadastrado com este CPF/CNPJ.',
+                'customer' => [
+                    'id' => $existingCustomer->id,
+                    'name' => $existingCustomer->name,
+                    'document' => $existingCustomer->cpf_cnpj,
+                ],
+            ], 409);
+        }
+
+        $sale = DB::transaction(function () use ($document, $name, $sale): Sale {
+            $customer = Customer::create([
+                'name' => $name,
+                'cpf_cnpj' => $document,
+            ]);
+
+            $sale->customer_id = $customer->id;
+            $sale->save();
+
+            return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
+        });
+
+        return response()->json([
+            'sale' => $this->formatSaleResponse($sale),
+            'message' => 'Cliente cadastrado e vinculado à venda com sucesso.',
+        ], 201);
     }
 
     /**
