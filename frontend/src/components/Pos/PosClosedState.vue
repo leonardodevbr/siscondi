@@ -78,6 +78,9 @@ export default {
         await cashRegisterStore.openRegister(balance);
         toast.success('Caixa aberto com sucesso!');
         initialBalance.value = '';
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
       } catch (error) {
         const message = error.response?.data?.message || error.message || 'Erro ao abrir o caixa.';
         toast.error(message);

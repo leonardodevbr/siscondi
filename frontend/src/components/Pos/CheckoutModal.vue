@@ -608,6 +608,7 @@ async function authorizePaymentRemoval() {
     cancelButtonText: 'Cancelar',
     confirmButtonColor: '#ea580c',
     focusConfirm: false,
+    allowOutsideClick: false,
     inputValidator: (value) => (value ? null : 'Informe a senha.'),
   });
   if (!result.isConfirmed) return;

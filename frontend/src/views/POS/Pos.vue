@@ -61,6 +61,7 @@ const isCancellationMode = ref(false);
 const isSearchMode = ref(false);
 const cancelSearchMode = ref(false);
 const selectedCancelSearchIndex = ref(-1);
+const selectedSearchProductIndex = ref(0);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 const isIdleScanLoading = ref(false);
@@ -128,6 +129,11 @@ watch(cancelSearchResults, (results) => {
   }
   const i = selectedCancelSearchIndex.value;
   if (i < 0 || i >= results.length) selectedCancelSearchIndex.value = 0;
+}, { immediate: true });
+
+const searchGridCols = 3;
+watch(products, (list) => {
+  selectedSearchProductIndex.value = list.length > 0 ? 0 : -1;
 }, { immediate: true });
 
 function formatVariantLabel(attributes) {
@@ -524,6 +530,7 @@ async function confirmCancellation(codeOrItem) {
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#ef4444',
       focusConfirm: false,
+      allowOutsideClick: false,
     });
     confirmed = result.isConfirmed;
   } else {
@@ -552,6 +559,7 @@ async function confirmCancellation(codeOrItem) {
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#ef4444',
       focusConfirm: false,
+      allowOutsideClick: false,
       inputValidator: (value) => {
         if (!value) {
           return 'Por favor, insira a senha.';
@@ -685,6 +693,34 @@ function handleSearchKeydown(e) {
   const hasResults = results.length > 0;
   const sel = selectedCancelSearchIndex.value;
 
+  const inSearchWithProducts = isSearchMode.value && !inCancelSearch && products.value.length > 0;
+  if (inSearchWithProducts && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight')) {
+    e.preventDefault();
+    const idx = selectedSearchProductIndex.value;
+    const total = products.value.length;
+    const cols = searchGridCols;
+    let next = idx;
+    if (key === 'ArrowRight') next = idx + 1;
+    else if (key === 'ArrowLeft') next = idx - 1;
+    else if (key === 'ArrowDown') next = idx + cols;
+    else if (key === 'ArrowUp') next = idx - cols;
+    selectedSearchProductIndex.value = Math.max(0, Math.min(next, total - 1));
+    return;
+  }
+  if (inSearchWithProducts && key === 'Enter') {
+    const idx = selectedSearchProductIndex.value;
+    const prods = products.value;
+    if (idx >= 0 && idx < prods.length) {
+      const p = prods[idx];
+      const stock = p.current_stock ?? p.stock_quantity ?? 0;
+      if (stock > 0) {
+        e.preventDefault();
+        handleAddProduct(p);
+      }
+    }
+    return;
+  }
+
   if (inCancelSearch && hasResults && (key === 'ArrowDown' || key === 'ArrowUp')) {
     e.preventDefault();
     if (key === 'ArrowDown') {
@@ -752,9 +788,9 @@ async function handleAddProduct(product) {
       toast.error('Produto sem variação.');
       return;
     }
-    
+    const barcode = String(v.barcode ?? v.sku ?? v.id);
     const prev = snapshotCartForHighlight();
-    await cartStore.addItem(v.id, 1);
+    await cartStore.addItem(barcode, 1);
     highlightAddedItem(prev);
     const stock = v?.current_stock ?? product.current_stock ?? product.stock_quantity ?? 0;
     const effectivePrice = v.sell_price ?? product.sell_price ?? product.effective_price ?? 0;
@@ -824,6 +860,7 @@ async function handleCancelSale() {
     confirmButtonColor: '#dc2626',
     cancelButtonColor: '#64748b',
     focusConfirm: true,
+    allowOutsideClick: false,
     footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
   });
 
@@ -906,6 +943,10 @@ function handleF5ToggleSearchMode() {
     products.value = [];
     nextTick(focusSearch);
   }
+}
+
+function syncFullscreenState() {
+  isFullscreen.value = !!document.fullscreenElement;
 }
 
 function toggleFullscreen() {
@@ -1182,6 +1223,7 @@ async function handleF10Finalize() {
       confirmButtonText: 'Sim (ENTER)',
       cancelButtonText: 'Não (ESC)',
       focusConfirm: true,
+      allowOutsideClick: false,
       footer: '<p class="swal-cpf-shortcuts">ENTER para Sim · ESC para Não</p>',
     });
     if (swalResult.isConfirmed) {
@@ -1362,6 +1404,7 @@ async function handleIdentifyCustomer(options = {}) {
       showCancelButton: true,
       confirmButtonText: 'Sim, alterar (ENTER)',
       cancelButtonText: 'Não, manter (ESC)',
+      allowOutsideClick: false,
       footer: '<p class="swal-cpf-shortcuts">ENTER para alterar · ESC para manter</p>',
     });
     if (!replaceResult.isConfirmed) {
@@ -1379,6 +1422,7 @@ async function handleIdentifyCustomer(options = {}) {
     showCancelButton: true,
     confirmButtonText: 'Buscar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
+    allowOutsideClick: false,
     customClass: {
       input: 'swal-manager-auth-input',
     },
@@ -1446,6 +1490,7 @@ async function handleQuickRegister(doc, name, registerOptions = {}) {
     showCancelButton: true,
     confirmButtonText: 'Sim, cadastrar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
+    allowOutsideClick: false,
     footer: '<p class="swal-cpf-shortcuts">ENTER para cadastrar · ESC para cancelar</p>',
     inputAttributes: {
       autocomplete: 'off',
@@ -1537,6 +1582,8 @@ watch(isIdle, (idle) => {
 });
 
 onMounted(async () => {
+  syncFullscreenState();
+  document.addEventListener('fullscreenchange', syncFullscreenState);
   await initializePDV();
   if (cashRegisterStore.isOpen) {
     await nextTick();
@@ -1548,6 +1595,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', syncFullscreenState);
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
   window.removeEventListener('keydown', handleReloadBlock, true);
@@ -1821,18 +1869,19 @@ onUnmounted(() => {
               </div>
               <div v-else-if="isSearchMode && products.length > 0" class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
                 <button
-                  v-for="product in products"
+                  v-for="(product, idx) in products"
                   :key="product.id"
                   type="button"
-                  class="flex flex-col rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
-                  :class="{
-                    'cursor-not-allowed opacity-50': (product.current_stock ?? product.stock_quantity) === 0,
-                  }"
+                  class="flex flex-col rounded-lg border p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                  :class="[
+                    (product.current_stock ?? product.stock_quantity) === 0 ? 'cursor-not-allowed opacity-50 border-slate-200 bg-white' : 'border-slate-200 bg-white',
+                    selectedSearchProductIndex === idx ? 'border-blue-500 ring-2 ring-blue-400 bg-blue-50' : ''
+                  ]"
                   :disabled="(product.current_stock ?? product.stock_quantity) === 0"
                   @click="handleAddProduct(product)"
                 >
                   <p class="text-sm font-semibold leading-tight text-slate-800" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ formatProductNameWithVariant(product) }}</p>
-                  <p class="mt-1.5 text-xs text-slate-500">{{ product.variants?.[0]?.sku ?? product.sku ?? '-' }}</p>
+                  <p class="mt-1.5 text-xs text-slate-500">Código: {{ product.variants?.[0]?.barcode ?? product.variants?.[0]?.sku ?? product.sku ?? '-' }}</p>
                   <p class="mt-2 text-sm font-bold text-blue-600">
                     {{ formatCurrency(product.effective_price ?? product.sell_price) }}
                   </p>

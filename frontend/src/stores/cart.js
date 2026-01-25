@@ -65,9 +65,10 @@ export const useCartStore = defineStore('cart', {
       if (!this.saleId) {
         throw new Error('Venda não iniciada. Inicie uma venda primeiro.');
       }
+      const barcodeStr = String(barcode ?? '');
       try {
         const { data } = await api.post('/pos/add-item', {
-          barcode,
+          barcode: barcodeStr,
           quantity,
         });
         if (data.sale) {
