@@ -74,27 +74,27 @@ const branchName = computed(() => {
 });
 const customerLabel = computed(() => {
   const c = cartStore.customer;
-  if (!c?.document) return 'Consumidor Final';
-  const d = String(c.document).replace(/\D/g, '');
+  const d = String(c?.cpf_cnpj ?? c?.document ?? '').replace(/\D/g, '');
+  if (!d) return 'Consumidor Final';
   if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-  return c.document;
+  return c?.cpf_cnpj ?? c?.document ?? '';
 });
 
 const formattedCustomerLabel = computed(() => {
   const c = cartStore.customer;
-  if (!c || !c.cpf_cnpj) return 'Consumidor Final';
-  
+  const doc = String(c?.cpf_cnpj ?? c?.document ?? '').replace(/\D/g, '');
+  if (!c || !doc) return 'Consumidor Final';
+
   const firstName = c.name ? c.name.split(' ')[0] : 'Cliente';
-  const doc = String(c.cpf_cnpj).replace(/\D/g, '');
-  
   if (doc.length >= 11) {
     const first3 = doc.substring(0, 3);
     const last2 = doc.substring(doc.length - 2);
-    const maskedDoc = `${first3}.***.***-${last2}`;
+    const maskedDoc = doc.length === 11
+      ? `${first3}.***.***-${last2}`
+      : `${first3}.***.***/****-${last2}`;
     return `${firstName} - ${maskedDoc}`;
   }
-  
   return firstName;
 });
 
@@ -1312,13 +1312,13 @@ async function handleIdentifyCustomer() {
 
 async function handleQuickRegister(document) {
   const result = await Swal.fire({
-    title: 'Cliente Novo',
-    text: 'CPF não cadastrado. Deseja informar o nome?',
+    title: 'Cliente não encontrado',
+    text: 'Cadastrar rápido?',
     icon: 'question',
     input: 'text',
     inputPlaceholder: 'Nome do Cliente (Opcional)',
     showCancelButton: true,
-    confirmButtonText: 'Salvar',
+    confirmButtonText: 'Sim, cadastrar',
     cancelButtonText: 'Cancelar',
     inputAttributes: {
       autocomplete: 'off',

@@ -754,7 +754,7 @@ class PosController extends Controller
             'customer' => $sale->customer ? [
                 'id' => $sale->customer->id,
                 'name' => $sale->customer->name,
-                'document' => $sale->customer->document,
+                'cpf_cnpj' => $sale->customer->cpf_cnpj,
             ] : null,
             'total_amount' => (float) $sale->total_amount,
             'discount_amount' => (float) $sale->discount_amount,
