@@ -1521,14 +1521,17 @@ function scrollToBottom() {
   });
 }
 
-watch(() => cartStore.items.length, async () => {
-  if (cartStore.items.length > 0) {
-    await nextTick();
-    if (cartListRef.value) {
-      cartListRef.value.scrollTop = cartListRef.value.scrollHeight;
+watch(
+  () => cartStore.items.map((i) => `${i.id}:${i.quantity}`).join('|'),
+  async () => {
+    if (cartStore.items.length > 0) {
+      await nextTick();
+      if (cartListRef.value) {
+        cartListRef.value.scrollTop = cartListRef.value.scrollHeight;
+      }
     }
   }
-});
+);
 
 watch(isIdle, (idle) => {
   if (!idle) nextTick(focusSearch);

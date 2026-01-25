@@ -82,11 +82,14 @@ class Sale extends Model
     }
 
     /**
+     * Itens ordenados por updated_at para que, ao adicionar quantidade a um já existente,
+     * ele vá para o final e o scroll da lista permaneça no último item.
+     *
      * @return HasMany<SaleItem>
      */
     public function items(): HasMany
     {
-        return $this->hasMany(SaleItem::class);
+        return $this->hasMany(SaleItem::class)->orderBy('updated_at');
     }
 
     /**
