@@ -28,20 +28,20 @@
       <div class="space-y-3">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-slate-700">Pagamentos:</span>
-          <span v-if="!showAddPayment && remainingAmount > 0" class="text-xs text-slate-500">Pressione P para adicionar pagamento</span>
+          <span v-if="!isFinishing && !showAddPayment && remainingAmount > 0" class="text-xs text-slate-500">Pressione P para adicionar pagamento</span>
         </div>
 
-        <div v-if="payments.length === 0" class="rounded border border-slate-200 bg-slate-50 p-3 text-center text-sm text-slate-500">
+        <div v-if="!isFinishing && payments.length === 0" class="rounded border border-slate-200 bg-slate-50 p-3 text-center text-sm text-slate-500">
           Nenhum pagamento adicionado
         </div>
 
         <div v-else class="space-y-2">
           <div
-            v-for="(payment, index) in payments"
+            v-for="(payment, index) in (isFinishing ? paymentsSnapshotForFinishing : payments)"
             :key="payment.id || index"
             :class="[
               'flex items-center justify-between rounded border p-3 transition',
-              selectedPaymentIndex === index
+              !isFinishing && selectedPaymentIndex === index
                 ? 'border-orange-500 bg-orange-50'
                 : 'border-slate-200 bg-white'
             ]"
@@ -56,7 +56,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-slate-700">{{ formatCurrency(payment.amount) }}</span>
-              <span v-if="selectedPaymentIndex === index && paymentRemovalAuthorized" class="text-xs font-medium text-orange-600">ENTER para remover • ESC para desativar</span>
+              <span v-if="!isFinishing && selectedPaymentIndex === index && paymentRemovalAuthorized" class="text-xs font-medium text-orange-600">ENTER para remover • ESC para desativar</span>
             </div>
           </div>
         </div>
@@ -226,6 +226,7 @@ const selectedInstallmentIndex = ref(0);
 const selectedPaymentIndex = ref(-1);
 const isFinishing = ref(false);
 const paymentRemovalAuthorized = ref(false);
+const paymentsSnapshotForFinishing = ref([]);
 
 const amountInputRef = ref(null);
 const installmentsListRef = ref(null);
@@ -346,6 +347,7 @@ function resetPaymentForm() {
   paymentRemovalAuthorized.value = false;
   amountFormatted.value = '';
   isFinishing.value = false;
+  paymentsSnapshotForFinishing.value = [];
   newPayment.value = {
     method: 'cash',
     amount: 0,
@@ -367,6 +369,7 @@ async function handleFinish() {
   if (!canFinish.value || isFinishing.value) return;
 
   isFinishing.value = true;
+  paymentsSnapshotForFinishing.value = (cartStore.payments || []).map((p) => ({ ...p }));
 
   try {
     const result = await cartStore.finish();
