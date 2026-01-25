@@ -2023,6 +2023,17 @@ onUnmounted(() => {
                   </button>
                 </div>
               </div>
+              <div
+                v-else-if="cartStore.discountAmount > 0"
+                class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3"
+              >
+                <p class="text-sm font-semibold text-blue-800">
+                  Desconto manual aplicado
+                </p>
+                <p class="mt-1 text-xs text-blue-700">
+                  Desconto: {{ formatCurrency(cartStore.discountAmount) }}
+                </p>
+              </div>
               <div class="mb-4 flex items-center justify-between">
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartStore.finalAmount || cartTotal) }}</span>

@@ -6,8 +6,8 @@
           <span class="text-sm font-medium text-slate-700">Total Venda:</span>
           <span class="text-xl font-bold text-slate-900">{{ formatCurrency(saleSubtotal) }}</span>
         </div>
-        <div v-if="cartStore.coupon" class="mt-2 flex items-center justify-between text-green-700">
-          <span class="text-sm font-medium">Cupom {{ cartStore.coupon.code }}:</span>
+        <div v-if="cartStore.discountAmount > 0" class="mt-2 flex items-center justify-between" :class="cartStore.coupon ? 'text-green-700' : 'text-blue-700'">
+          <span class="text-sm font-medium">{{ cartStore.coupon ? `Cupom ${cartStore.coupon.code}` : 'Desconto' }}:</span>
           <span class="text-sm font-semibold">- {{ formatCurrency(cartStore.discountAmount) }}</span>
         </div>
         <div class="mt-2 flex items-center justify-between">
