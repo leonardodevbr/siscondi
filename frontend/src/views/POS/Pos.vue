@@ -1253,6 +1253,14 @@ async function confirmCheckout() {
   await handleFinalizeSale();
 }
 
+function applyCpfCnpjMask(val) {
+  const d = String(val ?? '').replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 11) {
+    return d.slice(0, 3) + (d.length > 3 ? '.' + d.slice(3, 6) : '') + (d.length > 6 ? '.' + d.slice(6, 9) : '') + (d.length > 9 ? '-' + d.slice(9, 11) : '');
+  }
+  return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + (d.length > 12 ? '-' + d.slice(12, 14) : '');
+}
+
 async function handleIdentifyCustomer() {
   if (!cartStore.saleStarted || !cartStore.saleId) {
     feedbackMessage.value = 'Inicie uma venda primeiro.';
@@ -1262,28 +1270,42 @@ async function handleIdentifyCustomer() {
 
   const result = await Swal.fire({
     title: 'Identificar Cliente',
-    html: '<input id="swal-cpf-input" class="swal2-input" placeholder="CPF/CNPJ" autocomplete="one-time-code" data-lpignore="true" data-form-type="other">',
+    html: `
+      <label for="swal-cpf-input" class="swal-cpf-label">CPF ou CNPJ</label>
+      <input id="swal-cpf-input" class="swal2-input" placeholder="Digite o documento" autocomplete="one-time-code" data-lpignore="true" data-form-type="other" maxlength="18">
+      <p class="swal-cpf-shortcuts">Enter para buscar · Esc para cancelar</p>
+    `,
     showCancelButton: true,
-    confirmButtonText: 'Buscar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Buscar (Enter)',
+    cancelButtonText: 'Cancelar (Esc)',
     customClass: {
       input: 'swal-manager-auth-input',
     },
     preConfirm: () => {
-      const input = document.getElementById('swal-cpf-input');
-      const value = input?.value?.trim();
-      if (!value) {
-        Swal.showValidationMessage('Informe o CPF/CNPJ');
+      const input = window.document.getElementById('swal-cpf-input');
+      const value = input?.value?.trim().replace(/\D/g, '') ?? '';
+      if (!value || value.length < 11) {
+        Swal.showValidationMessage('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).');
         return false;
       }
       return value;
     },
     didOpen: () => {
-      const input = document.getElementById('swal-cpf-input');
-      if (input) {
-        input.focus();
-        input.setAttribute('inputmode', 'numeric');
-      }
+      const input = window.document.getElementById('swal-cpf-input');
+      if (!input) return;
+      input.setAttribute('inputmode', 'numeric');
+      input.focus();
+      input.addEventListener('input', () => {
+        const masked = applyCpfCnpjMask(input.value);
+        input.value = masked;
+        input.setSelectionRange(masked.length, masked.length);
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          Swal.clickConfirm();
+        }
+      });
     },
   });
 
@@ -1292,16 +1314,16 @@ async function handleIdentifyCustomer() {
     return;
   }
 
-  const document = result.value.replace(/\D/g, '');
+  const docValue = result.value.replace(/\D/g, '');
 
   try {
-    await cartStore.identifyCustomer(document);
+    await cartStore.identifyCustomer(docValue);
     feedbackMessage.value = `Cliente identificado: ${formattedCustomerLabel.value}`;
     feedbackType.value = 'info';
     nextTick(focusSearch);
   } catch (error) {
     if (error.status === 404) {
-      await handleQuickRegister(error.document || document);
+      await handleQuickRegister(error.document || docValue);
     } else {
       feedbackMessage.value = error.message || 'Erro ao identificar cliente.';
       feedbackType.value = 'error';

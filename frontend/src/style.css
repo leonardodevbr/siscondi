@@ -65,6 +65,23 @@
   -webkit-text-security: disc;
 }
 
+/* Label e dica de atalhos no modal Identificar Cliente */
+.swal-cpf-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  text-align: left;
+}
+
+.swal-cpf-shortcuts {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+}
+
 .swal2-popup {
   @apply rounded-xl;
 }
