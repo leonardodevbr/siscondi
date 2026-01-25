@@ -130,30 +130,106 @@
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2">Produtos elegíveis</label>
             <p class="text-xs text-slate-500 mb-2">Deixe vazio para todos. Se escolher algum, o cupom só valerá para itens desses produtos.</p>
-            <select
-              v-model="form.product_ids"
-              multiple
-              class="input-base w-full min-h-[80px]"
-              size="4"
-            >
-              <option v-for="p in productOptions" :key="p.id" :value="p.id">
-                {{ p.name }}
-              </option>
-            </select>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <input
+                v-model="productSearchQuery"
+                type="text"
+                class="input-base w-full mb-3"
+                placeholder="Pesquisar produtos..."
+              >
+              <div v-if="selectedProducts.length" class="mb-3 flex flex-wrap gap-2">
+                <span
+                  v-for="p in selectedProducts"
+                  :key="p.id"
+                  class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-sm text-blue-800"
+                >
+                  {{ p.name }}
+                  <button
+                    type="button"
+                    class="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    aria-label="Remover"
+                    @click="removeProductId(p.id)"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div class="max-h-48 overflow-y-auto rounded border border-slate-100">
+                <label
+                  v-for="p in filteredProductOptions"
+                  :key="p.id"
+                  :class="[
+                    'flex cursor-pointer items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50',
+                    form.product_ids.includes(p.id) ? 'bg-blue-50' : ''
+                  ]"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="form.product_ids.includes(p.id)"
+                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    @change="toggleProductId(p.id)"
+                  >
+                  <span class="text-sm text-slate-800">{{ p.name }}</span>
+                </label>
+                <p v-if="filteredProductOptions.length === 0" class="px-3 py-4 text-center text-sm text-slate-500">
+                  Nenhum produto encontrado.
+                </p>
+              </div>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2">Categorias elegíveis</label>
             <p class="text-xs text-slate-500 mb-2">Deixe vazio para todas. Se escolher alguma, o cupom só valerá para itens dessas categorias.</p>
-            <select
-              v-model="form.category_ids"
-              multiple
-              class="input-base w-full min-h-[80px]"
-              size="4"
-            >
-              <option v-for="c in categoryOptions" :key="c.id" :value="c.id">
-                {{ c.name }}
-              </option>
-            </select>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <input
+                v-model="categorySearchQuery"
+                type="text"
+                class="input-base w-full mb-3"
+                placeholder="Pesquisar categorias..."
+              >
+              <div v-if="selectedCategories.length" class="mb-3 flex flex-wrap gap-2">
+                <span
+                  v-for="c in selectedCategories"
+                  :key="c.id"
+                  class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-sm text-blue-800"
+                >
+                  {{ c.name }}
+                  <button
+                    type="button"
+                    class="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    aria-label="Remover"
+                    @click="removeCategoryId(c.id)"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div class="max-h-48 overflow-y-auto rounded border border-slate-100">
+                <label
+                  v-for="c in filteredCategoryOptions"
+                  :key="c.id"
+                  :class="[
+                    'flex cursor-pointer items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50',
+                    form.category_ids.includes(c.id) ? 'bg-blue-50' : ''
+                  ]"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="form.category_ids.includes(c.id)"
+                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    @change="toggleCategoryId(c.id)"
+                  >
+                  <span class="text-sm text-slate-800">{{ c.name }}</span>
+                </label>
+                <p v-if="filteredCategoryOptions.length === 0" class="px-3 py-4 text-center text-sm text-slate-500">
+                  Nenhuma categoria encontrada.
+                </p>
+              </div>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2">Tipos de pagamento aceitos</label>
@@ -266,6 +342,59 @@ const form = ref({
 
 const productOptions = ref([]);
 const categoryOptions = ref([]);
+const productSearchQuery = ref('');
+const categorySearchQuery = ref('');
+
+const selectedProducts = computed(() =>
+  productOptions.value.filter((p) => form.value.product_ids.includes(p.id))
+);
+const selectedCategories = computed(() =>
+  categoryOptions.value.filter((c) => form.value.category_ids.includes(c.id))
+);
+
+const filteredProductOptions = computed(() => {
+  const q = (productSearchQuery.value || '').trim().toLowerCase();
+  const list = productOptions.value;
+  if (!q) return list;
+  return list.filter((p) => (p.name || '').toLowerCase().includes(q));
+});
+
+const filteredCategoryOptions = computed(() => {
+  const q = (categorySearchQuery.value || '').trim().toLowerCase();
+  const list = categoryOptions.value;
+  if (!q) return list;
+  return list.filter((c) => (c.name || '').toLowerCase().includes(q));
+});
+
+function toggleProductId(id) {
+  const arr = [...(form.value.product_ids || [])];
+  const i = arr.indexOf(id);
+  if (i >= 0) {
+    arr.splice(i, 1);
+  } else {
+    arr.push(id);
+  }
+  form.value.product_ids = arr;
+}
+
+function toggleCategoryId(id) {
+  const arr = [...(form.value.category_ids || [])];
+  const i = arr.indexOf(id);
+  if (i >= 0) {
+    arr.splice(i, 1);
+  } else {
+    arr.push(id);
+  }
+  form.value.category_ids = arr;
+}
+
+function removeProductId(id) {
+  form.value.product_ids = (form.value.product_ids || []).filter((x) => x !== id);
+}
+
+function removeCategoryId(id) {
+  form.value.category_ids = (form.value.category_ids || []).filter((x) => x !== id);
+}
 
 function normalizeCode() {
   const v = form.value.code || '';
