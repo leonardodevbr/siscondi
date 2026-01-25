@@ -278,6 +278,40 @@ function viaScan(code) {
   return /^\d+$/.test(code) || code.length >= 8;
 }
 
+async function handleIdleScan(code) {
+  const c = String(code ?? '').trim();
+  if (!c) return;
+
+  const parsed = parseQuantityMultiplier(c);
+  const branchId = branchIdForSale();
+  try {
+    await cartStore.startSale(null, branchId);
+  } catch (err) {
+    toast.error(err.message ?? 'Erro ao iniciar venda.');
+    return;
+  }
+
+  quantityMultiplier.value = parsed.quantity;
+  lastScannedCode.value = parsed.code;
+  lastScanError.value = null;
+
+  try {
+    if (viaScan(parsed.code)) {
+      try {
+        await processScanApi(parsed.code, parsed.quantity);
+      } catch {
+        lastScanError.value = 'PRODUTO NÃO CADASTRADO';
+        lastScannedProduct.value = null;
+      }
+    } else {
+      await runProductSearchAndAdd(parsed.code, parsed.quantity);
+    }
+  } finally {
+    quantityMultiplier.value = 1;
+    nextTick(focusSearch);
+  }
+}
+
 function parseQuantityMultiplier(input) {
   const trimmed = String(input).trim();
   if (!trimmed) return { quantity: 1, code: '' };
@@ -658,24 +692,31 @@ function handleSearchKeydown(e) {
 }
 
 function handleScanBufferKeydown(e) {
-  if (!cashRegisterStore.isOpen || !cartStore.saleStarted) return;
-  if (isSearchMode.value) return;
-  
-  const el = document.activeElement;
-  const tag = el?.tagName?.toLowerCase();
-  if (tag === 'input' || tag === 'textarea') return;
+  if (!cashRegisterStore.isOpen) return;
 
   const key = e.key;
   const now = Date.now();
+
+  if (cartStore.saleStarted) {
+    if (isSearchMode.value) return;
+    const el = document.activeElement;
+    const tag = el?.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+  }
 
   if (key === 'Enter') {
     const buf = scanBuffer.value.trim();
     const rapid = now - scanLastKeyTime.value < 50;
     scanBuffer.value = '';
-    if (buf && rapid) {
+    if (!buf) return;
+    if (rapid) {
       e.preventDefault();
       e.stopPropagation();
-      handleScannedCode(buf);
+      if (cartStore.saleStarted) {
+        handleScannedCode(buf);
+      } else {
+        handleIdleScan(buf);
+      }
     }
     return;
   }
@@ -770,14 +811,20 @@ async function handleCancelSale() {
     return;
   }
 
-  const ok = await confirm(
-    'Cancelar Venda',
-    'Tem certeza que deseja cancelar a venda atual? Todos os itens serão removidos e a venda será cancelada no sistema.',
-    'Sim, cancelar',
-    'red'
-  );
-  
-  if (ok) {
+  const result = await Swal.fire({
+    title: 'Cancelar Venda',
+    text: 'Tem certeza que deseja cancelar a venda atual? Todos os itens serão removidos e a venda será cancelada no sistema.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sim, cancelar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    focusConfirm: true,
+    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
+  });
+
+  if (result.isConfirmed) {
     try {
       await cartStore.cancel();
       toast.success('Venda cancelada.');
@@ -1113,12 +1160,33 @@ function handleShortcutClick(key) {
     return;
   }
   if (key === 'F10') {
-    if (cartStore.items.length === 0) {
-      toast.error('Adicione pelo menos um item.');
+    handleF10Finalize();
+    return;
+  }
+}
+
+async function handleF10Finalize() {
+  if (cartStore.items.length === 0) {
+    toast.error('Adicione pelo menos um item.');
+    return;
+  }
+  if (!cartStore.customer) {
+    const swalResult = await Swal.fire({
+      title: 'Identificar Cliente?',
+      text: 'Deseja informar o CPF/CNPJ na nota?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim (ENTER)',
+      cancelButtonText: 'Não (ESC)',
+      focusConfirm: true,
+      footer: '<p class="swal-cpf-shortcuts">ENTER para Sim · ESC para Não</p>',
+    });
+    if (swalResult.isConfirmed) {
+      await handleIdentifyCustomer({ openCheckoutOnSuccess: true });
       return;
     }
-    showCheckoutModal.value = true;
   }
+  showCheckoutModal.value = true;
 }
 
 function handleKeydown(e) {
@@ -1245,7 +1313,8 @@ function handleKeydown(e) {
       toast.error('Adicione pelo menos um item.');
       return;
     }
-    showCheckoutModal.value = true;
+    handleF10Finalize();
+    return;
   }
 }
 
@@ -1268,7 +1337,7 @@ function getCustomerMaskedDoc(c) {
   return doc || '—';
 }
 
-async function handleIdentifyCustomer() {
+async function handleIdentifyCustomer(options = {}) {
   if (!cartStore.saleStarted || !cartStore.saleId) {
     feedbackMessage.value = 'Inicie uma venda primeiro.';
     feedbackType.value = 'error';
@@ -1353,10 +1422,13 @@ async function handleIdentifyCustomer() {
     await cartStore.identifyCustomer(docValue);
     feedbackMessage.value = `Cliente identificado: ${formattedCustomerLabel.value}`;
     feedbackType.value = 'info';
+    if (options.openCheckoutOnSuccess) showCheckoutModal.value = true;
     nextTick(focusSearch);
   } catch (error) {
     if (error.status === 404) {
-      await handleQuickRegister(error.document || docValue);
+      await handleQuickRegister(error.document || docValue, undefined, {
+        onSuccess: () => { if (options.openCheckoutOnSuccess) showCheckoutModal.value = true; },
+      });
     } else {
       feedbackMessage.value = error.message || 'Erro ao identificar cliente.';
       feedbackType.value = 'error';
@@ -1365,7 +1437,7 @@ async function handleIdentifyCustomer() {
   }
 }
 
-async function handleQuickRegister(document) {
+async function handleQuickRegister(doc, name, registerOptions = {}) {
   const result = await Swal.fire({
     title: 'Cliente não encontrado',
     text: 'Cadastrar rápido?',
@@ -1399,12 +1471,13 @@ async function handleQuickRegister(document) {
     return;
   }
 
-  const name = result.value?.trim() || null;
+  const nameValue = result.value?.trim() || null;
 
   try {
-    await cartStore.quickRegisterCustomer(document, name);
+    await cartStore.quickRegisterCustomer(doc, nameValue);
     feedbackMessage.value = `Cliente cadastrado: ${formattedCustomerLabel.value}`;
     feedbackType.value = 'info';
+    registerOptions.onSuccess?.();
     nextTick(focusSearch);
   } catch (error) {
     feedbackMessage.value = error.message || 'Erro ao cadastrar cliente.';
@@ -1457,14 +1530,16 @@ watch(() => cartStore.items.length, async () => {
   }
 });
 
+watch(isIdle, (idle) => {
+  if (!idle) nextTick(focusSearch);
+});
+
 onMounted(async () => {
   await initializePDV();
   if (cashRegisterStore.isOpen) {
     await cartStore.init();
-    if (cartStore.saleStarted) {
-      await nextTick();
-      focusSearch();
-    }
+    await nextTick();
+    focusSearch();
   }
   window.addEventListener('keydown', handleKeydown);
   window.addEventListener('keydown', handleScanBufferKeydown, true);
@@ -1562,7 +1637,7 @@ onUnmounted(() => {
             </p>
           </div>
           <p class="mb-4 text-slate-500">
-            Pressione F1 para iniciar venda
+            Pressione F1 para iniciar venda ou BIPE um produto
           </p>
           <button
             type="button"
@@ -1812,7 +1887,7 @@ onUnmounted(() => {
                 <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartTotal) }}</span>
               </div>
               <div class="flex justify-end">
-                <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="showCheckoutModal = true">
+                <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="handleF10Finalize">
                   F10 - Finalizar Venda
                 </Button>
               </div>
