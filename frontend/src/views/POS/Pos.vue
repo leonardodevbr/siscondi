@@ -550,84 +550,61 @@ async function confirmCancellation(codeOrItem) {
     return;
   }
 
-  const user = authStore.user;
-  const isAdmin = user?.roles?.some((r) => {
-    if (typeof r === 'string') {
-      return r === 'super-admin' || r === 'admin' || r === 'manager';
-    }
-    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
-  });
-
   const productName = formatCartItemName(item);
   const qty = item.quantity ?? 1;
   const qtyLabel = qty === 1 ? '1 un' : `${qty} un`;
   let confirmed = false;
 
-  if (isAdmin) {
-    const result = await Swal.fire({
-      title: 'Confirmar Cancelamento',
-      html: `Deseja remover <strong>${qtyLabel}</strong> de <strong>${productName}</strong>?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sim, Remover',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#ef4444',
-      focusConfirm: false,
-      allowOutsideClick: false,
-    });
-    confirmed = result.isConfirmed;
-  } else {
-    const result = await Swal.fire({
-      title: 'Cancelar Item',
-      html: `Insira a senha de gerente para cancelar <strong>${productName}</strong>:`,
-      icon: 'warning',
-      input: 'text',
-      inputPlaceholder: 'Senha de gerente',
-      customClass: {
-        input: 'swal-manager-auth-input',
-      },
-      inputAttributes: {
-        autocomplete: 'off',
-        autocapitalize: 'off',
-        autocorrect: 'off',
-        spellcheck: 'false',
-        name: 'manager-auth-cancel',
-        'data-lpignore': 'true',
-        'data-1p-ignore': 'true',
-        'data-bwignore': 'true',
-        'data-form-type': 'other',
-      },
-      showCancelButton: true,
-      confirmButtonText: 'Confirmar (ENTER)',
-      cancelButtonText: 'Cancelar (ESC)',
-      confirmButtonColor: '#ef4444',
-      focusConfirm: false,
-      allowOutsideClick: false,
-      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-      inputValidator: (value) => {
-        if (!value) {
-          return 'Por favor, insira a senha.';
-        }
-      },
-      preConfirm: async (value) => {
-        if (!value) return undefined;
-        try {
-          const isValid = await authStore.validateOperationPassword(value);
-          if (!isValid) {
-            Swal.showValidationMessage('Senha incorreta.');
-            return false;
-          }
-          return value;
-        } catch {
-          Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+  const result = await Swal.fire({
+    title: 'Cancelar Item',
+    html: `<strong>${qtyLabel} de ${productName}</strong><br><br>Insira a senha de operação.`,
+    icon: 'warning',
+    input: 'text',
+    inputPlaceholder: 'Senha de operação',
+    customClass: {
+      input: 'swal-manager-auth-input',
+    },
+    inputAttributes: {
+      autocomplete: 'off',
+      autocapitalize: 'off',
+      autocorrect: 'off',
+      spellcheck: 'false',
+      name: 'manager-auth-cancel',
+      'data-lpignore': 'true',
+      'data-1p-ignore': 'true',
+      'data-bwignore': 'true',
+      'data-form-type': 'other',
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
+    confirmButtonColor: '#ef4444',
+    focusConfirm: false,
+    allowOutsideClick: false,
+    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
+    inputValidator: (value) => {
+      if (!value) {
+        return 'Por favor, insira a senha.';
+      }
+    },
+    preConfirm: async (value) => {
+      if (!value) return undefined;
+      try {
+        const isValid = await authStore.validateOperationPassword(value);
+        if (!isValid) {
+          Swal.showValidationMessage('Senha incorreta.');
           return false;
         }
-      },
-    });
+        return value;
+      } catch {
+        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+        return false;
+      }
+    },
+  });
 
-    if (result.isConfirmed) {
-      confirmed = true;
-    }
+  if (result.isConfirmed) {
+    confirmed = true;
   }
 
   if (!confirmed) {
@@ -1006,85 +983,55 @@ async function handleRemoveCoupon() {
 }
 
 async function handleRemoveManualDiscount() {
-  const authUser = authStore.user;
-  const isManagerLevel = authUser?.roles?.some((r) => {
-    if (typeof r === 'string') {
-      return r === 'super-admin' || r === 'admin' || r === 'manager';
-    }
-    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
-  });
-
-  let proceed = false;
-
-  if (isManagerLevel) {
-    const result = await Swal.fire({
-      title: 'Remover desconto manual',
-      html: 'Deseja remover o desconto manual aplicado nesta venda?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sim, remover (ENTER)',
-      cancelButtonText: 'Cancelar (ESC)',
-      confirmButtonColor: '#ef4444',
-      focusConfirm: true,
-      allowOutsideClick: false,
-      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-    });
-    proceed = result.isConfirmed;
-  } else {
-    const result = await Swal.fire({
-      title: 'Remover desconto manual',
-      html: 'Insira a senha de gerente para autorizar a remoção do desconto manual:',
-      icon: 'warning',
-      input: 'password',
-      inputPlaceholder: 'Senha de gerente',
-      customClass: {
-        input: 'swal-manager-auth-input',
-      },
-      inputAttributes: {
-        autocomplete: 'off',
-        autocapitalize: 'off',
-        autocorrect: 'off',
-        spellcheck: 'false',
-        name: 'manager-auth-remove-discount',
-        'data-lpignore': 'true',
-        'data-1p-ignore': 'true',
-        'data-bwignore': 'true',
-        'data-form-type': 'other',
-      },
-      showCancelButton: true,
-      confirmButtonText: 'Confirmar (ENTER)',
-      cancelButtonText: 'Cancelar (ESC)',
-      confirmButtonColor: '#ef4444',
-      focusConfirm: false,
-      allowOutsideClick: false,
-      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-      inputValidator: (value) => {
-        if (!value) {
-          return 'Por favor, insira a senha.';
-        }
-      },
-      preConfirm: async (value) => {
-        if (!value) return undefined;
-        try {
-          const isValid = await authStore.validateOperationPassword(value);
-          if (!isValid) {
-            Swal.showValidationMessage('Senha incorreta.');
-            return false;
-          }
-          return value;
-        } catch {
-          Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+  const result = await Swal.fire({
+    title: 'Remover desconto manual',
+    html: 'Insira a senha de operação.',
+    icon: 'warning',
+    input: 'password',
+    inputPlaceholder: 'Senha de operação',
+    customClass: {
+      input: 'swal-manager-auth-input',
+    },
+    inputAttributes: {
+      autocomplete: 'off',
+      autocapitalize: 'off',
+      autocorrect: 'off',
+      spellcheck: 'false',
+      name: 'manager-auth-remove-discount',
+      'data-lpignore': 'true',
+      'data-1p-ignore': 'true',
+      'data-bwignore': 'true',
+      'data-form-type': 'other',
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
+    confirmButtonColor: '#ef4444',
+    focusConfirm: false,
+    allowOutsideClick: false,
+    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
+    inputValidator: (value) => {
+      if (!value) {
+        return 'Por favor, insira a senha.';
+      }
+    },
+    preConfirm: async (value) => {
+      if (!value) return undefined;
+      try {
+        const isValid = await authStore.validateOperationPassword(value);
+        if (!isValid) {
+          Swal.showValidationMessage('Senha incorreta.');
           return false;
         }
-      },
-    });
+        return value;
+      } catch {
+        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+        return false;
+      }
+    },
+  });
 
-    if (result.isConfirmed) {
-      proceed = true;
-    }
-  }
-
-  if (!proceed) return;
+  if (!result.isConfirmed) return;
 
   try {
     await cartStore.removeManualDiscount();
@@ -1313,33 +1260,11 @@ function hideBalanceAfterTimeout() {
 }
 
 async function requestBalanceAccess() {
-  const user = authStore.user;
-  const isAdmin = user?.roles?.some((r) => {
-    if (typeof r === 'string') {
-      return r === 'super-admin' || r === 'admin' || r === 'manager';
-    }
-    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
-  });
-  
-  if (isAdmin) {
-    const confirmed = await confirm(
-      'Visualizar Saldo',
-      'Deseja visualizar o saldo do caixa?',
-      'Sim, visualizar',
-      'blue'
-    );
-    if (confirmed) {
-      isBalanceVisible.value = true;
-      hideBalanceAfterTimeout();
-    }
-    return;
-  }
-  
   const result = await Swal.fire({
-    title: 'Senha de Gerente',
-    text: 'Informe a Senha de Gerente para visualizar o saldo',
+    title: 'Visualizar Saldo',
+    text: 'Insira a senha de operação.',
     input: 'text',
-    inputPlaceholder: 'Digite a senha',
+    inputPlaceholder: 'Senha de operação',
     customClass: {
       input: 'swal-manager-auth-input',
     },

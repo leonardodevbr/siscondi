@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Branch;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -82,8 +83,11 @@ class AuthController extends Controller
     }
 
     /**
-     * Validar senha de operação do usuário logado.
-     * A senha é armazenada com bcrypt (cast 'hashed' no model). Hash::check(plain, hash).
+     * Validar senha de operação para autorizar ação (cancelar item, desconto, saldo, etc.).
+     *
+     * - GERENTE/Super-admin logado: valida a senha de operação DELE MESMO.
+     * - VENDEDOR (ou outro) logado: a senha digitada deve ser a de algum GERENTE ou Super-admin
+     *   (mesma filial do vendedor, ou super-admin). Assim o vendedor chama um gerente para autorizar.
      */
     public function validateOperationPassword(Request $request): JsonResponse
     {
@@ -93,18 +97,56 @@ class AuthController extends Controller
 
         $user = $request->user();
         if (! $user) {
-            return response()->json(['valid' => false]);
+            return response()->json(['valid' => false, 'message' => 'Usuário não autenticado.']);
         }
 
         $plain = $request->input('password');
-        $stored = $user->getRawOriginal('operation_password') ?? $user->operation_password;
+        $isManagerOrSuperAdmin = $user->hasRole('super-admin') || $user->hasRole('manager');
 
-        if ($stored === null || $stored === '') {
-            return response()->json(['valid' => false]);
+        if ($isManagerOrSuperAdmin) {
+            $stored = $user->getRawOriginal('operation_password') ?? $user->operation_password;
+            if ($stored === null || $stored === '') {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Este usuário não possui senha de operação cadastrada.',
+                    'user_id' => $user->id,
+                ]);
+            }
+            $valid = Hash::check($plain, $stored);
+
+            return response()->json([
+                'valid' => $valid,
+                'user_id' => $user->id,
+            ]);
         }
 
-        $valid = Hash::check($plain, $stored);
+        // Vendedor/estoquista logado: a senha digitada deve ser de algum gerente (ou super-admin)
+        $branchId = $user->branch_id;
+        $managers = User::query()
+            ->whereNotNull('operation_password')
+            ->where('operation_password', '!=', '')
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['manager', 'super-admin']))
+            ->when($branchId !== null, function ($q) use ($branchId) {
+                $q->where(function ($sub) use ($branchId) {
+                    $sub->where('branch_id', $branchId)
+                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'super-admin'));
+                });
+            })
+            ->get();
 
-        return response()->json(['valid' => $valid]);
+        foreach ($managers as $manager) {
+            $stored = $manager->getRawOriginal('operation_password') ?? $manager->operation_password;
+            if ($stored && Hash::check($plain, $stored)) {
+                return response()->json([
+                    'valid' => true,
+                    'authorized_by_user_id' => $manager->id,
+                ]);
+            }
+        }
+
+        return response()->json([
+            'valid' => false,
+            'message' => 'Senha de gerente incorreta.',
+        ]);
     }
 }
