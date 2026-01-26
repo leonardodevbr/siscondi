@@ -783,6 +783,7 @@ function handleScanBufferKeydown(e) {
   if (showDiscountModal.value) return;
   if (showBalanceModal.value) return;
   if (showOperationsMenu.value) return;
+  if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible() && (e.key === 'Enter' || e.key === 'Escape')) return;
 
   const key = e.key;
   const now = Date.now();
@@ -976,7 +977,7 @@ async function handleRemoveManualDiscount() {
       allowOutsideClick: false,
       footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
     });
-    confirmed = result.isConfirmed;
+    proceed = result.isConfirmed;
   } else {
     const result = await Swal.fire({
       title: 'Remover desconto manual',
@@ -1504,6 +1505,13 @@ function handleKeydown(e) {
   if (!cashRegisterStore.isOpen) return;
   const key = e.key;
   const isF = /^F([1-9]|1[0-2])$/.test(key);
+
+  // Deixar SweetAlert2 tratar Enter (confirmar) e Escape (cancelar) quando um modal Swal estiver aberto
+  if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) {
+    if (key === 'Enter' || key === 'Escape') {
+      return;
+    }
+  }
 
   if (key === 'Escape') {
     e.preventDefault();
