@@ -590,11 +590,12 @@ async function confirmCancellation(codeOrItem) {
         'data-form-type': 'other',
       },
       showCancelButton: true,
-      confirmButtonText: 'Confirmar',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Confirmar (ENTER)',
+      cancelButtonText: 'Cancelar (ESC)',
       confirmButtonColor: '#ef4444',
       focusConfirm: false,
       allowOutsideClick: false,
+      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
       inputValidator: (value) => {
         if (!value) {
           return 'Por favor, insira a senha.';
@@ -968,11 +969,12 @@ async function handleRemoveManualDiscount() {
       html: 'Deseja remover o desconto manual aplicado nesta venda?',
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: 'Sim, remover',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Sim, remover (ENTER)',
+      cancelButtonText: 'Cancelar (ESC)',
       confirmButtonColor: '#ef4444',
       focusConfirm: true,
       allowOutsideClick: false,
+      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
     });
     confirmed = result.isConfirmed;
   } else {
@@ -997,11 +999,12 @@ async function handleRemoveManualDiscount() {
         'data-form-type': 'other',
       },
       showCancelButton: true,
-      confirmButtonText: 'Confirmar',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Confirmar (ENTER)',
+      cancelButtonText: 'Cancelar (ESC)',
       confirmButtonColor: '#ef4444',
       focusConfirm: false,
       allowOutsideClick: false,
+      footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
       inputValidator: (value) => {
         if (!value) {
           return 'Por favor, insira a senha.';
@@ -1317,10 +1320,11 @@ async function requestBalanceAccess() {
       'data-form-type': 'other',
     },
     showCancelButton: true,
-    confirmButtonText: 'Confirmar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Confirmar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
     confirmButtonColor: '#2563eb',
     cancelButtonColor: '#64748b',
+    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
     inputValidator: (value) => {
       if (!value) {
         return 'Por favor, informe a senha';
@@ -2178,7 +2182,7 @@ onUnmounted(() => {
                   </button>
                 </div>
               </template>
-              <div v-else-if="!isSearchMode" class="flex h-32 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div v-else-if="!isSearchMode" class="flex h-14 w-1/2 items-center mx-auto mt-12 justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <p class="text-base font-medium text-slate-600">
                   Pressione <kbd class="rounded bg-slate-200 px-2 py-0.5 font-mono text-sm font-semibold">F5</kbd> para ativar o modo Pesquisa
                 </p>
@@ -2351,7 +2355,7 @@ onUnmounted(() => {
 
       <div v-else class="fixed bottom-0 left-0 right-0 z-[100] flex shrink-0 flex-nowrap items-center justify-center gap-x-1.5 bg-slate-800 px-2 py-1.5 text-xs text-white shadow-lg overflow-x-auto">
         <button
-          v-for="s in shortcuts"
+          v-for="s in footerShortcuts"
           :key="s.key"
           type="button"
           class="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-700 px-2 py-1 font-medium text-white transition-colors hover:bg-slate-600 active:bg-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1 focus:ring-offset-slate-800"
