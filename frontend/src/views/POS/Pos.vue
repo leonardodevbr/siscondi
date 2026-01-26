@@ -118,6 +118,7 @@ const shortcutsSale = [
   { key: 'F2', label: 'Consultar Preço' },
   { key: 'F3', label: 'Cancelar Item' },
   { key: 'F4', label: 'Ver Saldo' },
+  { key: 'F5', label: 'Pesquisar por nome' },
   { key: 'F6', label: 'Cancelar Venda' },
   { key: 'F7', label: 'Identificar Cliente' },
   { key: 'F8', label: 'Desconto/Cupom' },
@@ -125,17 +126,22 @@ const shortcutsSale = [
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
-const removeDiscountShortcutKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '') ? '⌘F3' : 'Ctrl+F3';
 const hasManualDiscount = computed(
   () => cartStore.discountAmount > 0 && !cartStore.coupon
 );
+const shortcutOrder = (s) => {
+  if (s.key === 'ESC') return 999;
+  const m = String(s.key).match(/^F(\d+)$/);
+  return m ? parseInt(m[1], 10) : 999;
+};
 const shortcuts = computed(() => {
   if (isIdle.value) return shortcutsIdle;
   const list = [...shortcutsSale];
   if (hasManualDiscount.value) {
     const idx = list.findIndex((s) => s.key === 'F8');
-    list.splice(idx >= 0 ? idx + 1 : list.length, 0, { key: removeDiscountShortcutKey, label: 'Remover desconto' });
+    list.splice(idx >= 0 ? idx + 1 : list.length, 0, { key: 'F12', label: 'Remover desconto' });
   }
+  list.sort((a, b) => shortcutOrder(a) - shortcutOrder(b));
   return list;
 });
 
@@ -1361,6 +1367,10 @@ function handleShortcutClick(key) {
     showBalanceModal.value = true;
     return;
   }
+  if (key === 'F5') {
+    handleF5ToggleSearchMode();
+    return;
+  }
   if (key === 'F6') {
     if (cartStore.saleStarted) handleCancelSale();
     return;
@@ -1378,7 +1388,7 @@ function handleShortcutClick(key) {
     showDiscountModal.value = true;
     return;
   }
-  if (key === removeDiscountShortcutKey) {
+  if (key === 'F12') {
     if (hasManualDiscount.value) handleRemoveManualDiscount();
     return;
   }
@@ -1536,6 +1546,11 @@ function handleKeydown(e) {
     }
     return;
   }
+  if (key === 'F3' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    if (hasManualDiscount.value) handleRemoveManualDiscount();
+    return;
+  }
   if (key === 'F3') {
     e.preventDefault();
     handleF3ToggleCancellationMode();
@@ -1553,11 +1568,6 @@ function handleKeydown(e) {
   }
   if (key === 'F8') {
     showDiscountModal.value = true;
-    return;
-  }
-  if (key === 'F3' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    if (hasManualDiscount.value) handleRemoveManualDiscount();
     return;
   }
   if (key === 'F10') {
@@ -2230,21 +2240,23 @@ onUnmounted(() => {
                   <button
                     type="button"
                     class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 underline"
-                    :title="`Remover desconto manual (${removeDiscountShortcutKey})`"
+                    title="Remover desconto manual (F12)"
                     @click="handleRemoveManualDiscount"
                   >
-                    Remover desconto <span class="ml-1 text-slate-400">[{{ removeDiscountShortcutKey }}]</span>
+                    Remover desconto <span class="ml-1 text-slate-400">[F12]</span>
                   </button>
                 </div>
               </div>
-              <div class="mb-4 flex items-center justify-between">
-                <span class="text-lg font-semibold text-slate-700">TOTAL</span>
-                <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartStore.finalAmount || cartTotal) }}</span>
-              </div>
-              <div class="flex justify-end">
-                <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="handleF10Finalize">
-                  F10 - Finalizar Venda
-                </Button>
+              <div class="flex w-full justify-between items-end">
+                <div class="flex w-1/2 flex-col items-start justify-between">
+                  <span class="text-md font-semibold text-slate-700">TOTAL</span>
+                  <span class="text-2xl font-bold text-blue-600">{{ formatCurrency(cartStore.finalAmount || cartTotal) }}</span>
+                </div>
+                <div class="flex h-12 justify-end w-1/2">
+                  <Button variant="primary" class="px-4 py-2 text-base font-semibold" @click="handleF10Finalize">
+                    F10 - Finalizar Venda
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
