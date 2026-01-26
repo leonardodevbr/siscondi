@@ -357,7 +357,9 @@ watch(() => props.isOpen, (open) => {
   if (open) {
     resetPaymentForm();
     nextTick(() => {
-      checkAndShowPaymentInput();
+      nextTick(() => {
+        checkAndShowPaymentInput();
+      });
     });
   } else {
     resetPaymentForm();
@@ -595,10 +597,13 @@ function scrollSelectedInstallmentIntoView() {
 
 function focusAmountInput() {
   nextTick(() => {
-    if (amountInputRef.value) {
-      amountInputRef.value.focus();
-      amountInputRef.value.select();
-    }
+    nextTick(() => {
+      const el = amountInputRef.value;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    });
   });
 }
 
