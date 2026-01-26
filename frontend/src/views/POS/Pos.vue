@@ -557,12 +557,40 @@ async function confirmCancellation(codeOrItem) {
 
   const result = await Swal.fire({
     title: 'Cancelar Item',
-    html: `<div style="margin-bottom: 1rem;"><strong style="font-size: 1rem;">${qtyLabel} de ${productName}</strong></div>
-      <div style="text-align: left; margin-top: 0.5rem;">
-        <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
-        <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
-        <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
-        <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
+    html: `<div style="margin-bottom: 1rem; text-align: center;">
+        <strong style="font-size: 1rem; color: #374151;">${qtyLabel} de ${productName}</strong>
+      </div>
+      <div style="text-align: left;">
+        <div style="margin-bottom: 1rem;">
+          <label for="swal-op-pin" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">PIN do gerente</label>
+          <input 
+            type="text" 
+            id="swal-op-pin" 
+            name="manager_pin_input"
+            placeholder="Ex: 1234" 
+            inputmode="numeric" 
+            maxlength="10" 
+            autocomplete="off" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+        <div style="margin-bottom: 0;">
+          <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input 
+            type="password" 
+            id="swal-op-password" 
+            name="manager_auth_password"
+            placeholder="Senha" 
+            autocomplete="new-password" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
       </div>`,
     icon: 'warning',
     width: '400px',
@@ -979,12 +1007,38 @@ async function handleRemoveCoupon() {
 async function handleRemoveManualDiscount() {
   const result = await Swal.fire({
     title: 'Remover Desconto',
-    html: `<div style="text-align: left; margin-top: 0.5rem;">
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
-      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
-      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
-    </div>`,
+    html: `<div style="text-align: left;">
+        <div style="margin-bottom: 1rem;">
+          <label for="swal-op-pin" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">PIN do gerente</label>
+          <input 
+            type="text" 
+            id="swal-op-pin" 
+            name="manager_pin_input"
+            placeholder="Ex: 1234" 
+            inputmode="numeric" 
+            maxlength="10" 
+            autocomplete="off" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+        <div style="margin-bottom: 0;">
+          <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input 
+            type="password" 
+            id="swal-op-password" 
+            name="manager_auth_password"
+            placeholder="Senha" 
+            autocomplete="new-password" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+      </div>`,
     icon: 'warning',
     width: '400px',
     showCancelButton: true,
@@ -1249,12 +1303,38 @@ function hideBalanceAfterTimeout() {
 async function requestBalanceAccess() {
   const result = await Swal.fire({
     title: 'Visualizar Saldo',
-    html: `<div style="text-align: left; margin-top: 0.5rem;">
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
-      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
-      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
-    </div>`,
+    html: `<div style="text-align: left;">
+        <div style="margin-bottom: 1rem;">
+          <label for="swal-op-pin" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">PIN do gerente</label>
+          <input 
+            type="text" 
+            id="swal-op-pin" 
+            name="manager_pin_input"
+            placeholder="Ex: 1234" 
+            inputmode="numeric" 
+            maxlength="10" 
+            autocomplete="off" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+        <div style="margin-bottom: 0;">
+          <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input 
+            type="password" 
+            id="swal-op-password" 
+            name="manager_auth_password"
+            placeholder="Senha" 
+            autocomplete="new-password" 
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+      </div>`,
     icon: 'info',
     width: '400px',
     showCancelButton: true,
