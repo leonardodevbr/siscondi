@@ -38,29 +38,16 @@ class SaleObserver
     {
         // Proteção 1: Só processa se o status realmente mudou
         if (! $sale->wasChanged('status')) {
-            Log::debug('SaleObserver: status não mudou, ignorando', [
-                'sale_id' => $sale->id,
-                'status_atual' => $sale->status->value,
-            ]);
             return;
         }
 
         // Proteção 2: Verifica se está "sujo" (dirty) - garante que mudou nesta requisição
         if (! $sale->isDirty('status') && ! $sale->wasChanged('status')) {
-            Log::debug('SaleObserver: status não está dirty nem changed, ignorando', [
-                'sale_id' => $sale->id,
-            ]);
             return;
         }
 
         $oldStatus = $this->getOriginalStatusAsEnum($sale);
         $newStatus = $sale->status;
-
-        Log::info('SaleObserver: Detectada mudança de status', [
-            'sale_id' => $sale->id,
-            'old_status' => $oldStatus?->value ?? 'null',
-            'new_status' => $newStatus->value,
-        ]);
 
         // Regra 1: Se mudou para COMPLETED, baixa o estoque
         if ($newStatus === SaleStatus::COMPLETED) {
@@ -73,12 +60,6 @@ class SaleObserver
             $this->returnStockOnCancellation($sale);
             return;
         }
-
-        Log::debug('SaleObserver: Mudança de status não requer processamento de estoque', [
-            'sale_id' => $sale->id,
-            'old_status' => $oldStatus?->value,
-            'new_status' => $newStatus->value,
-        ]);
     }
 
     /**
@@ -114,11 +95,7 @@ class SaleObserver
             ->exists();
 
         if ($movementsAlreadyExist) {
-            Log::info('SaleObserver: StockMovements SALE já existem, pulando processamento (idempotência)', [
-                'sale_id' => $sale->id,
-                'reason' => $reason,
-            ]);
-            return; // Sai silenciosamente, não é erro
+            return;
         }
 
         try {
@@ -157,15 +134,6 @@ class SaleObserver
                         ]);
 
                         $totalItemsProcessed++;
-
-                        Log::info('SaleObserver: StockMovement SALE criado com sucesso', [
-                            'stock_movement_id' => $stockMovement->id,
-                            'sale_id' => $sale->id,
-                            'product_variant_id' => $item->product_variant_id,
-                            'branch_id' => $sale->branch_id,
-                            'user_id' => $sale->user_id,
-                            'quantity' => $item->quantity,
-                        ]);
                     } catch (\Throwable $e) {
                         Log::error('SaleObserver: ERRO ao criar StockMovement', [
                             'sale_id' => $sale->id,
@@ -177,12 +145,6 @@ class SaleObserver
                         throw $e; // Re-lança para fazer rollback da transaction
                     }
                 }
-
-                Log::info('SaleObserver: Baixa de estoque concluída com sucesso', [
-                    'sale_id' => $sale->id,
-                    'total_items_processed' => $totalItemsProcessed,
-                    'items_without_variant' => $itemsWithoutVariant,
-                ]);
             });
         } catch (\Throwable $e) {
             Log::error('SaleObserver: ERRO CRÍTICO ao processar baixa de estoque', [
@@ -231,11 +193,7 @@ class SaleObserver
             ->exists();
 
         if ($returnsAlreadyExist) {
-            Log::info('SaleObserver: StockMovements RETURN já existem, pulando processamento (idempotência)', [
-                'sale_id' => $sale->id,
-                'reason' => $reason,
-            ]);
-            return; // Sai silenciosamente, não é erro
+            return;
         }
 
         try {
@@ -272,15 +230,6 @@ class SaleObserver
                         ]);
 
                         $totalItemsProcessed++;
-
-                        Log::info('SaleObserver: StockMovement RETURN criado com sucesso', [
-                            'stock_movement_id' => $stockMovement->id,
-                            'sale_id' => $sale->id,
-                            'product_variant_id' => $item->product_variant_id,
-                            'branch_id' => $sale->branch_id,
-                            'user_id' => $sale->user_id,
-                            'quantity' => $item->quantity,
-                        ]);
                     } catch (\Throwable $e) {
                         Log::error('SaleObserver: ERRO ao criar StockMovement RETURN', [
                             'sale_id' => $sale->id,
@@ -292,11 +241,6 @@ class SaleObserver
                         throw $e; // Re-lança para fazer rollback da transaction
                     }
                 }
-
-                Log::info('SaleObserver: Devolução de estoque concluída com sucesso', [
-                    'sale_id' => $sale->id,
-                    'total_items_processed' => $totalItemsProcessed,
-                ]);
             });
         } catch (\Throwable $e) {
             Log::error('SaleObserver: ERRO CRÍTICO ao processar devolução de estoque', [

@@ -409,7 +409,7 @@ class ProductController extends Controller
                         $variant = $product->variants()->create($variantData);
                     }
 
-                    // Estoque não é atualizado aqui - apenas via InventoryMovementObserver
+                    // Estoque é tratado pelas regras de movimentação (StockMovement).
                 }
             } else {
                 // Produto simples (sem variações): atualiza/cria variação única com dados do formulário
@@ -508,7 +508,7 @@ class ProductController extends Controller
                     ]);
                 }
 
-                // Estoque não é atualizado aqui - apenas via InventoryMovementObserver
+                // Estoque é tratado pelas regras de movimentação (StockMovement).
             }
 
             $product->refresh();

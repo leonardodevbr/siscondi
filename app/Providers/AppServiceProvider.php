@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Models\InventoryMovement;
 use App\Models\Sale;
 use App\Models\StockMovement;
-use App\Observers\InventoryMovementObserver;
 use App\Observers\SaleObserver;
 use App\Observers\StockMovementObserver;
 use App\Services\Payment\PaymentGatewayInterface;
@@ -34,7 +32,6 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('super-admin') ? true : null;
         });
 
-        // InventoryMovement::observe(InventoryMovementObserver::class); // DEPRECATED - Usar apenas StockMovement
         StockMovement::observe(StockMovementObserver::class);
         Sale::observe(SaleObserver::class);
     }

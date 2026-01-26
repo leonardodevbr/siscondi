@@ -67,15 +67,6 @@ class ProcessStockMovementAction
             } else {
                 $inventory->decrement('quantity', abs($quantityChange));
             }
-
-            Log::info('Estoque atualizado automaticamente', [
-                'stock_movement_id' => $stockMovement->id,
-                'branch_id' => $branchId,
-                'product_variant_id' => $variantId,
-                'type' => $type->value,
-                'quantity_change' => $quantityChange,
-                'new_quantity' => $inventory->fresh()->quantity,
-            ]);
         });
     }
 

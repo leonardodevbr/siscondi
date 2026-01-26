@@ -985,44 +985,18 @@ class PosController extends Controller
 
         try {
             $sale = DB::transaction(function () use ($sale): Sale {
-                Log::info('PosController::finish - Iniciando transaction', [
-                    'sale_id' => $sale->id,
-                    'total_items' => $sale->items->count(),
-                    'final_amount' => $sale->final_amount,
-                ]);
-
-                $hasPixPayment = $sale->salePayments->contains(fn (SalePayment $payment) => 
+                $hasPixPayment = $sale->salePayments->contains(fn (SalePayment $payment) =>
                     $payment->method === PaymentMethod::PIX
                 );
 
                 // Passo 1: Muda o status - o SaleObserver irá criar os StockMovements automaticamente
-                Log::info('PosController::finish - Mudando status da venda', [
-                    'sale_id' => $sale->id,
-                    'new_status' => $hasPixPayment ? 'pending_payment' : 'completed',
-                ]);
-                
                 $sale->status = $hasPixPayment ? SaleStatus::PENDING_PAYMENT : SaleStatus::COMPLETED;
                 $sale->save();
-
-                Log::info('PosController::finish - Status alterado com sucesso', [
-                    'sale_id' => $sale->id,
-                    'status' => $sale->status->value,
-                ]);
 
                 // Passo 2: Incrementa uso do cupom (se aplicável)
                 if (! $hasPixPayment && $sale->coupon_id) {
                     try {
-                        Log::info('PosController::finish - Incrementando uso do cupom', [
-                            'sale_id' => $sale->id,
-                            'coupon_id' => $sale->coupon_id,
-                        ]);
-                        
                         Coupon::where('id', $sale->coupon_id)->increment('used_count');
-                        
-                        Log::info('PosController::finish - Cupom incrementado com sucesso', [
-                            'sale_id' => $sale->id,
-                            'coupon_id' => $sale->coupon_id,
-                        ]);
                     } catch (\Throwable $e) {
                         Log::error('PosController::finish - ERRO ao incrementar cupom', [
                             'sale_id' => $sale->id,
@@ -1038,23 +1012,11 @@ class PosController extends Controller
                 if (! $hasPixPayment && $sale->cashRegister) {
                     try {
                         $cashRegister = $sale->cashRegister;
-                        
-                        Log::info('PosController::finish - Criando transação no caixa', [
-                            'sale_id' => $sale->id,
-                            'cash_register_id' => $cashRegister->id,
-                            'amount' => $sale->final_amount,
-                        ]);
-
                         $cashRegister->transactions()->create([
                             'type' => \App\Enums\CashRegisterTransactionType::SALE,
                             'amount' => $sale->final_amount,
                             'description' => "Venda #{$sale->id}",
                             'sale_id' => $sale->id,
-                        ]);
-
-                        Log::info('PosController::finish - Transação de caixa criada com sucesso', [
-                            'sale_id' => $sale->id,
-                            'cash_register_id' => $cashRegister->id,
                         ]);
                     } catch (\Throwable $e) {
                         Log::error('PosController::finish - ERRO ao criar transação no caixa', [
@@ -1067,17 +1029,8 @@ class PosController extends Controller
                     }
                 }
 
-                Log::info('PosController::finish - Transaction commitada com sucesso', [
-                    'sale_id' => $sale->id,
-                    'status' => $sale->status->value,
-                ]);
-
                 return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'user', 'branch']);
             });
-
-            Log::info('PosController::finish - Venda finalizada com sucesso (após commit)', [
-                'sale_id' => $sale->id,
-            ]);
 
             return response()->json([
                 'sale' => $this->formatSaleResponse($sale),
