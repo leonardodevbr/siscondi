@@ -356,7 +356,9 @@ const paymentSummary = computed(() => {
 watch(() => props.isOpen, (open) => {
   if (open) {
     resetPaymentForm();
-    checkAndShowPaymentInput();
+    nextTick(() => {
+      checkAndShowPaymentInput();
+    });
   } else {
     resetPaymentForm();
   }
