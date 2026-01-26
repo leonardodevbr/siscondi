@@ -17,6 +17,14 @@ class SettingSeeder extends Seeder
         
         Settings::set('sku_auto_generation', true, 'boolean', 'products');
         Settings::set('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}', 'string', 'products');
+
+        // Mercado Pago Point – Client ID/Secret; token gerado pelo sistema
+        Settings::set('mp_client_id', '', 'string', 'integrations');
+        Settings::set('mp_client_secret', '', 'string', 'integrations');
+        Settings::set('mp_access_token', '', 'string', 'integrations');
+        Settings::set('mp_token_expires_at', 0, 'integer', 'integrations');
+        Settings::set('mp_user_id', '', 'string', 'integrations');
+        Settings::set('mp_pos_id', '', 'string', 'integrations');
     }
 }
 

@@ -159,6 +159,74 @@
           </div>
         </template>
 
+        <!-- Integrações de Pagamento -->
+        <template v-else-if="activeTab === 'integrations'">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="mb-2">
+              <h2 class="text-base font-semibold text-slate-800">
+                Integrações de Pagamento
+              </h2>
+              <p class="text-sm text-slate-600 mt-1">
+                Credenciais por cliente, salvas no banco. Informe Client ID e Client Secret para o sistema gerar e renovar o token automaticamente.
+              </p>
+            </div>
+            <div class="flex items-center gap-2 mb-4">
+              <span
+                class="inline-flex items-center gap-1.5 text-sm font-medium"
+                :class="mercadopagoConnected ? 'text-emerald-600' : 'text-slate-500'"
+              >
+                <span
+                  class="w-2.5 h-2.5 rounded-full shrink-0"
+                  :class="mercadopagoConnected ? 'bg-emerald-500' : 'bg-red-500'"
+                />
+                {{ mercadopagoConnected ? 'Conectado' : 'Desconectado' }}
+              </span>
+            </div>
+            <form autocomplete="off" class="space-y-4" @submit.prevent>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Client ID (Produção)
+                </label>
+                <input
+                  v-model="form.mpClientId"
+                  type="text"
+                  name="mp_client_id"
+                  autocomplete="off"
+                  class="input-base w-full max-w-md"
+                  placeholder="Ex.: 12345678901234567890123456789012"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Client Secret (Produção)
+                </label>
+                <input
+                  v-model="form.mpClientSecret"
+                  type="password"
+                  name="mp_client_secret"
+                  autocomplete="new-password"
+                  class="input-base w-full max-w-md"
+                  :placeholder="form.mpClientId ? '' : 'Obtenha em Suas integrações no painel do Mercado Pago'"
+                />
+                <p class="mt-1 text-xs text-slate-500">
+                  Em <strong>Suas integrações</strong> &gt; sua aplicação &gt; Credenciais de produção. O sistema gera e renova o Access Token automaticamente.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  :disabled="connecting || !form.mpClientId || !form.mpClientSecret"
+                  @click="handleMercadopagoConnect"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="connecting">Conectando ao Mercado Pago...</span>
+                  <span v-else>Conectar / Gerar Token</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </template>
+
         <div class="mt-2 flex justify-end">
           <button
             @click="handleSave"
@@ -175,7 +243,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useSettingsStore } from '@/stores/settings';
 import Toggle from '@/components/Common/Toggle.vue';
@@ -198,13 +266,18 @@ export default {
       { id: 'products', label: 'Produtos & Estoque' },
       { id: 'sales', label: 'Vendas & PDV' },
       { id: 'finance', label: 'Financeiro' },
+      { id: 'integrations', label: 'Integrações de Pagamento' },
     ];
 
     const form = ref({
       skuAutoGeneration: false,
       skuPattern: '{CATEGORY}-{NAME}-{SEQ}',
       enableGlobalStockSearch: false,
+      mpClientId: '',
+      mpClientSecret: '',
     });
+    const connecting = ref(false);
+    const mercadopagoConnected = computed(() => settingsStore.mercadopagoConnected);
 
     const loadSettings = async () => {
       loading.value = true;
@@ -214,10 +287,32 @@ export default {
         form.value.skuPattern = settingsStore.skuPattern;
         const stockSearchSetting = settingsStore.getSetting('enable_global_stock_search');
         form.value.enableGlobalStockSearch = stockSearchSetting !== undefined ? stockSearchSetting : settingsStore.enableGlobalStockSearch;
+        form.value.mpClientId = settingsStore.getSetting('mp_client_id') ?? '';
+        form.value.mpClientSecret = '';
       } catch (error) {
         toast.error('Erro ao carregar configurações');
       } finally {
         loading.value = false;
+      }
+    };
+
+    const handleMercadopagoConnect = async () => {
+      if (!form.value.mpClientId?.trim() || !form.value.mpClientSecret?.trim()) {
+        toast.error('Preencha Client ID e Client Secret.');
+        return;
+      }
+      connecting.value = true;
+      try {
+        await settingsStore.mercadopagoConnect({
+          mp_client_id: form.value.mpClientId.trim(),
+          mp_client_secret: form.value.mpClientSecret.trim(),
+        });
+        toast.success('Conectado ao Mercado Pago. Token gerado com sucesso.');
+      } catch (error) {
+        const msg = error.response?.data?.message || 'Credenciais inválidas. Verifique o Client ID e o Client Secret.';
+        toast.error(msg);
+      } finally {
+        connecting.value = false;
       }
     };
 
@@ -266,7 +361,10 @@ export default {
       activeTab,
       tabs,
       form,
+      connecting,
+      mercadopagoConnected,
       handleSave,
+      handleMercadopagoConnect,
     };
   },
 };

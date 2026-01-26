@@ -184,7 +184,7 @@
             </div>
           </div>
 
-          <div v-if="installmentsSelected || (newPayment.method === 'cash' || newPayment.method === 'pix') || (newPayment.method === 'debit_card')" class="space-y-3">
+          <div v-if="installmentsSelected || (newPayment.method === 'cash' || newPayment.method === 'pix' || newPayment.method === 'point') || (newPayment.method === 'debit_card')" class="space-y-3">
             <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p class="text-sm font-medium text-slate-700">Resumo:</p>
               <p class="mt-1 text-base font-semibold text-slate-900">{{ paymentSummary }}</p>
@@ -197,7 +197,36 @@
         </div>
       </div>
 
-      <div v-if="isFinishing" class="border-t border-slate-200 pt-4">
+      <div v-if="pointStep === 'select_device'" class="border-t border-slate-200 pt-4 space-y-4">
+        <p class="text-sm font-medium text-slate-700">Selecione a maquininha para enviar o pagamento:</p>
+        <div v-if="pointLoadingDevices" class="flex items-center justify-center py-4">
+          <div class="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+        </div>
+        <template v-else>
+          <select
+            v-model="pointSelectedDeviceId"
+            class="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">-- Selecione --</option>
+            <option v-for="d in pointDevices" :key="d.id" :value="d.id">
+              {{ d.external_pos_id || d.id }}
+            </option>
+          </select>
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" size="sm" @click="cancelPointFlow">Cancelar</Button>
+            <Button variant="primary" size="sm" :disabled="!pointSelectedDeviceId || pointSendingToDevice" @click="sendToPointDevice">
+              {{ pointSendingToDevice ? 'Enviando...' : 'Enviar para maquininha' }}
+            </Button>
+          </div>
+        </template>
+      </div>
+      <div v-else-if="pointStep === 'waiting'" class="border-t border-slate-200 pt-4">
+        <div class="flex flex-col items-center justify-center space-y-4 py-8">
+          <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p class="text-sm font-medium text-slate-700">Cobrança enviada para a Maquininha... Aguarde o cliente inserir a senha.</p>
+        </div>
+      </div>
+      <div v-else-if="isFinishing" class="border-t border-slate-200 pt-4">
         <div class="flex flex-col items-center justify-center space-y-4 py-8">
           <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
           <p class="text-sm font-medium text-slate-700">Processando a compra...</p>
@@ -230,6 +259,7 @@ import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
+import api from '@/services/api';
 import Modal from '@/components/Common/Modal.vue';
 import Button from '@/components/Common/Button.vue';
 
@@ -261,6 +291,13 @@ const isFinishing = ref(false);
 const paymentRemovalAuthorized = ref(false);
 const authorizedByUserIdForRemoval = ref(null);
 const paymentsSnapshotForFinishing = ref([]);
+const pointStep = ref(null);
+const pointDevices = ref([]);
+const pointSelectedDeviceId = ref('');
+const pointPendingSale = ref(null);
+const pointPollingInterval = ref(null);
+const pointLoadingDevices = ref(false);
+const pointSendingToDevice = ref(false);
 
 const amountInputRef = ref(null);
 const installmentsListRef = ref(null);
@@ -269,6 +306,7 @@ const amountFormatted = ref('');
 const paymentMethods = [
   { value: 'cash', label: 'Dinheiro', apiValues: ['money'] },
   { value: 'card', label: 'Cartão', apiValues: ['credit_card', 'debit_card'] },
+  { value: 'point', label: 'Cartão (Point)', apiValues: ['point'] },
   { value: 'pix', label: 'PIX', apiValues: ['pix'] },
 ];
 
@@ -291,6 +329,7 @@ const couponPaymentRestriction = computed(() => {
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     store_credit: 'Crédito Loja',
+    point: 'Cartão (Point)',
   };
   return allowed.map((a) => labels[a] ?? a).join(', ');
 });
@@ -340,7 +379,9 @@ const paymentSummary = computed(() => {
   if (newPayment.value.method === 'pix') {
     return `R$ ${formatCurrency(amount)} no PIX`;
   }
-  
+  if (newPayment.value.method === 'point') {
+    return `R$ ${formatCurrency(amount)} na Maquininha (Point)`;
+  }
   if (newPayment.value.method === 'debit_card') {
     return `R$ ${formatCurrency(amount)} no Cartão (Débito)`;
   }
@@ -445,6 +486,30 @@ async function handleFinish() {
 
   try {
     const result = await cartStore.finish();
+    if (result?.pending_point && result?.sale?.id) {
+      pointPendingSale.value = result.sale;
+      pointStep.value = 'select_device';
+      pointDevices.value = [];
+      pointSelectedDeviceId.value = '';
+      pointLoadingDevices.value = true;
+      try {
+        const { data } = await api.get('mp-point/devices');
+        pointDevices.value = data?.devices ?? [];
+        if (pointDevices.value.length === 0) {
+          toast.warning('Nenhuma maquininha encontrada. Verifique o token em Configurações > Integrações.');
+        } else if (pointDevices.value.length === 1) {
+          pointSelectedDeviceId.value = pointDevices.value[0].id ?? '';
+        }
+      } catch (err) {
+        toast.error(err?.response?.data?.message || err?.message || 'Erro ao listar maquininhas.');
+        pointStep.value = null;
+        pointPendingSale.value = null;
+      } finally {
+        pointLoadingDevices.value = false;
+        isFinishing.value = false;
+      }
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
     emit('finish', result?.sale ?? null);
     emit('close');
@@ -456,6 +521,58 @@ async function handleFinish() {
   }
 }
 
+function stopPointPolling() {
+  if (pointPollingInterval.value) {
+    clearInterval(pointPollingInterval.value);
+    pointPollingInterval.value = null;
+  }
+}
+
+async function sendToPointDevice() {
+  if (!pointPendingSale.value?.id || !pointSelectedDeviceId.value) {
+    toast.warning('Selecione uma maquininha.');
+    return;
+  }
+  pointSendingToDevice.value = true;
+  try {
+    await api.post('mp-point/process-payment', {
+      sale_id: pointPendingSale.value.id,
+      device_id: pointSelectedDeviceId.value,
+    });
+    pointStep.value = 'waiting';
+    pointSendingToDevice.value = false;
+    pointPollingInterval.value = setInterval(async () => {
+      try {
+        const { data } = await api.get(`sales/${pointPendingSale.value.id}`);
+        const sale = data?.data ?? data;
+        const status = sale?.status ?? sale?.attributes?.status;
+        if (status === 'completed') {
+          stopPointPolling();
+          pointStep.value = null;
+          cartStore.resetState();
+          emit('finish', sale);
+          emit('close');
+          toast.success('Pagamento aprovado na maquininha.');
+        }
+      } catch (_) {
+        // ignore poll errors
+      }
+    }, 3000);
+  } catch (err) {
+    pointSendingToDevice.value = false;
+    toast.error(err?.response?.data?.message || err?.message || 'Erro ao enviar para a maquininha.');
+  }
+}
+
+function cancelPointFlow() {
+  stopPointPolling();
+  pointStep.value = null;
+  pointPendingSale.value = null;
+  pointSelectedDeviceId.value = '';
+  pointDevices.value = [];
+  isFinishing.value = false;
+}
+
 function formatPaymentMethod(method) {
   const methods = {
     cash: 'Dinheiro',
@@ -463,6 +580,7 @@ function formatPaymentMethod(method) {
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     pix: 'PIX',
+    point: 'Cartão (Point)',
   };
   return methods[method] || method;
 }
@@ -525,7 +643,7 @@ function selectMethod(method) {
   newPayment.value.method = method;
   methodSelected.value = true;
   
-  if (method === 'cash' || method === 'pix') {
+  if (method === 'cash' || method === 'pix' || method === 'point') {
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
   } else if (method === 'card') {
@@ -631,6 +749,8 @@ async function confirmAddPayment() {
       method = 'pix';
     } else if (newPayment.value.method === 'cash') {
       method = 'money';
+    } else if (newPayment.value.method === 'point') {
+      method = 'point';
     } else {
       method = newPayment.value.method;
     }
@@ -768,6 +888,11 @@ async function removeSelectedPayment() {
 }
 
 async function handleModalClose() {
+  if (pointStep.value) {
+    cancelPointFlow();
+    emit('close');
+    return;
+  }
   if (showAddPayment.value) {
     return; // Não fecha se estiver adicionando pagamento
   }
@@ -787,6 +912,7 @@ async function handleModalClose() {
   });
   
   if (result.isConfirmed) {
+    cancelPointFlow();
     emit('close');
   }
 }

@@ -4,6 +4,7 @@ import api from '@/services/api';
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     settings: {},
+    settingsMeta: {},
     publicConfig: {
       enable_global_stock_search: false,
       sku_auto_generation: true,
@@ -19,6 +20,12 @@ export const useSettingsStore = defineStore('settings', {
     
     getSetting: (state) => (key) => {
       return state.settings[key];
+    },
+    getSettingMeta: (state) => (key) => {
+      return state.settingsMeta[key] || null;
+    },
+    mercadopagoConnected: (state) => {
+      return state.settingsMeta.mp_access_token?.masked === true;
     },
   },
   
@@ -48,13 +55,15 @@ export const useSettingsStore = defineStore('settings', {
         const grouped = response.data;
         
         const flatSettings = {};
+        const meta = {};
         Object.keys(grouped).forEach((group) => {
           grouped[group].forEach((setting) => {
             flatSettings[setting.key] = setting.value;
+            meta[setting.key] = { masked: !!setting.masked };
           });
         });
-        
         this.settings = flatSettings;
+        this.settingsMeta = meta;
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
       } finally {
@@ -76,6 +85,12 @@ export const useSettingsStore = defineStore('settings', {
       } finally {
         this.loading = false;
       }
+    },
+
+    async mercadopagoConnect(payload) {
+      const { data } = await api.post('/settings/mercadopago/connect', payload);
+      await this.fetchSettings();
+      return data;
     },
   },
 });

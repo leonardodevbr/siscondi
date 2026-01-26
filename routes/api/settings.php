@@ -8,5 +8,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::get('/settings', [SettingController::class, 'index']);
     Route::put('/settings', [SettingController::class, 'update']);
+    Route::post('/settings/mercadopago/connect', [SettingController::class, 'mercadopagoConnect']);
+    Route::get('/settings/mercadopago/status', [SettingController::class, 'mercadopagoStatus']);
 });
 

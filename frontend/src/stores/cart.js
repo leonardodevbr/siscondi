@@ -328,6 +328,9 @@ export const useCartStore = defineStore('cart', {
       try {
         const { data } = await api.post('/pos/finish');
         const completedSale = data?.sale ?? null;
+        if (data?.pending_point) {
+          return { sale: completedSale, pending_point: true, ...data };
+        }
         this.resetState();
         return { sale: completedSale, ...data };
       } catch (error) {

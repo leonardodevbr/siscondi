@@ -23,3 +23,4 @@ require __DIR__.'/api/config.php';
 require __DIR__.'/api/settings.php';
 require __DIR__.'/api/labels.php';
 require __DIR__.'/api/pos.php';
+require __DIR__.'/api/mp-point.php';

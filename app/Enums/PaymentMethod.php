@@ -11,4 +11,5 @@ enum PaymentMethod: string
     case DEBIT_CARD = 'debit_card';
     case PIX = 'pix';
     case STORE_CREDIT = 'store_credit';
+    case POINT = 'point'; // Mercado Pago Point (maquininha física)
 }

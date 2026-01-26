@@ -786,7 +786,7 @@ class PosController extends Controller
     public function addPayment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'method' => ['required', 'string', 'in:credit_card,debit_card,cash,money,pix,store_credit'],
+            'method' => ['required', 'string', 'in:credit_card,debit_card,cash,money,pix,store_credit,point'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'installments' => ['nullable', 'integer', 'min:1', 'max:12'],
         ]);
@@ -810,6 +810,9 @@ class PosController extends Controller
         $method = $request->input('method');
         if ($method === 'cash') {
             $method = 'money';
+        }
+        if ($method === 'point') {
+            $method = PaymentMethod::POINT->value;
         }
         $validMethods = array_map(fn ($case) => $case->value, PaymentMethod::cases());
         if (! in_array($method, $validMethods, true)) {
@@ -988,6 +991,17 @@ class PosController extends Controller
                 $hasPixPayment = $sale->salePayments->contains(fn (SalePayment $payment) =>
                     $payment->method === PaymentMethod::PIX
                 );
+                $hasPointPayment = $sale->salePayments->contains(fn (SalePayment $payment) =>
+                    $payment->method === PaymentMethod::POINT
+                );
+
+                // Point: fica PENDING_PAYMENT até o webhook do MP confirmar; cupom/caixa no webhook
+                if ($hasPointPayment) {
+                    $sale->status = SaleStatus::PENDING_PAYMENT;
+                    $sale->save();
+
+                    return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'user', 'branch']);
+                }
 
                 // Passo 1: Muda o status - o SaleObserver irá criar os StockMovements automaticamente
                 $sale->status = $hasPixPayment ? SaleStatus::PENDING_PAYMENT : SaleStatus::COMPLETED;
@@ -1032,9 +1046,13 @@ class PosController extends Controller
                 return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'user', 'branch']);
             });
 
+            $pendingPoint = $sale->status === SaleStatus::PENDING_PAYMENT
+                && $sale->salePayments->contains(fn (SalePayment $p) => $p->method === PaymentMethod::POINT);
+
             return response()->json([
                 'sale' => $this->formatSaleResponse($sale),
-                'message' => 'Sale completed successfully',
+                'message' => $pendingPoint ? 'Aguardando pagamento na maquininha. Selecione o dispositivo.' : 'Sale completed successfully',
+                'pending_point' => $pendingPoint,
             ], 200);
         } catch (\Throwable $e) {
             Log::error('PosController::finish - ERRO CRÍTICO AO FINALIZAR VENDA', [

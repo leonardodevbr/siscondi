@@ -4,12 +4,30 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Settings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
     use HasFactory;
+
+    /**
+     * Chaves cujo valor não deve ser exposto na API (mostrar como mascarado no frontend).
+     *
+     * @var list<string>
+     */
+    public const MASKED_KEYS = ['mp_access_token', 'mp_user_id', 'mp_client_secret'];
+
+    /**
+     * Recupera valor de configuração pelo banco (cache via Settings). Uso em runtime.
+     *
+     * @param mixed $default
+     */
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        return Settings::get($key, $default);
+    }
 
     /**
      * @var list<string>
