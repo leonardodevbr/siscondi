@@ -1524,6 +1524,9 @@ async function handleF10Finalize() {
       await handleIdentifyCustomer({ openCheckoutOnSuccess: true });
       return;
     }
+    // Se cancelou (ESC), continua para abrir o checkout normalmente
+    // Aguarda um tick para evitar que o ESC propague e feche o checkout
+    await nextTick();
   }
   showCheckoutModal.value = true;
 }

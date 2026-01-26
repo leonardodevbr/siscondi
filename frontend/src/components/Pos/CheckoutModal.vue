@@ -659,7 +659,35 @@ function cancelAddPayment(e) {
     e.stopPropagation();
     e.stopImmediatePropagation();
   }
-  resetPaymentForm();
+  
+  // Se ainda há valor pendente, apenas limpa o formulário mas mantém o input visível
+  if (remainingAmount.value > 0.01) {
+    // Reseta apenas os campos do formulário, mas mantém showAddPayment aberto
+    methodSelected.value = false;
+    cardTypeSelected.value = false;
+    installmentsSelected.value = false;
+    amountConfirmed.value = false;
+    selectedMethodIndex.value = 0;
+    selectedCardTypeIndex.value = 0;
+    selectedInstallmentIndex.value = 0;
+    selectedPaymentIndex.value = -1;
+    paymentRemovalAuthorized.value = false;
+    amountFormatted.value = formatAmountInput(parseFloat(remainingAmount.value));
+    newPayment.value = {
+      method: 'cash',
+      amount: parseFloat(remainingAmount.value),
+      installments: 1,
+      cardType: null,
+    };
+    
+    // Refoca no input de valor
+    nextTick(() => {
+      focusAmountInput();
+    });
+  } else {
+    // Se não há valor pendente, pode fechar normalmente
+    resetPaymentForm();
+  }
 }
 
 async function handleRemoveCouponInCheckout() {
@@ -762,7 +790,10 @@ function handleKeydown(e) {
       authorizedByUserIdForRemoval.value = null;
       return;
     }
-    emit('close');
+    // Só permite fechar o modal se não houver valor pendente
+    if (remainingAmount.value <= 0.01) {
+      emit('close');
+    }
     return;
   }
 
