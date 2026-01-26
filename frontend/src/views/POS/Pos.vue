@@ -144,6 +144,9 @@ const shortcuts = computed(() => {
   list.sort((a, b) => shortcutOrder(a) - shortcutOrder(b));
   return list;
 });
+const footerShortcuts = computed(() =>
+  shortcuts.value.filter((s) => !['F5', 'F10', 'F12'].includes(s.key))
+);
 
 const cancelSearchResults = computed(() => {
   if (!cancelSearchMode.value || !isCancellationMode.value) return [];
@@ -949,6 +952,76 @@ async function handleRemoveCoupon() {
 }
 
 async function handleRemoveManualDiscount() {
+  const authUser = authStore.user;
+  const isManagerLevel = authUser?.roles?.some((r) => {
+    if (typeof r === 'string') {
+      return r === 'super-admin' || r === 'admin' || r === 'manager';
+    }
+    return r?.name === 'super-admin' || r?.name === 'admin' || r?.name === 'manager';
+  });
+
+  let proceed = false;
+
+  if (isManagerLevel) {
+    const result = await Swal.fire({
+      title: 'Remover desconto manual',
+      html: 'Deseja remover o desconto manual aplicado nesta venda?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, remover',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444',
+      focusConfirm: true,
+      allowOutsideClick: false,
+    });
+    confirmed = result.isConfirmed;
+  } else {
+    const result = await Swal.fire({
+      title: 'Remover desconto manual',
+      html: 'Insira a senha de gerente para autorizar a remoção do desconto manual:',
+      icon: 'warning',
+      input: 'password',
+      inputPlaceholder: 'Senha de gerente',
+      customClass: {
+        input: 'swal-manager-auth-input',
+      },
+      inputAttributes: {
+        autocomplete: 'off',
+        autocapitalize: 'off',
+        autocorrect: 'off',
+        spellcheck: 'false',
+        name: 'manager-auth-remove-discount',
+        'data-lpignore': 'true',
+        'data-1p-ignore': 'true',
+        'data-bwignore': 'true',
+        'data-form-type': 'other',
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444',
+      focusConfirm: false,
+      allowOutsideClick: false,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Por favor, insira a senha.';
+        }
+      },
+    });
+
+    if (result.isConfirmed) {
+      const correctPassword = 'admin123';
+      if (result.value === correctPassword) {
+        proceed = true;
+      } else {
+        toast.error('Senha incorreta.');
+        return;
+      }
+    }
+  }
+
+  if (!proceed) return;
+
   try {
     await cartStore.removeManualDiscount();
     toast.success('Desconto removido.');
@@ -1578,6 +1651,10 @@ function handleKeydown(e) {
     handleF10Finalize();
     return;
   }
+  if (key === 'F12') {
+    if (hasManualDiscount.value) handleRemoveManualDiscount();
+    return;
+  }
 }
 
 function applyCpfCnpjMask(val) {
@@ -2101,8 +2178,10 @@ onUnmounted(() => {
                   </button>
                 </div>
               </template>
-              <div v-else-if="!isSearchMode" class="flex h-32 items-center justify-center">
-                <p class="text-sm text-slate-500">Pressione F5 para ativar o modo Pesquisa</p>
+              <div v-else-if="!isSearchMode" class="flex h-32 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-base font-medium text-slate-600">
+                  Pressione <kbd class="rounded bg-slate-200 px-2 py-0.5 font-mono text-sm font-semibold">F5</kbd> para ativar o modo Pesquisa
+                </p>
               </div>
               <div v-else-if="loadingProducts" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-500">Buscando...</p>
