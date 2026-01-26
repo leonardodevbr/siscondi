@@ -91,6 +91,19 @@ export const useAuthStore = defineStore('auth', {
       window.localStorage.removeItem('token');
       window.localStorage.removeItem('user');
     },
+    /**
+     * Valida a senha de operação do usuário logado (ex.: descontos, cancelamentos).
+     * @param {string} password - Senha informada
+     * @returns {Promise<boolean>} true se válida, false caso contrário
+     */
+    async validateOperationPassword(password) {
+      try {
+        const { data } = await api.post('/validate-operation-password', { password });
+        return data?.valid === true;
+      } catch {
+        return false;
+      }
+    },
     setBranch(branch) {
       const appStore = useAppStore();
 

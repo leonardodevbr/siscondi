@@ -227,12 +227,14 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import Swal from 'sweetalert2';
 import { useToast } from 'vue-toastification';
+import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { formatCurrency } from '@/utils/format';
 import Modal from '@/components/Common/Modal.vue';
 import Button from '@/components/Common/Button.vue';
 
 const toast = useToast();
+const authStore = useAuthStore();
 
 const props = defineProps({
   isOpen: {
@@ -699,13 +701,17 @@ async function authorizePaymentRemoval() {
     inputValidator: (value) => (value ? null : 'Informe a senha.'),
   });
   if (!result.isConfirmed) return;
-  const ok = result.value === 'admin123';
-  if (!ok) {
-    toast.error('Senha incorreta.');
-    return;
+  try {
+    const ok = await authStore.validateOperationPassword(result.value);
+    if (!ok) {
+      toast.error('Senha incorreta.');
+      return;
+    }
+    paymentRemovalAuthorized.value = true;
+    selectedPaymentIndex.value = 0;
+  } catch {
+    toast.error('Erro ao validar senha. Tente novamente.');
   }
-  paymentRemovalAuthorized.value = true;
-  selectedPaymentIndex.value = 0;
 }
 
 async function removeSelectedPayment() {

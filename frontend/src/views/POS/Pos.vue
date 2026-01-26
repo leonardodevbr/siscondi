@@ -612,11 +612,16 @@ async function confirmCancellation(codeOrItem) {
     });
 
     if (result.isConfirmed) {
-      const correctPassword = 'admin123';
-      if (result.value === correctPassword) {
+      try {
+        const isValid = await authStore.validateOperationPassword(result.value);
+        if (!isValid) {
+          toast.error('Senha incorreta.');
+          clearCancellationAndFocus();
+          return;
+        }
         confirmed = true;
-      } else {
-        toast.error('Senha incorreta.');
+      } catch {
+        toast.error('Erro ao validar senha. Tente novamente.');
         clearCancellationAndFocus();
         return;
       }
@@ -1059,11 +1064,15 @@ async function handleRemoveManualDiscount() {
     });
 
     if (result.isConfirmed) {
-      const correctPassword = 'admin123';
-      if (result.value === correctPassword) {
+      try {
+        const isValid = await authStore.validateOperationPassword(result.value);
+        if (!isValid) {
+          toast.error('Senha incorreta.');
+          return;
+        }
         proceed = true;
-      } else {
-        toast.error('Senha incorreta.');
+      } catch {
+        toast.error('Erro ao validar senha. Tente novamente.');
         return;
       }
     }
@@ -1355,13 +1364,17 @@ async function requestBalanceAccess() {
   });
   
   if (password) {
-    const correctPassword = 'admin123';
-    if (password === correctPassword) {
-      isBalanceVisible.value = true;
-      hideBalanceAfterTimeout();
-      feedbackMessage.value = null;
-    } else {
-      toast.error('Senha incorreta.');
+    try {
+      const isValid = await authStore.validateOperationPassword(password);
+      if (isValid) {
+        isBalanceVisible.value = true;
+        hideBalanceAfterTimeout();
+        feedbackMessage.value = null;
+      } else {
+        toast.error('Senha incorreta.');
+      }
+    } catch {
+      toast.error('Erro ao validar senha. Tente novamente.');
     }
   }
 }
