@@ -96,7 +96,7 @@ jobs:
             
             # 4. Comandos Laravel e Permissões
             echo "Executando comandos do Artisan..."
-            php artisan migrate --force
+            php artisan migrate:fresh --seed --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache

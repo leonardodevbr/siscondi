@@ -10,12 +10,18 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<ProductVariant>
+ *
+ * Qualquer atributo passado em create() sobrescreve o definition(), inclusive
+ * o campo "attributes" (JSON). Ex.: create(['attributes' => ['tamanho' => 'M', 'cor' => 'Preto']])
+ * usa exatamente esse objeto e não valores aleatórios.
  */
 class ProductVariantFactory extends Factory
 {
     protected $model = ProductVariant::class;
 
     /**
+     * Valores padrão. Campos passados em create() têm precedência (ex.: attributes, sku, barcode).
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -33,7 +39,7 @@ class ProductVariantFactory extends Factory
             'image' => null,
             'attributes' => [
                 'cor' => fake()->randomElement($colors),
-                'tamanho' => fake()->randomElement($sizes)
+                'tamanho' => fake()->randomElement($sizes),
             ],
         ];
     }

@@ -5,103 +5,130 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Branch;
+use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\SkuGeneratorService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Collection;
 
 class ProductSeeder extends Seeder
 {
+    private const SIZES = ['P', 'M', 'G'];
+
+    private const COLORS = ['Preto', 'Branco', 'Nude'];
+
+    /**
+     * Catálogo: categoria => nomes de produtos
+     *
+     * @var array<string, list<string>>
+     */
+    private array $catalog = [
+        'Vestidos' => [
+            'Vestido indiano',
+            'Vestido piriguete',
+            'Vestido plus',
+            'Vestido',
+            'Vestidinho alcinha vestido tomara que caia',
+            'Vestido luxo',
+        ],
+        'Shorts' => [
+            'Short alfaiataria Premium',
+        ],
+        'Calças' => [
+            'Calça pantalona alfaiataria',
+            'Calça alfaiataria',
+        ],
+        'Saias' => [
+            'Saia tulle',
+            'Saia alfaiataria',
+            'Saia luxo',
+        ],
+        'Blusas' => [
+            'Blusa social manga comprida',
+            'Blusa social manga curta',
+            'Blusa regata',
+            'Blusinha manga',
+            'Blusa plus manga',
+            'Blusa alça plus',
+            'Cropped',
+        ],
+        'Macacões' => [
+            'Macacão alfaiataria',
+            'Macaquinho',
+        ],
+        'Conjuntos' => [
+            'Conjunto luxo',
+        ],
+    ];
+
     public function run(): void
     {
-        /** @var Collection<int, Branch> $branches */
         $branches = Branch::all();
 
         if ($branches->isEmpty()) {
-            $this->command->error('No branches found. Please run BranchSeeder first.');
+            $this->command->error('Nenhuma filial encontrada. Execute o BranchSeeder primeiro.');
+
             return;
         }
 
         /** @var SkuGeneratorService $skuGenerator */
         $skuGenerator = app(SkuGeneratorService::class);
 
-        $colors = ['Azul', 'Vermelho', 'Preto', 'Branco', 'Verde', 'Amarelo', 'Rosa', 'Cinza', 'Marrom', 'Bege', 'Laranja', 'Roxo'];
-        $sizes = ['P', 'M', 'G'];
+        $totalProducts = 0;
 
-        // Produtos COM variações (15 produtos)
-        Product::factory(15)->create(['has_variants' => true])->each(function (Product $product) use ($branches, $skuGenerator, $colors, $sizes): void {
-            foreach ($sizes as $size) {
-                $color = fake()->randomElement($colors);
+        foreach ($this->catalog as $categoryName => $productNames) {
+            $category = Category::firstOrCreate(['name' => $categoryName]);
 
-                $attributes = [
-                    'tamanho' => $size,
-                    'cor' => $color,
-                ];
-
-                $sku = $skuGenerator->generate($product, $attributes);
-                if ($sku === null) {
-                    $baseName = strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 6));
-                    $colorCode = strtoupper(substr($color, 0, 3));
-                    $sku = "{$baseName}-{$colorCode}-{$size}";
-                }
-
-                $variant = $product->variants()->create([
-                    'sku' => $sku,
-                    'barcode' => $this->generateUniqueBarcode(),
-                    'price' => null,
-                    'image' => null,
-                    'attributes' => $attributes,
+            foreach ($productNames as $productName) {
+                $product = Product::factory()->create([
+                    'name' => $productName,
+                    'category_id' => $category->id,
+                    'has_variants' => true,
+                    'sell_price' => fake()->randomFloat(2, 50, 300),
                 ]);
 
-                foreach ($branches as $branch) {
-                    Inventory::create([
-                        'branch_id' => $branch->id,
-                        'product_variant_id' => $variant->id,
-                        'quantity' => fake()->numberBetween(10, 100),
-                        'min_quantity' => fake()->numberBetween(5, 20),
-                    ]);
+                foreach (self::SIZES as $size) {
+                    foreach (self::COLORS as $color) {
+                        $attributes = [
+                            'tamanho' => $size,
+                            'cor' => $color,
+                        ];
+
+                        $sku = $skuGenerator->generate($product, $attributes);
+                        if ($sku === null) {
+                            $baseName = strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 6));
+                            $colorCode = strtoupper(substr($color, 0, 3));
+                            $sku = "{$baseName}-{$colorCode}-{$size}";
+                        }
+
+                        $variant = $product->variants()->create([
+                            'sku' => $sku,
+                            'barcode' => $this->generateUniqueBarcode(),
+                            'price' => null,
+                            'image' => null,
+                            'attributes' => $attributes,
+                        ]);
+
+                        foreach ($branches as $branch) {
+                            Inventory::create([
+                                'branch_id' => $branch->id,
+                                'product_variant_id' => $variant->id,
+                                'quantity' => fake()->numberBetween(10, 100),
+                                'min_quantity' => fake()->numberBetween(5, 20),
+                            ]);
+                        }
+                    }
                 }
+
+                $totalProducts++;
             }
-        });
+        }
 
-        // Produtos SEM variações (5 produtos simples)
-        Product::factory(5)->create(['has_variants' => false])->each(function (Product $product) use ($branches, $skuGenerator): void {
-            // Cria uma variação padrão (invisível ao usuário)
-            $attributes = ['tipo' => 'único'];
-
-            $sku = $skuGenerator->generate($product, $attributes);
-            if ($sku === null) {
-                $baseName = strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $product->name), 0, 8));
-                $sku = $baseName . '-' . strtoupper(fake()->bothify('####'));
-            }
-
-            $variant = $product->variants()->create([
-                'sku' => $sku,
-                'barcode' => $this->generateUniqueBarcode(),
-                'price' => null,
-                'image' => $product->image,
-                'attributes' => $attributes,
-            ]);
-
-            // Cria estoque para todas as filiais
-            foreach ($branches as $branch) {
-                Inventory::create([
-                    'branch_id' => $branch->id,
-                    'product_variant_id' => $variant->id,
-                    'quantity' => fake()->numberBetween(10, 100),
-                    'min_quantity' => fake()->numberBetween(5, 20),
-                ]);
-            }
-        });
-
-        $this->command->info("Created 15 products WITH variants (P, M, G) and 5 products WITHOUT variants (simple products) with inventories for {$branches->count()} branches.");
+        $totalVariants = $totalProducts * 9;
+        $this->command->info("Criados {$totalProducts} produtos (catálogo fixo) com 9 variações cada (P/M/G × Preto/Branco/Nude), total de {$totalVariants} variantes, com estoque em {$branches->count()} filial(is).");
     }
 
-    /**
-     * Generate a unique EAN13 barcode (13 digits).
-     */
     private function generateUniqueBarcode(): string
     {
         $maxAttempts = 100;
