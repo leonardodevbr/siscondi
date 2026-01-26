@@ -76,6 +76,7 @@ class ProductSeeder extends Seeder
         $skuGenerator = app(SkuGeneratorService::class);
 
         $totalProducts = 0;
+        $variantCounter = 1;
 
         foreach ($this->catalog as $categoryName => $productNames) {
             $category = Category::firstOrCreate(['name' => $categoryName]);
@@ -102,9 +103,12 @@ class ProductSeeder extends Seeder
                             $sku = "{$baseName}-{$colorCode}-{$size}";
                         }
 
+                        // Gera código de barras fixo e determinístico
+                        $barcode = $this->generateDeterministicBarcode($variantCounter);
+
                         $variant = $product->variants()->create([
                             'sku' => $sku,
-                            'barcode' => $this->generateUniqueBarcode(),
+                            'barcode' => $barcode,
                             'price' => null,
                             'image' => null,
                             'attributes' => $attributes,
@@ -118,6 +122,8 @@ class ProductSeeder extends Seeder
                                 'min_quantity' => fake()->numberBetween(5, 20),
                             ]);
                         }
+
+                        $variantCounter++;
                     }
                 }
 
@@ -129,24 +135,40 @@ class ProductSeeder extends Seeder
         $this->command->info("Criados {$totalProducts} produtos (catálogo fixo) com 9 variações cada (P/M/G × Preto/Branco/Nude), total de {$totalVariants} variantes, com estoque em {$branches->count()} filial(is).");
     }
 
-    private function generateUniqueBarcode(): string
+    /**
+     * Gera código de barras EAN-13 determinístico e fixo baseado no contador.
+     * Sempre gera o mesmo código para a mesma variante após reset do banco.
+     *
+     * Formato: 789XXXXXXXXX + dígito verificador
+     * Prefixo 789 = Brasil (fictício para testes)
+     */
+    private function generateDeterministicBarcode(int $counter): string
     {
-        $maxAttempts = 100;
-        $attempt = 0;
+        // Prefixo fixo (789 = Brasil) + contador com 9 dígitos
+        $prefix = '789';
+        $code = $prefix . str_pad((string) $counter, 9, '0', STR_PAD_LEFT);
+        
+        // Calcula dígito verificador EAN-13
+        $checkDigit = $this->calculateEan13CheckDigit($code);
+        
+        return $code . $checkDigit;
+    }
 
-        do {
-            $barcode = fake()->ean13();
-            $exists = ProductVariant::where('barcode', $barcode)->exists();
-            $attempt++;
-        } while ($exists && $attempt < $maxAttempts);
-
-        if ($exists) {
-            do {
-                $barcode = (string) fake()->unique()->numerify('#############');
-                $exists = ProductVariant::where('barcode', $barcode)->exists();
-            } while ($exists && strlen($barcode) === 13);
+    /**
+     * Calcula o dígito verificador para código EAN-13.
+     */
+    private function calculateEan13CheckDigit(string $code): int
+    {
+        $sum = 0;
+        
+        for ($i = 0; $i < 12; $i++) {
+            $digit = (int) $code[$i];
+            // Posições ímpares (0,2,4...) multiplicam por 1, pares (1,3,5...) por 3
+            $sum += ($i % 2 === 0) ? $digit : $digit * 3;
         }
-
-        return $barcode;
+        
+        $remainder = $sum % 10;
+        
+        return $remainder === 0 ? 0 : 10 - $remainder;
     }
 }
