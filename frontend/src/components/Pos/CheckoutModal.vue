@@ -1,5 +1,5 @@
 <template>
-  <Modal :is-open="isOpen" title="Finalizar Venda" @close="$emit('close')">
+  <Modal :is-open="isOpen" title="Finalizar Venda" @close="handleModalClose">
     <div class="space-y-4">
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div class="flex items-center justify-between">
@@ -767,13 +767,31 @@ async function removeSelectedPayment() {
   }
 }
 
-function handleModalClose() {
-  if (!showAddPayment.value) {
+async function handleModalClose() {
+  if (showAddPayment.value) {
+    return; // Não fecha se estiver adicionando pagamento
+  }
+  
+  // Pede confirmação antes de fechar
+  const result = await Swal.fire({
+    title: 'Fechar Pagamento?',
+    text: remainingAmount.value > 0.01 
+      ? `Ainda falta pagar ${formatCurrency(remainingAmount.value)}. Deseja realmente sair?`
+      : 'Deseja sair do pagamento?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sim, Sair (ENTER)',
+    cancelButtonText: 'Não, Continuar (ESC)',
+    focusCancel: true,
+    allowOutsideClick: false,
+  });
+  
+  if (result.isConfirmed) {
     emit('close');
   }
 }
 
-function handleKeydown(e) {
+async function handleKeydown(e) {
   if (!props.isOpen) return;
 
   if (e.key === 'Escape') {
@@ -790,8 +808,21 @@ function handleKeydown(e) {
       authorizedByUserIdForRemoval.value = null;
       return;
     }
-    // Só permite fechar o modal se não houver valor pendente
-    if (remainingAmount.value <= 0.01) {
+    // Pede confirmação antes de fechar o modal de checkout
+    const result = await Swal.fire({
+      title: 'Fechar Pagamento?',
+      text: remainingAmount.value > 0.01 
+        ? `Ainda falta pagar ${formatCurrency(remainingAmount.value)}. Deseja realmente sair?`
+        : 'Deseja sair do pagamento?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, Sair (ENTER)',
+      cancelButtonText: 'Não, Continuar (ESC)',
+      focusCancel: true,
+      allowOutsideClick: false,
+    });
+    
+    if (result.isConfirmed) {
       emit('close');
     }
     return;

@@ -1524,9 +1524,9 @@ async function handleF10Finalize() {
       await handleIdentifyCustomer({ openCheckoutOnSuccess: true });
       return;
     }
-    // Se cancelou (ESC), continua para abrir o checkout normalmente
-    // Aguarda um tick para evitar que o ESC propague e feche o checkout
-    await nextTick();
+    // Se cancelou (ESC), aguarda o modal SweetAlert fechar completamente
+    // antes de abrir o checkout para evitar que o ESC propague
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   showCheckoutModal.value = true;
 }
@@ -1567,11 +1567,7 @@ function handleKeydown(e) {
       handlePriceCheckClose();
       return;
     }
-    if (showCheckoutModal.value) {
-      showCheckoutModal.value = false;
-      nextTick(focusSearch);
-      return;
-    }
+    // Removido o tratamento de ESC para showCheckoutModal - o próprio CheckoutModal agora cuida disso com confirmação
     if (showCustomerModal.value) {
       showCustomerModal.value = false;
       nextTick(focusSearch);
