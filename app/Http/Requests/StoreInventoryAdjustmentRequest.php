@@ -14,7 +14,7 @@ class StoreInventoryAdjustmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('products.update') ?? false;
+        return $this->user()?->can('stock.adjust') ?? false;
     }
 
     /**

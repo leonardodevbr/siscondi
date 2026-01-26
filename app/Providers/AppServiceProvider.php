@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\InventoryMovement;
+use App\Models\Sale;
 use App\Models\StockMovement;
 use App\Observers\InventoryMovementObserver;
+use App\Observers\SaleObserver;
 use App\Observers\StockMovementObserver;
 use App\Services\Payment\PaymentGatewayInterface;
 use App\Services\Payment\Providers\DevPixProvider;
@@ -34,5 +36,6 @@ class AppServiceProvider extends ServiceProvider
 
         InventoryMovement::observe(InventoryMovementObserver::class);
         StockMovement::observe(StockMovementObserver::class);
+        Sale::observe(SaleObserver::class);
     }
 }
