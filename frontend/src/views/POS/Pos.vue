@@ -50,8 +50,6 @@ const cartListRef = ref(null);
 const highlightedItemId = ref(null);
 const highlightItemTimeout = ref(null);
 const customerCpf = ref('');
-const showStartSaleModal = ref(false);
-const startSaleCpfInput = ref('');
 const quantityMultiplier = ref(1);
 const lastScannedProduct = ref(null);
 const lastScanError = ref(null);
@@ -67,6 +65,8 @@ const selectedSearchProductIndex = ref(0);
 const feedbackMessage = ref(null);
 const feedbackType = ref('info'); // 'info', 'error', 'warning'
 const isIdleScanLoading = ref(false);
+/** Throttle para evitar double request em F1/botão (ms) */
+const lastStartSaleAt = ref(0);
 const showOperationsMenu = ref(false);
 const showBalanceModal = ref(false);
 const operationsMenuRef = ref(null);
@@ -332,6 +332,10 @@ function viaScan(code) {
   return /^\d+$/.test(code) || code.length >= 8;
 }
 
+/**
+ * Fluxo quando bipa código de barras em CAIXA LIVRE.
+ * Inicia venda + adiciona produto automaticamente.
+ */
 async function handleIdleScan(code) {
   // Bloqueia double submit durante início de venda
   if (isIdleScanLoading.value) return;
@@ -340,17 +344,21 @@ async function handleIdleScan(code) {
   if (!c) return;
 
   const parsed = parseQuantityMultiplier(c);
-  const branchId = branchIdForSale();
+  
+  // Bloqueia e inicia a venda
   isIdleScanLoading.value = true;
   try {
+    const branchId = branchIdForSale();
     await cartStore.startSale(null, branchId);
   } catch (err) {
     toast.error(err.message ?? 'Erro ao iniciar venda.');
-    return;
-  } finally {
     isIdleScanLoading.value = false;
+    return;
   }
-
+  
+  // Venda iniciada com sucesso, agora libera o lock e adiciona o produto
+  isIdleScanLoading.value = false;
+  
   quantityMultiplier.value = parsed.quantity;
   lastScannedCode.value = parsed.code;
   lastScanError.value = null;
@@ -1088,7 +1096,6 @@ function clearLocalState() {
   lastScannedCode.value = '';
   products.value = [];
   customerCpf.value = '';
-  startSaleCpfInput.value = '';
   quantityMultiplier.value = 1;
   lastScannedProduct.value = null;
   lastScanError.value = null;
@@ -1262,49 +1269,24 @@ function toggleOperationsMenu() {
   operationsMenuIndex.value = 0;
 }
 
-function openStartSaleModal() {
-  startSaleCpfInput.value = '';
-  showStartSaleModal.value = true;
-}
-
-function closeStartSaleModal() {
-  showStartSaleModal.value = false;
-  startSaleCpfInput.value = '';
-}
-
-async function confirmStartSale() {
-  try {
-    const raw = startSaleCpfInput.value?.replace(/\D/g, '').trim() ?? '';
-    let customerId = null;
-    
-    if (raw) {
-      try {
-        const { data } = await api.get('/customers', { params: { document: raw } });
-        if (data.data && data.data.length > 0) {
-          customerId = data.data[0].id;
-        }
-      } catch {
-        // Cliente não encontrado, continuar sem cliente
-      }
-    }
-    
-    const branchId = branchIdForSale();
-    await cartStore.startSale(customerId, branchId);
-    closeStartSaleModal();
-    nextTick(focusSearch);
-  } catch (error) {
-    toast.error(error.message || 'Erro ao iniciar venda.');
-  }
-}
-
-async function skipStartSale() {
+/**
+ * Inicia uma venda diretamente sem modal de identificação.
+ * Bloqueia múltiplas chamadas simultâneas (double submit) e throttle por tempo.
+ */
+async function startSaleDirectly() {
+  if (isIdleScanLoading.value) return;
+  const now = Date.now();
+  if (now - lastStartSaleAt.value < 600) return;
+  lastStartSaleAt.value = now;
+  isIdleScanLoading.value = true;
   try {
     const branchId = branchIdForSale();
     await cartStore.startSale(null, branchId);
-    closeStartSaleModal();
     nextTick(focusSearch);
   } catch (error) {
     toast.error(error.message || 'Erro ao iniciar venda.');
+  } finally {
+    isIdleScanLoading.value = false;
   }
 }
 
@@ -1454,12 +1436,8 @@ async function confirmCloseRegister() {
 
 function handleShortcutClick(key) {
   if (key === 'F1') {
-    if (isIdle.value && !showStartSaleModal.value) {
-      openStartSaleModal();
-      return;
-    }
-    if (isIdle.value && showStartSaleModal.value) {
-      skipStartSale();
+    if (isIdle.value) {
+      startSaleDirectly();
       return;
     }
     if (cartStore.saleStarted) {
@@ -1568,10 +1546,6 @@ function handleKeydown(e) {
       feedbackType.value = 'info';
       return;
     }
-    if (showStartSaleModal.value) {
-      skipStartSale();
-      return;
-    }
     if (showHelpModal.value) {
       showHelpModal.value = false;
       nextTick(focusSearch);
@@ -1648,12 +1622,10 @@ function handleKeydown(e) {
     return;
   }
   if (key === 'F1') {
-    if (isIdle.value && !showStartSaleModal.value) {
-      openStartSaleModal();
-      return;
-    }
-    if (isIdle.value && showStartSaleModal.value) {
-      skipStartSale();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (isIdle.value) {
+      startSaleDirectly();
       return;
     }
     if (cartStore.saleStarted) {
@@ -2100,7 +2072,7 @@ onUnmounted(() => {
           <button
             type="button"
             class="flex items-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-lg font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            @click="openStartSaleModal"
+            @click="startSaleDirectly"
           >
             <ShoppingCartIcon class="h-6 w-6" />
             Iniciar Nova Venda (F1)
@@ -2416,28 +2388,7 @@ onUnmounted(() => {
 
       <StockAvailabilityModal mode="price-check" :is-open="showPriceCheckModal" @close="handlePriceCheckClose" />
 
-      <Modal :is-open="showStartSaleModal" title="Identificar Cliente na Nota?" @close="skipStartSale">
-        <div class="space-y-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">CPF / CNPJ (opcional)</label>
-            <input
-              v-model="startSaleCpfInput"
-              type="text"
-              placeholder="000.000.000-00 ou 00.000.000/0001-00"
-              class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              @keydown.enter.prevent="confirmStartSale"
-            >
-          </div>
-          <div class="flex justify-end gap-2">
-            <Button type="button" variant="outline" @click="skipStartSale">
-              Sem CPF
-            </Button>
-            <Button type="button" variant="primary" @click="confirmStartSale">
-              Confirmar
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <!-- Modal de identificar cliente removido - venda inicia diretamente -->
 
       <Modal :is-open="showHelpModal" title="Atalhos do PDV" @close="closeHelp">
         <ul class="space-y-2 text-slate-700">
