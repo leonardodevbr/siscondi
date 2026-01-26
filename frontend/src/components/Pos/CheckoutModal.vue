@@ -1002,8 +1002,15 @@ async function handleKeydown(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    if (showAddPayment.value) {
+    if (showAddPayment.value && payments.value.length > 0) {
       cancelAddPayment(e);
+      return;
+    }
+    if (showAddPayment.value && payments.value.length === 0) {
+      if (pointStep.value) {
+        cancelPointFlow();
+      }
+      emit('close');
       return;
     }
     if (selectedPaymentIndex.value >= 0 && payments.value.length > 0) {
