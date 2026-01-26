@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -65,5 +66,22 @@ class AuthController extends Controller
         return response()->json([
             'user' => new UserResource($user),
         ]);
+    }
+
+    /**
+     * Validar senha de operação do usuário logado.
+     */
+    public function validateOperationPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+        $valid = $user?->operation_password
+            ? Hash::check($request->input('password'), $user->operation_password)
+            : false;
+
+        return response()->json(['valid' => $valid]);
     }
 }

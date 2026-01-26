@@ -19,6 +19,7 @@ import CouponsIndex from '@/views/Coupons/Index.vue';
 import CouponForm from '@/views/Coupons/Form.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
+import UsersIndex from '@/views/Users/Index.vue';
 import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
 
 const routes = [
@@ -133,6 +134,12 @@ const routes = [
         name: 'branches.index',
         component: BranchesIndex,
         meta: { roles: ['super-admin'] },
+      },
+      {
+        path: 'users',
+        name: 'users.index',
+        component: UsersIndex,
+        meta: { roles: ['super-admin', 'manager'] },
       },
       {
         path: 'settings',

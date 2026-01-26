@@ -15,27 +15,37 @@ class BranchController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * Super Admin vê todas as filiais; demais usuários só a própria filial.
      */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('products.view');
 
+        $user = auth()->user();
         $query = Branch::query();
 
+        if ($user && $user->hasRole('super-admin')) {
+            // Super Admin: todas as filiais
+        } else {
+            $branchId = $user?->branch_id;
+            if ($branchId !== null) {
+                $query->where('id', $branchId);
+            }
+        }
+
         if ($request->has('search')) {
-            $search = $request->string('search');
+            $search = $request->string('search')->toString();
             $query->where('name', 'like', "%{$search}%");
         }
 
-        // Se não há paginação solicitada, retorna todas as branches
+        $query->orderBy('is_main', 'desc')->orderBy('name', 'asc');
+
         if ($request->boolean('all') || ! $request->has('page')) {
-            $branches = $query->orderBy('is_main', 'desc')->orderBy('name', 'asc')->get();
+            $branches = $query->get();
             return response()->json(BranchResource::collection($branches));
         }
 
-        $branches = $query->orderBy('is_main', 'desc')->orderBy('name', 'asc')->paginate(15);
-
-        return BranchResource::collection($branches)->response();
+        return response()->json(BranchResource::collection($query->paginate(15)));
     }
 
     /**

@@ -20,6 +20,9 @@ function handleLogout() {
 }
 
 onMounted(async () => {
+  if (auth.token) {
+    await auth.fetchMe();
+  }
   if (auth.user) {
     try {
       await settingsStore.fetchPublicConfig();

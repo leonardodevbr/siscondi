@@ -10,11 +10,10 @@ const isOpen = ref(false);
 const dropdownRef = ref(null);
 
 const isSuperAdmin = computed(() => {
+  if (auth.user?.is_super_admin === true) return true;
   const roles = auth.user?.roles || [];
   return roles.some((r) => {
-    if (typeof r === 'string') {
-      return r === 'super-admin';
-    }
+    if (typeof r === 'string') return r === 'super-admin';
     return r?.name === 'super-admin';
   });
 });
@@ -45,10 +44,10 @@ function handleClickOutside(event) {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
-  
+
   if (isSuperAdmin.value) {
     await appStore.fetchBranches();
-    if (!appStore.currentBranch && appStore.branches.length > 0) {
+    if (!appStore.currentBranch && appStore.branches?.length > 0) {
       appStore.setBranch(appStore.branches[0]);
     }
   }
@@ -65,8 +64,8 @@ onUnmounted(() => {
       <div ref="dropdownRef" class="relative">
         <button
           type="button"
-          class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
-          @click="toggleDropdown"
+          class="inline-flex cursor-pointer items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+          @click.stop="toggleDropdown"
         >
           <MapPinIcon class="mr-2 h-4 w-4 text-slate-500" aria-hidden="true" />
           <span>
@@ -98,11 +97,11 @@ onUnmounted(() => {
                 v-for="branch in branches"
                 :key="branch.id"
                 type="button"
-                class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center"
+                class="w-full cursor-pointer text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center"
                 :class="{
                   'bg-blue-50 text-blue-700 font-medium': appStore.currentBranch?.id === branch.id,
                 }"
-                @click="selectBranch(branch)"
+                @click.stop="selectBranch(branch)"
               >
                 <MapPinIcon
                   v-if="appStore.currentBranch?.id === branch.id"

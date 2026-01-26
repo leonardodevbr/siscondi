@@ -11,6 +11,17 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.token),
+    /**
+     * Verifica se o usuário tem a permissão ou é super-admin.
+     * @param {string} permissionName - Ex: 'products.view', 'users.create'
+     * @returns {boolean}
+     */
+    can: (state) => (permissionName) => {
+      if (!state.user) return false;
+      if (state.user.is_super_admin === true) return true;
+      const perms = state.user.permissions || [];
+      return Array.isArray(perms) && perms.includes(permissionName);
+    },
   },
   actions: {
     async login(email, password) {
@@ -49,6 +60,19 @@ export const useAuthStore = defineStore('auth', {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    async fetchMe() {
+      if (!this.token) return;
+      try {
+        const { data } = await api.get('/me');
+        const user = data?.user ?? data;
+        if (user) {
+          this.user = user;
+          window.localStorage.setItem('user', JSON.stringify(user));
+        }
+      } catch {
+        // token inválido ou expirado: não sobrescreve user
       }
     },
     logout() {

@@ -16,6 +16,7 @@ import {
   BuildingStorefrontIcon,
   ClipboardDocumentListIcon,
   RectangleGroupIcon,
+  UsersIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -30,21 +31,10 @@ const emit = defineEmits(['close']);
 const route = useRoute();
 const authStore = useAuthStore();
 
-function hasRole(roleName) {
-  const roles = authStore.user?.roles || [];
-  return roles.some((r) => {
-    if (typeof r === 'string') {
-      return r === roleName;
-    }
-    return r?.name === roleName;
-  });
-}
-
-function hasAnyRole(roleNames) {
-  if (roleNames.includes('*')) {
-    return true;
-  }
-  return roleNames.some((role) => hasRole(role));
+/** Item visível se não tem permission (ex.: Dashboard) ou se user pode (can) a permissão. */
+function itemVisible(item) {
+  if (item.permission == null || item.permission === '') return true;
+  return authStore.can(item.permission);
 }
 
 const menuGroups = computed(() => {
@@ -52,42 +42,45 @@ const menuGroups = computed(() => {
     {
       title: 'Principal',
       items: [
-        { name: 'Painel', to: { name: 'dashboard' }, icon: HomeIcon, roles: ['*'] },
-        { name: 'PDV / Frente de Caixa', to: { name: 'pos' }, icon: ComputerDesktopIcon, roles: ['*'] },
+        { name: 'Painel', to: { name: 'dashboard' }, icon: HomeIcon, permission: null },
+        { name: 'PDV / Frente de Caixa', to: { name: 'pos' }, icon: ComputerDesktopIcon, permission: 'pos.access' },
       ],
     },
     {
       title: 'Operacional',
       items: [
-        { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon, roles: ['*'] },
-        { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon, roles: ['*'] },
-        { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: RectangleGroupIcon, roles: ['*'] },
-        { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, roles: ['super-admin', 'manager', 'stockist'] },
-        { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon, roles: ['*'] },
-        { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon, roles: ['super-admin', 'manager'] },
+        { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon, permission: 'sales.view' },
+        { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon, permission: 'products.view' },
+        { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: RectangleGroupIcon, permission: 'products.view' },
+        { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, permission: 'stock.view' },
+        { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon, permission: 'customers.view' },
+        { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon, permission: 'suppliers.view' },
       ],
     },
     {
       title: 'Financeiro',
       items: [
-        { name: 'Despesas', to: { name: 'expenses' }, icon: BanknotesIcon, roles: ['super-admin', 'manager'] },
-        { name: 'Relatórios', to: { name: 'reports' }, icon: ChartBarIcon, roles: ['super-admin', 'manager'] },
+        { name: 'Despesas', to: { name: 'expenses' }, icon: BanknotesIcon, permission: 'expenses.view' },
+        { name: 'Relatórios', to: { name: 'reports' }, icon: ChartBarIcon, permission: 'reports.view' },
       ],
     },
     {
       title: 'Admin',
       items: [
-        { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon, roles: ['super-admin'] },
-        { name: 'Cupons', to: { name: 'coupons' }, icon: TicketIcon, roles: ['super-admin', 'manager'] },
-        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, roles: ['super-admin'] },
+        { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon, permission: 'branches.view' },
+        { name: 'Usuários', to: { name: 'users.index' }, icon: UsersIcon, permission: 'users.view' },
+        { name: 'Cupons', to: { name: 'coupons' }, icon: TicketIcon, permission: 'marketing.coupons' },
+        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: 'settings.manage' },
       ],
     },
   ];
 
-  return allGroups.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => hasAnyRole(item.roles || ['*'])),
-  })).filter((group) => group.items.length > 0);
+  return allGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => itemVisible(item)),
+    }))
+    .filter((group) => group.items.length > 0);
 });
 
 function isActive(item) {
