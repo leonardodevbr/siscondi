@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Branch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -57,15 +58,27 @@ class AuthController extends Controller
 
     /**
      * Get the authenticated user.
+     * Para super-admin com X-Branch-ID no header, retorna a filial atual (em que está "contextado").
      */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
         $user?->load('branch');
 
-        return response()->json([
-            'user' => new UserResource($user),
-        ]);
+        $payload = (new UserResource($user))->toArray($request);
+
+        if ($user && $user->hasRole('super-admin')) {
+            $headerId = $request->header('X-Branch-ID');
+            if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
+                $branch = Branch::find((int) $headerId);
+                if ($branch) {
+                    $payload['branch_id'] = $branch->id;
+                    $payload['branch'] = ['id' => $branch->id, 'name' => $branch->name];
+                }
+            }
+        }
+
+        return response()->json(['user' => $payload]);
     }
 
     /**

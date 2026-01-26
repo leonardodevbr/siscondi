@@ -45,14 +45,22 @@ export const useAuthStore = defineStore('auth', {
           return r?.name === 'super-admin';
         });
 
+        const appStore = useAppStore();
         if (!isAdmin && user?.branch) {
-          const appStore = useAppStore();
           appStore.currentBranch = {
             id: user.branch.id,
             name: user.branch.name,
           };
           window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
           window.localStorage.setItem('selected_branch_id', String(user.branch.id));
+        } else if (isAdmin) {
+          await appStore.fetchBranches();
+          if (appStore.branches?.length) {
+            const first = appStore.branches[0];
+            appStore.currentBranch = { id: first.id, name: first.name };
+            window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
+            window.localStorage.setItem('selected_branch_id', String(first.id));
+          }
         }
       } catch (error) {
         const errors = error.response?.data?.errors;

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,16 +17,41 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
     /**
-     * Scope de usuários pela filial do logado. Todas as operações são por branch.
+     * Branch ID efetivo: para super-admin usa X-Branch-ID do header; senão usa branch_id do usuário.
+     *
+     * @throws ValidationException quando não houver filial identificada
      */
-    private function branchScope()
+    private function getEffectiveBranchId(string $message = 'Filial não identificada para listar usuários.'): int
     {
-        $branchId = auth()->user()?->branch_id;
-        if (! $branchId) {
-            throw ValidationException::withMessages([
-                'branch' => ['Filial não identificada para listar usuários.'],
-            ]);
+        $user = auth()->user();
+        if (! $user) {
+            throw ValidationException::withMessages(['branch' => [$message]]);
         }
+
+        if ($user->hasRole('super-admin')) {
+            $headerId = request()->header('X-Branch-ID');
+            if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
+                $id = (int) $headerId;
+                if (Branch::whereKey($id)->exists()) {
+                    return $id;
+                }
+            }
+        }
+
+        $branchId = $user->branch_id;
+        if ($branchId) {
+            return (int) $branchId;
+        }
+
+        throw ValidationException::withMessages(['branch' => [$message]]);
+    }
+
+    /**
+     * Scope de usuários pela filial do logado. Super-admin usa filial do header X-Branch-ID.
+     */
+    private function branchScope(): \Illuminate\Database\Eloquent\Builder
+    {
+        $branchId = $this->getEffectiveBranchId('Filial não identificada para listar usuários.');
 
         return User::query()->where('branch_id', $branchId);
     }
@@ -55,12 +81,7 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $branchId = auth()->user()?->branch_id;
-        if (! $branchId) {
-            throw ValidationException::withMessages([
-                'branch' => ['Filial não identificada para criar usuário.'],
-            ]);
-        }
+        $branchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
 
         $data = $request->safe()->only(['name', 'email', 'role']);
         $data['password'] = $request->validated('password');
