@@ -134,7 +134,7 @@
         </div>
 
         <div v-else class="space-y-3">
-          <div v-if="newPayment.method === 'credit_card' && !cardTypeSelected" @keydown.esc.stop="cancelAddPayment">
+          <div v-if="newPayment.method === 'credit_card' && !cardTypeSelected" @keydown.esc.stop="goBackToMethodList">
             <p class="text-xs text-slate-600 mb-2">Tipo de cartão:</p>
             <div class="space-y-1">
               <button
@@ -164,7 +164,7 @@
             </div>
           </div>
 
-          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="cancelAddPayment">
+          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="goBackToMethodList">
             <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
             <div ref="installmentsListRef" class="space-y-1 max-h-60 overflow-y-auto">
               <button
@@ -190,7 +190,7 @@
               <p class="mt-1 text-base font-semibold text-slate-900">{{ paymentSummary }}</p>
             </div>
             <div class="flex justify-end gap-2">
-              <Button variant="outline" size="sm" @click="cancelAddPayment">Cancelar (ESC)</Button>
+              <Button variant="outline" size="sm" @click="goBackToMethodList">Voltar (ESC)</Button>
               <Button variant="primary" size="sm" @click="confirmAddPayment">Adicionar (ENTER)</Button>
             </div>
           </div>
@@ -845,6 +845,22 @@ async function confirmAddPayment() {
   }
 }
 
+function goBackToMethodList() {
+  methodSelected.value = false;
+  cardTypeSelected.value = false;
+  installmentsSelected.value = false;
+  selectedMethodIndex.value = 0;
+  selectedCardTypeIndex.value = 0;
+  selectedInstallmentIndex.value = 0;
+  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
+  newPayment.value = {
+    method: 'cash',
+    amount: Number(amount) || 0,
+    installments: 1,
+    cardType: null,
+  };
+}
+
 function cancelAddPayment(e) {
   if (e) {
     e.preventDefault();
@@ -1002,11 +1018,15 @@ async function handleKeydown(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    if (showAddPayment.value && payments.value.length > 0) {
-      cancelAddPayment(e);
-      return;
-    }
-    if (showAddPayment.value && payments.value.length === 0) {
+    if (showAddPayment.value) {
+      if (methodSelected.value) {
+        goBackToMethodList();
+        return;
+      }
+      if (payments.value.length > 0) {
+        cancelAddPayment(e);
+        return;
+      }
       if (pointStep.value) {
         cancelPointFlow();
       }
