@@ -20,4 +20,7 @@ Route::prefix('webhook')->name('webhook.')->group(function (): void {
     Route::post('mercadopago-point', [WebhookController::class, 'handleMercadoPagoPoint'])
         ->name('mercadopago-point')
         ->withoutMiddleware(['auth:sanctum']);
+    Route::post('mercadopago-payment', [WebhookController::class, 'handleMercadoPagoPayment'])
+        ->name('mercadopago-payment')
+        ->withoutMiddleware(['auth:sanctum']);
 });

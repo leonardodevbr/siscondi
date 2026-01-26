@@ -9,6 +9,7 @@ use App\Enums\SaleStatus;
 use App\Models\Coupon;
 use App\Models\Sale;
 use App\Services\Payment\MercadoPagoPointService;
+use App\Services\Payment\MercadoPagoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\Log;
 class WebhookController extends Controller
 {
     public function __construct(
-        private readonly MercadoPagoPointService $pointService
+        private readonly MercadoPagoPointService $pointService,
+        private readonly MercadoPagoService $mpService
     ) {
     }
 
@@ -118,6 +120,92 @@ class WebhookController extends Controller
                 'intent_id' => $id,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    /**
+     * Webhook Mercado Pago Payments (PIX etc.): tipo "payment".
+     * Configure uma URL em Suas integrações > Notificações para tipo "Pagamentos".
+     * POST /api/webhook/mercadopago-payment
+     */
+    public function handleMercadoPagoPayment(Request $request): JsonResponse
+    {
+        $payload = $request->all();
+        Log::info('WebhookController::handleMercadoPagoPayment - Payload', [
+            'type' => $payload['type'] ?? null,
+            'action' => $payload['action'] ?? null,
+        ]);
+
+        if (($payload['type'] ?? null) !== 'payment') {
+            return response()->json(['received' => true]);
+        }
+
+        $data = $payload['data'] ?? null;
+        $id = is_array($data) ? ($data['id'] ?? null) : null;
+        if (! $id) {
+            return response()->json(['received' => true]);
+        }
+
+        $paymentId = is_numeric($id) ? (int) $id : (int) $id;
+        if ($paymentId <= 0) {
+            return response()->json(['received' => true]);
+        }
+
+        try {
+            $payment = $this->mpService->getPayment($paymentId);
+            if (! $payment || ($payment['status'] ?? '') !== 'approved') {
+                return response()->json(['received' => true]);
+            }
+
+            $externalRef = $payment['external_reference'] ?? '';
+            if ($externalRef === '') {
+                Log::warning('WebhookController::handleMercadoPagoPayment - external_reference vazio', ['payment_id' => $paymentId]);
+
+                return response()->json(['received' => true]);
+            }
+
+            $sale = Sale::with('salePayments', 'cashRegister')->find((int) $externalRef);
+            if (! $sale) {
+                Log::warning('WebhookController::handleMercadoPagoPayment - Venda não encontrada', ['external_reference' => $externalRef]);
+
+                return response()->json(['received' => true]);
+            }
+
+            if ($sale->status === SaleStatus::COMPLETED) {
+                Log::info('WebhookController::handleMercadoPagoPayment - Venda já completada', ['sale_id' => $sale->id]);
+
+                return response()->json(['received' => true]);
+            }
+
+            DB::transaction(function () use ($sale): void {
+                $sale->status = SaleStatus::COMPLETED;
+                $sale->save();
+
+                if ($sale->coupon_id) {
+                    Coupon::where('id', $sale->coupon_id)->increment('used_count');
+                }
+
+                if ($sale->cashRegister) {
+                    $sale->cashRegister->transactions()->create([
+                        'type' => CashRegisterTransactionType::SALE,
+                        'amount' => $sale->final_amount,
+                        'description' => "Venda #{$sale->id}",
+                        'sale_id' => $sale->id,
+                    ]);
+                }
+            });
+
+            Log::info('WebhookController::handleMercadoPagoPayment - Venda finalizada', [
+                'sale_id' => $sale->id,
+                'payment_id' => $paymentId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WebhookController::handleMercadoPagoPayment - Erro', [
+                'payment_id' => $paymentId,
+                'message' => $e->getMessage(),
             ]);
         }
 

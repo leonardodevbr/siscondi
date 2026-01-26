@@ -21,6 +21,7 @@ class SalePayment extends Model
         'method',
         'amount',
         'installments',
+        'transaction_id',
     ];
 
     /**

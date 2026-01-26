@@ -19,6 +19,8 @@ use App\Models\SaleItem;
 use App\Models\SalePayment;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\InstallmentService;
+use App\Services\Payment\MercadoPagoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\Settings;
@@ -799,6 +801,118 @@ class PosController extends Controller
     }
 
     /**
+     * Simula parcelas para cartão de crédito (manual).
+     * GET /api/sales/simulate-installments?amount=...
+     */
+    public function simulateInstallments(Request $request, InstallmentService $installmentService): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $amount = (float) $request->input('amount');
+        $options = $installmentService->calculate($amount);
+
+        return response()->json(['installments' => $options], 200);
+    }
+
+    /**
+     * Gera PIX (QR Code) para venda em PENDING_PAYMENT com pagamento PIX.
+     * POST pos/pix/generate { sale_id }
+     */
+    public function generatePix(Request $request, MercadoPagoService $mpService): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'integer', 'exists:sales,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $sale = Sale::where('id', (int) $request->input('sale_id'))
+            ->where('user_id', $user->id)
+            ->with('salePayments')
+            ->first();
+
+        if (! $sale) {
+            return response()->json(['message' => 'Venda não encontrada.'], 404);
+        }
+
+        if ($sale->status !== SaleStatus::PENDING_PAYMENT) {
+            return response()->json([
+                'message' => 'A venda não está aguardando pagamento PIX.',
+            ], 400);
+        }
+
+        $pixPayment = $sale->salePayments->first(fn (SalePayment $p) => $p->method === PaymentMethod::PIX);
+        if (! $pixPayment) {
+            return response()->json([
+                'message' => 'Nenhum pagamento PIX encontrado nesta venda.',
+            ], 400);
+        }
+
+        try {
+            $data = $mpService->createPixPayment($sale);
+            $pixPayment->update(['transaction_id' => (string) $data['payment_id']]);
+
+            return response()->json([
+                'qr_code' => $data['qr_code'],
+                'qr_code_base64' => $data['qr_code_base64'],
+                'payment_id' => $data['payment_id'],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('PosController::generatePix', ['sale_id' => $sale->id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Consulta se a venda foi paga (polling). Retorna { paid: true } se status === COMPLETED.
+     * GET pos/pix/status?sale_id=...
+     */
+    public function checkPixStatus(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'integer', 'exists:sales,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $sale = Sale::where('id', (int) $request->input('sale_id'))
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $sale) {
+            return response()->json(['message' => 'Venda não encontrada.'], 404);
+        }
+
+        return response()->json([
+            'paid' => $sale->status === SaleStatus::COMPLETED,
+        ], 200);
+    }
+
+    /**
      * Adiciona pagamento à venda.
      */
     public function addPayment(Request $request): JsonResponse
@@ -974,7 +1088,7 @@ class PosController extends Controller
             'metadata' => null,
         ]);
 
-        return response()->noContent();
+        return response()->json(null, 204);
     }
 
     /**

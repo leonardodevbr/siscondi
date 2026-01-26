@@ -21,4 +21,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('pos/log-manager-action', [PosController::class, 'logManagerAction']);
     Route::post('pos/cancel', [PosController::class, 'cancel']);
     Route::post('pos/finish', [PosController::class, 'finish']);
+    Route::post('pos/pix/generate', [PosController::class, 'generatePix']);
+    Route::get('pos/pix/status', [PosController::class, 'checkPixStatus']);
 });

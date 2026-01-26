@@ -1,6 +1,31 @@
 <template>
-  <Modal :is-open="isOpen" title="Finalizar Venda" @close="handleModalClose">
-    <div class="space-y-4">
+  <Modal :is-open="isOpen" :title="pixStep === 'qr' ? 'Pagamento PIX' : 'Finalizar Venda'" @close="pixStep === 'qr' ? cancelPixFlow() : handleModalClose()">
+    <div v-if="pixStep === 'qr'" class="space-y-4">
+      <p class="text-sm text-slate-600">Escaneie o QR Code ou copie o código Pix Copia e Cola para pagar.</p>
+      <div class="flex flex-col items-center gap-4">
+        <img
+          v-if="pixQrCodeBase64"
+          :src="`data:image/png;base64,${pixQrCodeBase64}`"
+          alt="QR Code PIX"
+          class="h-48 w-48 rounded-lg border border-slate-200 object-contain bg-white"
+        >
+        <div class="w-full space-y-2">
+          <label class="block text-xs font-medium text-slate-700">Pix Copia e Cola</label>
+          <div class="flex gap-2">
+            <input
+              :value="pixQrCode"
+              type="text"
+              readonly
+              class="flex-1 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs"
+            >
+            <Button variant="outline" size="sm" @click="copyPixCode">Copiar</Button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">Aguardando confirmação do pagamento...</p>
+        <Button variant="outline" @click="cancelPixFlow">Fechar</Button>
+      </div>
+    </div>
+    <div v-else class="space-y-4">
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-slate-700">Total Venda:</span>
@@ -166,10 +191,13 @@
 
           <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="goBackToMethodList">
             <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
-            <div ref="installmentsListRef" class="space-y-1 max-h-60 overflow-y-auto">
+            <div v-if="loadingInstallments" class="flex items-center justify-center py-8">
+              <div class="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+            </div>
+            <div v-else ref="installmentsListRef" class="space-y-1 max-h-60 overflow-y-auto">
               <button
-                v-for="(n, index) in Array.from({ length: 12 }, (_, i) => i + 1)"
-                :key="n"
+                v-for="(opt, index) in installmentsFromApi"
+                :key="opt.installment"
                 type="button"
                 :class="[
                   'w-full rounded border px-3 py-2 text-left text-sm transition',
@@ -177,9 +205,9 @@
                     ? 'border-blue-500 bg-blue-100 font-medium'
                     : 'border-slate-300 bg-white hover:border-blue-300'
                 ]"
-                @click="selectInstallments(n)"
+                @click="selectInstallmentFromApi(opt)"
               >
-                {{ n }} - {{ n }}x de {{ formatCurrency(installmentPreview(n)) }}
+                {{ opt.installment }}x de {{ formatCurrency(opt.amount) }} {{ opt.interest_free ? '(sem juros)' : '' }}
               </button>
             </div>
           </div>
@@ -310,6 +338,14 @@ const pointIntentId = ref('');
 const pointPollingInterval = ref(null);
 const pointLoadingDevices = ref(false);
 const pointSendingToDevice = ref(false);
+const installmentsFromApi = ref([]);
+const loadingInstallments = ref(false);
+const pixStep = ref(null);
+const pixPendingSaleId = ref(null);
+const pixQrCode = ref('');
+const pixQrCodeBase64 = ref('');
+const pixPollingInterval = ref(null);
+const pixGenerating = ref(false);
 
 const amountInputRef = ref(null);
 const installmentsListRef = ref(null);
@@ -470,6 +506,8 @@ function resetPaymentForm() {
   selectedInstallmentIndex.value = 0;
   selectedPaymentIndex.value = -1;
   paymentRemovalAuthorized.value = false;
+  installmentsFromApi.value = [];
+  loadingInstallments.value = false;
   amountFormatted.value = '';
   isFinishing.value = false;
   paymentsSnapshotForFinishing.value = [];
@@ -522,6 +560,29 @@ async function handleFinish() {
       }
       return;
     }
+    if (result?.sale?.id && (result.sale.status === 'pending_payment' || result.sale.status === 'PENDING_PAYMENT')) {
+      const hadPix = (result.sale.payments || result.sale.sale_payments || []).some((p) => (p.method || '').toLowerCase() === 'pix');
+      if (hadPix) {
+        pixGenerating.value = true;
+        try {
+          const { data } = await api.post('pos/pix/generate', { sale_id: result.sale.id });
+          pixPendingSaleId.value = result.sale.id;
+          pixQrCode.value = data.qr_code || '';
+          pixQrCodeBase64.value = data.qr_code_base64 || '';
+          pixStep.value = 'qr';
+          startPixPolling();
+        } catch (e) {
+          toast.warning(e?.response?.data?.message || 'PIX não disponível. Venda registrada.');
+          cartStore.resetState();
+          emit('finish', result?.sale ?? null);
+          emit('close');
+        } finally {
+          pixGenerating.value = false;
+          isFinishing.value = false;
+        }
+        return;
+      }
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
     emit('finish', result?.sale ?? null);
     emit('close');
@@ -531,6 +592,54 @@ async function handleFinish() {
   } finally {
     isFinishing.value = false;
   }
+}
+
+function startPixPolling() {
+  stopPixPolling();
+  pixPollingInterval.value = setInterval(async () => {
+    if (!pixPendingSaleId.value) return;
+    try {
+      const { data } = await api.get('pos/pix/status', { params: { sale_id: pixPendingSaleId.value } });
+      if (data.paid) {
+        const sid = pixPendingSaleId.value;
+        stopPixPolling();
+        pixStep.value = null;
+        pixPendingSaleId.value = null;
+        pixQrCode.value = '';
+        pixQrCodeBase64.value = '';
+        cartStore.resetState();
+        emit('finish', { id: sid, status: 'completed' });
+        emit('close');
+        toast.success('Pagamento PIX confirmado!');
+      }
+    } catch (_) {}
+  }, 3000);
+}
+
+function stopPixPolling() {
+  if (pixPollingInterval.value) {
+    clearInterval(pixPollingInterval.value);
+    pixPollingInterval.value = null;
+  }
+}
+
+function cancelPixFlow() {
+  stopPixPolling();
+  pixStep.value = null;
+  pixPendingSaleId.value = null;
+  pixQrCode.value = '';
+  pixQrCodeBase64.value = '';
+  cartStore.resetState();
+  emit('close');
+}
+
+function copyPixCode() {
+  if (!pixQrCode.value) return;
+  navigator.clipboard.writeText(pixQrCode.value).then(() => {
+    toast.success('Código PIX copiado!');
+  }).catch(() => {
+    toast.error('Não foi possível copiar.');
+  });
 }
 
 function stopPointPolling() {
@@ -710,6 +819,7 @@ function selectMethod(method) {
       newPayment.value.cardType = 'credit';
       cardTypeSelected.value = true;
       installmentsSelected.value = false;
+      nextTick(() => fetchInstallmentOptions());
     }
     return;
   }
@@ -762,6 +872,34 @@ function handleAmountConfirm() {
   }
   
   confirmAddPayment();
+}
+
+async function fetchInstallmentOptions() {
+  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
+  if (!amount || amount <= 0) {
+    installmentsFromApi.value = [];
+    return;
+  }
+  loadingInstallments.value = true;
+  installmentsFromApi.value = [];
+  try {
+    const { data } = await api.get('sales/simulate-installments', { params: { amount } });
+    installmentsFromApi.value = data.installments || [];
+  } catch (err) {
+    toast.error(err?.response?.data?.message || err?.message || 'Erro ao buscar parcelas.');
+    installmentsFromApi.value = [];
+  } finally {
+    loadingInstallments.value = false;
+  }
+}
+
+function selectInstallmentFromApi(option) {
+  newPayment.value.installments = option.installment;
+  installmentsSelected.value = true;
+  selectedInstallmentIndex.value = option.installment - 1;
+  nextTick(() => {
+    confirmAddPayment();
+  });
 }
 
 function selectInstallments(n) {
@@ -852,6 +990,8 @@ function goBackToMethodList() {
   selectedMethodIndex.value = 0;
   selectedCardTypeIndex.value = 0;
   selectedInstallmentIndex.value = 0;
+  installmentsFromApi.value = [];
+  loadingInstallments.value = false;
   const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
   newPayment.value = {
     method: 'cash',
@@ -1005,6 +1145,11 @@ async function removeSelectedPayment() {
 }
 
 function handleModalClose() {
+  stopPixPolling();
+  pixStep.value = null;
+  pixPendingSaleId.value = null;
+  pixQrCode.value = '';
+  pixQrCodeBase64.value = '';
   if (pointStep.value) {
     cancelPointFlow();
   }

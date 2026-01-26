@@ -12,6 +12,7 @@ class SettingSeeder extends Seeder
     public function run(): void
     {
         Settings::set('store_name', 'Adonai Boutique', 'string', 'general');
+        Settings::set('store_email', 'venda@loja.local', 'string', 'general');
         Settings::set('payment_gateway', 'pix_dev', 'string', 'payment');
         Settings::set('enable_cash_register', true, 'boolean', 'general');
         
@@ -25,6 +26,12 @@ class SettingSeeder extends Seeder
         Settings::set('mp_token_expires_at', 0, 'integer', 'integrations');
         Settings::set('mp_user_id', '', 'string', 'integrations');
         Settings::set('mp_pos_id', '', 'string', 'integrations');
+
+        // Parcelamento cartão de crédito (manual)
+        Settings::set('cc_max_installments', 12, 'integer', 'payment');
+        Settings::set('cc_no_interest_installments', 3, 'integer', 'payment');
+        Settings::set('cc_interest_rate', '2.99', 'string', 'payment');
+        Settings::set('cc_min_installment_value', '10.00', 'string', 'payment');
     }
 }
 
