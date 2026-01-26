@@ -42,15 +42,16 @@ export const useCashRegisterStore = defineStore('cashRegister', {
         }
         const initial = parseFloat(cash_register.initial_balance) || 0;
         const total = parseFloat(cash_register.current_balance) || 0;
+        const totals = cash_register.totals || {};
         this.balance = total;
         this.initialBalance = initial;
         this.summary = {
           initialBalance: initial,
-          totalCash: 0,
-          totalPix: 0,
-          totalCard: 0,
-          supply: 0,
-          bleed: 0,
+          totalCash: parseFloat(totals.money) || 0,
+          totalPix: parseFloat(totals.pix) || 0,
+          totalCard: parseFloat(totals.card) || 0,
+          supply: parseFloat(totals.supplies) || 0,
+          bleed: parseFloat(totals.bleeds) || 0,
           totalInDrawer: total,
         };
         return this.summary;

@@ -9,7 +9,9 @@ use App\Actions\CashRegister\CloseCashRegisterAction;
 use App\Actions\CashRegister\OpenCashRegisterAction;
 use App\Enums\CashRegisterStatus;
 use App\Enums\CashRegisterTransactionType;
+use App\Enums\SaleStatus;
 use App\Models\CashRegister;
+use App\Models\SalePayment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -113,6 +115,7 @@ class CashRegisterController extends Controller
         }
 
         $currentBalance = $cashRegister->getCurrentBalance();
+        $totals = $this->computeRegisterTotals($cashRegister);
 
         return response()->json([
             'is_open' => true,
@@ -122,8 +125,56 @@ class CashRegisterController extends Controller
                 'initial_balance' => $cashRegister->initial_balance,
                 'current_balance' => $currentBalance,
                 'transactions_count' => $cashRegister->transactions()->count(),
+                'totals' => $totals,
             ],
         ], 200);
+    }
+
+    /**
+     * Agrega totais por método de pagamento e por tipo de movimentação (suprimento/sangria).
+     *
+     * @return array{money: float, pix: float, card: float, supplies: float, bleeds: float}
+     */
+    private function computeRegisterTotals(CashRegister $cashRegister): array
+    {
+        $saleIds = $cashRegister->sales()
+            ->whereIn('status', [SaleStatus::COMPLETED->value, SaleStatus::PENDING_PAYMENT->value])
+            ->pluck('id')
+            ->toArray();
+
+        $money = 0.0;
+        $pix = 0.0;
+        $card = 0.0;
+
+        if (count($saleIds) > 0) {
+            $paymentTotals = SalePayment::query()
+                ->whereIn('sale_id', $saleIds)
+                ->selectRaw("method, COALESCE(SUM(amount), 0) as total")
+                ->groupBy('method')
+                ->pluck('total', 'method');
+
+            $money = (float) ($paymentTotals->get('money', 0) ?? 0);
+            $pix = (float) ($paymentTotals->get('pix', 0) ?? 0);
+            $creditCard = (float) ($paymentTotals->get('credit_card', 0) ?? 0);
+            $debitCard = (float) ($paymentTotals->get('debit_card', 0) ?? 0);
+            $card = $creditCard + $debitCard;
+        }
+
+        $supplies = (float) $cashRegister->transactions()
+            ->where('type', CashRegisterTransactionType::SUPPLY)
+            ->sum('amount');
+
+        $bleeds = (float) $cashRegister->transactions()
+            ->where('type', CashRegisterTransactionType::BLEED)
+            ->sum('amount');
+
+        return [
+            'money' => round($money, 2),
+            'pix' => round($pix, 2),
+            'card' => round($card, 2),
+            'supplies' => round($supplies, 2),
+            'bleeds' => round($bleeds, 2),
+        ];
     }
 
     /**

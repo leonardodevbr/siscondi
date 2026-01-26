@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Sale> $sales
+ */
 class CashRegister extends Model
 {
     use HasFactory;
@@ -51,6 +54,14 @@ class CashRegister extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(CashRegisterTransaction::class);
+    }
+
+    /**
+     * @return HasMany<Sale>
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
     }
 
     public function getCurrentBalance(): float

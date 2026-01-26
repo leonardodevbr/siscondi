@@ -8,9 +8,12 @@ use App\Enums\CashRegisterStatus;
 use App\Enums\CashRegisterTransactionType;
 use App\Enums\PaymentStatus;
 use App\Enums\SaleStatus;
+use App\Enums\StockMovementType;
 use App\Models\CashRegister;
+use App\Models\Inventory;
 use App\Models\Payment;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use App\Services\Payment\PaymentGatewayInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -90,6 +93,32 @@ class PixController extends Controller
                 $payment->update([
                     'status' => PaymentStatus::PAID,
                 ]);
+
+                $sale->load('items');
+                $reason = "Venda #{$sale->id}";
+                $movementsAlreadyExist = StockMovement::where('reason', $reason)->exists();
+
+                if (! $movementsAlreadyExist) {
+                    foreach ($sale->items as $item) {
+                        $inventory = Inventory::where('branch_id', $sale->branch_id)
+                            ->where('product_variant_id', $item->product_variant_id)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($inventory) {
+                            $inventory->decrement('quantity', $item->quantity);
+                        }
+
+                        StockMovement::create([
+                            'branch_id' => $sale->branch_id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'type' => StockMovementType::SALE,
+                            'quantity' => $item->quantity,
+                            'reason' => $reason,
+                            'user_id' => $sale->user_id,
+                        ]);
+                    }
+                }
 
                 $sale->update([
                     'status' => SaleStatus::COMPLETED,
