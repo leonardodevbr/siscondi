@@ -61,8 +61,13 @@ class MercadoPagoPointController extends Controller
             'device_id' => ['required', 'string', 'max:255'],
         ]);
 
-        $sale = Sale::find($validated['sale_id']);
-        if (! $sale || $sale->status !== SaleStatus::OPEN) {
+        $sale = Sale::with('salePayments')->find($validated['sale_id']);
+        $hasPoint = $sale?->salePayments->contains(fn ($p) => $p->method === \App\Enums\PaymentMethod::POINT);
+        $allowedStatus = $sale && (
+            $sale->status === SaleStatus::OPEN
+            || ($sale->status === SaleStatus::PENDING_PAYMENT && $hasPoint)
+        );
+        if (! $allowedStatus) {
             Log::info('MercadoPagoPointController::store - Venda inválida ou já finalizada', ['sale_id' => $validated['sale_id']]);
 
             return response()->json([

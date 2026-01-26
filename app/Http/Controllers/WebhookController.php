@@ -65,7 +65,7 @@ class WebhookController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            $sale = Sale::find((int) $externalRef);
+            $sale = Sale::with('salePayments')->find((int) $externalRef);
             if (! $sale) {
                 Log::warning('WebhookController::handleMercadoPagoPoint - Venda não encontrada', ['external_reference' => $externalRef]);
 
@@ -74,6 +74,19 @@ class WebhookController extends Controller
 
             if ($sale->status === SaleStatus::COMPLETED) {
                 Log::info('WebhookController::handleMercadoPagoPoint - Venda já completada', ['sale_id' => $sale->id]);
+
+                return response()->json(['received' => true]);
+            }
+
+            $totalPayments = $sale->salePayments->sum('amount');
+            $isFullyPaid = $totalPayments >= $sale->final_amount;
+
+            if (! $isFullyPaid) {
+                Log::info('WebhookController::handleMercadoPagoPoint - Pagamento Point aprovado, mas valor parcial', [
+                    'sale_id' => $sale->id,
+                    'total_payments' => $totalPayments,
+                    'final_amount' => $sale->final_amount,
+                ]);
 
                 return response()->json(['received' => true]);
             }

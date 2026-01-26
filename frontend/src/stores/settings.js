@@ -27,6 +27,20 @@ export const useSettingsStore = defineStore('settings', {
     mercadopagoConnected: (state) => {
       return state.settingsMeta.mp_access_token?.masked === true;
     },
+    /**
+     * Gateway ativo para pagamento com cartão (maquininha).
+     * 'mercadopago_point' = loja tem MP Point configurado; flow abre seleção de device.
+     * 'manual' = apenas registro manual de cartão crédito/débito.
+     * Usa publicConfig (vindo de /config no PDV) ou, na tela de Settings, settings/settingsMeta.
+     */
+    activePaymentGateway: (state) => {
+      const fromConfig = state.publicConfig.active_payment_gateway;
+      if (fromConfig === 'mercadopago_point' || fromConfig === 'manual') return fromConfig;
+      if (state.settingsMeta.mp_access_token?.masked === true) return 'mercadopago_point';
+      const cid = state.settings['mp_client_id'];
+      if (typeof cid === 'string' && cid.trim() !== '') return 'mercadopago_point';
+      return 'manual';
+    },
   },
   
   actions: {
@@ -37,6 +51,7 @@ export const useSettingsStore = defineStore('settings', {
           enable_global_stock_search: response.data.enable_global_stock_search ?? false,
           sku_auto_generation: response.data.sku_auto_generation ?? true,
           sku_pattern: response.data.sku_pattern ?? '{NAME}-{VARIANTS}-{SEQ}',
+          active_payment_gateway: response.data.active_payment_gateway ?? 'manual',
         };
       } catch (error) {
         console.error('Erro ao carregar configurações públicas:', error);
@@ -44,6 +59,7 @@ export const useSettingsStore = defineStore('settings', {
           enable_global_stock_search: false,
           sku_auto_generation: true,
           sku_pattern: '{NAME}-{VARIANTS}-{SEQ}',
+          active_payment_gateway: 'manual',
         };
       }
     },

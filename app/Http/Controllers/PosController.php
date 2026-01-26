@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\Validator;
 class PosController extends Controller
 {
     /**
-     * Busca a venda aberta do usuário atual.
+     * Busca a venda ativa do usuário atual: OPEN ou PENDING_PAYMENT com pagamento Point
+     * (aguardando maquininha ou falta pagar após Point parcial).
      */
     private function getActiveSale(User $user): ?Sale
     {
@@ -41,9 +42,26 @@ class PosController extends Controller
             return null;
         }
 
-        return Sale::where('user_id', $user->id)
+        $open = Sale::where('user_id', $user->id)
             ->where('cash_register_id', $cashRegister->id)
             ->where('status', SaleStatus::OPEN)
+            ->with([
+                'items.productVariant.product',
+                'customer',
+                'salePayments',
+                'coupon.products',
+                'coupon.categories',
+            ])
+            ->first();
+
+        if ($open) {
+            return $open;
+        }
+
+        return Sale::where('user_id', $user->id)
+            ->where('cash_register_id', $cashRegister->id)
+            ->where('status', SaleStatus::PENDING_PAYMENT)
+            ->whereHas('salePayments', fn ($q) => $q->where('method', PaymentMethod::POINT))
             ->with([
                 'items.productVariant.product',
                 'customer',
@@ -995,10 +1013,33 @@ class PosController extends Controller
                     $payment->method === PaymentMethod::POINT
                 );
 
-                // Point: fica PENDING_PAYMENT até o webhook do MP confirmar; cupom/caixa no webhook
+                // Point: em OPEN vai para PENDING_PAYMENT até o webhook confirmar; se já PENDING_PAYMENT, completa (Point já aprovado + restante pago)
                 if ($hasPointPayment) {
-                    $sale->status = SaleStatus::PENDING_PAYMENT;
+                    if ($sale->status === SaleStatus::OPEN) {
+                        $sale->status = SaleStatus::PENDING_PAYMENT;
+                        $sale->save();
+
+                        return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'user', 'branch']);
+                    }
+                    // PENDING_PAYMENT com Point: webhook já confirmou o Point (ou não); total >= final, então fecha a venda
+                    $sale->status = SaleStatus::COMPLETED;
                     $sale->save();
+                    if ($sale->coupon_id) {
+                        try {
+                            Coupon::where('id', $sale->coupon_id)->increment('used_count');
+                        } catch (\Throwable $e) {
+                            Log::error('PosController::finish - ERRO ao incrementar cupom', ['sale_id' => $sale->id, 'error' => $e->getMessage()]);
+                            throw $e;
+                        }
+                    }
+                    if ($sale->cashRegister) {
+                        $sale->cashRegister->transactions()->create([
+                            'type' => \App\Enums\CashRegisterTransactionType::SALE,
+                            'amount' => $sale->final_amount,
+                            'description' => "Venda #{$sale->id}",
+                            'sale_id' => $sale->id,
+                        ]);
+                    }
 
                     return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments', 'user', 'branch']);
                 }

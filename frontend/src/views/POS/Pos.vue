@@ -39,6 +39,7 @@ const searchTimeout = ref(null);
 const showPriceCheckModal = ref(false);
 const showHelpModal = ref(false);
 const showCheckoutModal = ref(false);
+const checkoutModalWasOpened = ref(false);
 const showCustomerModal = ref(false);
 const showDiscountModal = ref(false);
 const showCloseRegisterModal = ref(false);
@@ -1108,6 +1109,7 @@ function clearLocalState() {
   selectedSearchProductIndex.value = 0;
   highlightedItemId.value = null;
   selectedCartIndex.value = null;
+  checkoutModalWasOpened.value = false;
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
     searchTimeout.value = null;
@@ -1508,7 +1510,7 @@ async function handleF10Finalize() {
     toast.error('Adicione pelo menos um item.');
     return;
   }
-  if (!cartStore.customer) {
+  if (!checkoutModalWasOpened.value) {
     const swalResult = await Swal.fire({
       title: 'Identificar Cliente?',
       text: 'Deseja informar o CPF/CNPJ na nota?',
@@ -1524,10 +1526,9 @@ async function handleF10Finalize() {
       await handleIdentifyCustomer({ openCheckoutOnSuccess: true });
       return;
     }
-    // Se cancelou (ESC), aguarda o modal SweetAlert fechar completamente
-    // antes de abrir o checkout para evitar que o ESC propague
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
+  checkoutModalWasOpened.value = true;
   showCheckoutModal.value = true;
 }
 
@@ -1791,12 +1792,20 @@ async function handleIdentifyCustomer(options = {}) {
     await cartStore.identifyCustomer(docValue);
     feedbackMessage.value = `Cliente identificado: ${formattedCustomerLabel.value}`;
     feedbackType.value = 'info';
-    if (options.openCheckoutOnSuccess) showCheckoutModal.value = true;
+    if (options.openCheckoutOnSuccess) {
+      checkoutModalWasOpened.value = true;
+      showCheckoutModal.value = true;
+    }
     nextTick(focusSearch);
   } catch (error) {
     if (error.status === 404) {
       await handleQuickRegister(error.document || docValue, undefined, {
-        onSuccess: () => { if (options.openCheckoutOnSuccess) showCheckoutModal.value = true; },
+        onSuccess: () => {
+          if (options.openCheckoutOnSuccess) {
+            checkoutModalWasOpened.value = true;
+            showCheckoutModal.value = true;
+          }
+        },
       });
     } else {
       feedbackMessage.value = error.message || 'Erro ao identificar cliente.';

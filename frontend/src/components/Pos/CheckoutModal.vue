@@ -223,7 +223,16 @@
       <div v-else-if="pointStep === 'waiting'" class="border-t border-slate-200 pt-4">
         <div class="flex flex-col items-center justify-center space-y-4 py-8">
           <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p class="text-sm font-medium text-slate-700">Cobrança enviada para a Maquininha... Aguarde o cliente inserir a senha.</p>
+          <p class="text-sm font-medium text-slate-700">Aguardando pagamento na maquininha... A venda só será finalizada após a confirmação.</p>
+        </div>
+      </div>
+      <div v-else-if="pointStep === 'partial_done'" class="border-t border-slate-200 pt-4 space-y-4">
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <p class="text-sm font-medium text-emerald-800">Pagamento aprovado na maquininha.</p>
+          <p class="mt-1 text-sm text-emerald-700">Falta pagar {{ formatCurrency(remainingAmount) }}.</p>
+        </div>
+        <div class="flex justify-end">
+          <Button variant="primary" size="sm" @click="continueAfterPartialPoint">Adicionar pagamento</Button>
         </div>
       </div>
       <div v-else-if="isFinishing" class="border-t border-slate-200 pt-4">
@@ -258,6 +267,7 @@ import Swal from 'sweetalert2';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
+import { useSettingsStore } from '@/stores/settings';
 import { formatCurrency } from '@/utils/format';
 import api from '@/services/api';
 import Modal from '@/components/Common/Modal.vue';
@@ -276,6 +286,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'finish']);
 
 const cartStore = useCartStore();
+const settingsStore = useSettingsStore();
 
 const showAddPayment = ref(false);
 const methodSelected = ref(false);
@@ -295,6 +306,7 @@ const pointStep = ref(null);
 const pointDevices = ref([]);
 const pointSelectedDeviceId = ref('');
 const pointPendingSale = ref(null);
+const pointIntentId = ref('');
 const pointPollingInterval = ref(null);
 const pointLoadingDevices = ref(false);
 const pointSendingToDevice = ref(false);
@@ -305,9 +317,9 @@ const amountFormatted = ref('');
 
 const paymentMethods = [
   { value: 'cash', label: 'Dinheiro', apiValues: ['money'] },
-  { value: 'card', label: 'Cartão', apiValues: ['credit_card', 'debit_card'] },
-  { value: 'point', label: 'Cartão (Point)', apiValues: ['point'] },
   { value: 'pix', label: 'PIX', apiValues: ['pix'] },
+  { value: 'credit_card', label: 'Cartão de Crédito', apiValues: ['credit_card', 'point'] },
+  { value: 'debit_card', label: 'Cartão de Débito', apiValues: ['debit_card', 'point'] },
 ];
 
 const effectivePaymentMethods = computed(() => {
@@ -329,7 +341,7 @@ const couponPaymentRestriction = computed(() => {
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     store_credit: 'Crédito Loja',
-    point: 'Cartão (Point)',
+    point: 'Cartão (Maquininha)',
   };
   return allowed.map((a) => labels[a] ?? a).join(', ');
 });
@@ -380,7 +392,7 @@ const paymentSummary = computed(() => {
     return `R$ ${formatCurrency(amount)} no PIX`;
   }
   if (newPayment.value.method === 'point') {
-    return `R$ ${formatCurrency(amount)} na Maquininha (Point)`;
+    return `R$ ${formatCurrency(amount)} na Maquininha`;
   }
   if (newPayment.value.method === 'debit_card') {
     return `R$ ${formatCurrency(amount)} no Cartão (Débito)`;
@@ -534,25 +546,52 @@ async function sendToPointDevice() {
     return;
   }
   pointSendingToDevice.value = true;
+  pointIntentId.value = '';
   try {
-    await api.post('mp-point/process-payment', {
+    const { data } = await api.post('mp-point/process-payment', {
       sale_id: pointPendingSale.value.id,
       device_id: pointSelectedDeviceId.value,
     });
+    pointIntentId.value = data?.intent_id ?? '';
     pointStep.value = 'waiting';
     pointSendingToDevice.value = false;
     pointPollingInterval.value = setInterval(async () => {
       try {
-        const { data } = await api.get(`sales/${pointPendingSale.value.id}`);
-        const sale = data?.data ?? data;
+        const { data: saleResp } = await api.get(`sales/${pointPendingSale.value.id}`);
+        const sale = saleResp?.data ?? saleResp;
         const status = sale?.status ?? sale?.attributes?.status;
+        const totalPayments = sale?.total_payments ?? (sale?.payments ?? []).reduce((s, p) => s + (p?.amount ?? 0), 0);
+        const finalAmount = sale?.final_amount ?? pointPendingSale.value?.final_amount ?? 0;
+
         if (status === 'completed') {
           stopPointPolling();
           pointStep.value = null;
+          pointPendingSale.value = null;
+          pointIntentId.value = '';
           cartStore.resetState();
           emit('finish', sale);
           emit('close');
           toast.success('Pagamento aprovado na maquininha.');
+          return;
+        }
+
+        if (status === 'pending_payment' && pointIntentId.value) {
+          try {
+            const { data: intentResp } = await api.get(`mp-point/check-status/${pointIntentId.value}`);
+            const state = intentResp?.state ?? null;
+            if (state === 'FINISHED' || state === 'CONFIRMED') {
+              if (totalPayments < finalAmount - 0.005) {
+                stopPointPolling();
+                await cartStore.init();
+                pointStep.value = 'partial_done';
+                pointPendingSale.value = null;
+                pointIntentId.value = '';
+                toast.success('Pagamento aprovado na maquininha. Adicione o restante.');
+              }
+            }
+          } catch (_) {
+            // check-status pode falhar; seguir no próximo poll
+          }
         }
       } catch (_) {
         // ignore poll errors
@@ -568,9 +607,19 @@ function cancelPointFlow() {
   stopPointPolling();
   pointStep.value = null;
   pointPendingSale.value = null;
+  pointIntentId.value = '';
   pointSelectedDeviceId.value = '';
   pointDevices.value = [];
   isFinishing.value = false;
+}
+
+function continueAfterPartialPoint() {
+  pointStep.value = null;
+  pointPendingSale.value = null;
+  pointIntentId.value = '';
+  nextTick(() => {
+    checkAndShowPaymentInput();
+  });
 }
 
 function formatPaymentMethod(method) {
@@ -580,7 +629,7 @@ function formatPaymentMethod(method) {
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     pix: 'PIX',
-    point: 'Cartão (Point)',
+    point: 'Cartão (Maquininha)',
   };
   return methods[method] || method;
 }
@@ -640,17 +689,40 @@ function confirmAmountAndShowMethods() {
 }
 
 function selectMethod(method) {
-  newPayment.value.method = method;
   methodSelected.value = true;
-  
-  if (method === 'cash' || method === 'pix' || method === 'point') {
+  const gateway = settingsStore.activePaymentGateway;
+
+  if (method === 'cash' || method === 'pix') {
+    newPayment.value.method = method;
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
-  } else if (method === 'card') {
-    cardTypeSelected.value = false;
-    installmentsSelected.value = false;
-    newPayment.value.cardType = null;
-    newPayment.value.method = 'credit_card';
+    return;
+  }
+
+  if (method === 'credit_card') {
+    if (gateway === 'mercadopago_point') {
+      newPayment.value.method = 'point';
+      newPayment.value.cardType = null;
+      cardTypeSelected.value = true;
+      installmentsSelected.value = true;
+    } else {
+      newPayment.value.method = 'credit_card';
+      newPayment.value.cardType = 'credit';
+      cardTypeSelected.value = true;
+      installmentsSelected.value = false;
+    }
+    return;
+  }
+
+  if (method === 'debit_card') {
+    if (gateway === 'mercadopago_point') {
+      newPayment.value.method = 'point';
+      newPayment.value.cardType = null;
+    } else {
+      newPayment.value.method = 'debit_card';
+    }
+    cardTypeSelected.value = true;
+    installmentsSelected.value = true;
   }
 }
 
@@ -823,18 +895,47 @@ async function handleRemoveCouponInCheckout() {
 async function authorizePaymentRemoval() {
   const result = await Swal.fire({
     title: 'Remover Pagamento',
-    html: `<div style="text-align: left; margin-top: 0.5rem;">
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
-      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
-      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
-      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
-    </div>`,
+    html: `<div style="margin-bottom: 1rem; text-align: center;">
+        <span style="font-size: 1rem; color: #374151;">Esta ação requer autorização de gerente.</span>
+      </div>
+      <div style="text-align: left;">
+        <div style="margin-bottom: 1rem;">
+          <label for="swal-op-pin" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">PIN do gerente</label>
+          <input
+            type="text"
+            id="swal-op-pin"
+            name="manager_pin_input"
+            placeholder="Ex: 1234"
+            inputmode="numeric"
+            maxlength="10"
+            autocomplete="off"
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+        <div style="margin-bottom: 0;">
+          <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input
+            type="password"
+            id="swal-op-password"
+            name="manager_auth_password"
+            placeholder="Senha"
+            autocomplete="new-password"
+            spellcheck="false"
+            style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
+          />
+        </div>
+      </div>`,
     icon: 'warning',
     width: '400px',
     showCancelButton: true,
     confirmButtonText: 'Confirmar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
-    confirmButtonColor: '#ea580c',
+    confirmButtonColor: '#ef4444',
     cancelButtonColor: '#64748b',
     focusConfirm: false,
     allowOutsideClick: false,
@@ -887,34 +988,11 @@ async function removeSelectedPayment() {
   }
 }
 
-async function handleModalClose() {
+function handleModalClose() {
   if (pointStep.value) {
     cancelPointFlow();
-    emit('close');
-    return;
   }
-  if (showAddPayment.value) {
-    return; // Não fecha se estiver adicionando pagamento
-  }
-  
-  // Pede confirmação antes de fechar
-  const result = await Swal.fire({
-    title: 'Fechar Pagamento?',
-    text: remainingAmount.value > 0.01 
-      ? `Ainda falta pagar ${formatCurrency(remainingAmount.value)}. Deseja realmente sair?`
-      : 'Deseja sair do pagamento?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sim, Sair (ENTER)',
-    cancelButtonText: 'Não, Continuar (ESC)',
-    focusCancel: true,
-    allowOutsideClick: false,
-  });
-  
-  if (result.isConfirmed) {
-    cancelPointFlow();
-    emit('close');
-  }
+  emit('close');
 }
 
 async function handleKeydown(e) {
@@ -934,23 +1012,10 @@ async function handleKeydown(e) {
       authorizedByUserIdForRemoval.value = null;
       return;
     }
-    // Pede confirmação antes de fechar o modal de checkout
-    const result = await Swal.fire({
-      title: 'Fechar Pagamento?',
-      text: remainingAmount.value > 0.01 
-        ? `Ainda falta pagar ${formatCurrency(remainingAmount.value)}. Deseja realmente sair?`
-        : 'Deseja sair do pagamento?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sim, Sair (ENTER)',
-      cancelButtonText: 'Não, Continuar (ESC)',
-      focusCancel: true,
-      allowOutsideClick: false,
-    });
-    
-    if (result.isConfirmed) {
-      emit('close');
+    if (pointStep.value) {
+      cancelPointFlow();
     }
+    emit('close');
     return;
   }
 
