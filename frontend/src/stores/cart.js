@@ -209,6 +209,9 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
+    async removeManualDiscount() {
+      return this.applyDiscount('fixed', 0);
+    },
     async applyCoupon(couponCode) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');

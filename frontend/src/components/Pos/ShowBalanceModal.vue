@@ -48,7 +48,9 @@
         </table>
       </div>
       <div class="flex justify-end border-t border-slate-200 pt-4">
-        <Button variant="outline" @click="$emit('close')">Fechar</Button>
+        <Button variant="outline" @click="$emit('close')">
+          Fechar <span class="ml-1 text-slate-400">[ESC]</span>
+        </Button>
       </div>
     </div>
   </Modal>

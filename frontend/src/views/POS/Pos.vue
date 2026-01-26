@@ -125,7 +125,19 @@ const shortcutsSale = [
   { key: 'F10', label: 'Finalizar Venda' },
   { key: 'ESC', label: 'Limpar / Fechar' },
 ];
-const shortcuts = computed(() => (isIdle.value ? shortcutsIdle : shortcutsSale));
+const removeDiscountShortcutKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '') ? '⌘F3' : 'Ctrl+F3';
+const hasManualDiscount = computed(
+  () => cartStore.discountAmount > 0 && !cartStore.coupon
+);
+const shortcuts = computed(() => {
+  if (isIdle.value) return shortcutsIdle;
+  const list = [...shortcutsSale];
+  if (hasManualDiscount.value) {
+    const idx = list.findIndex((s) => s.key === 'F8');
+    list.splice(idx >= 0 ? idx + 1 : list.length, 0, { key: removeDiscountShortcutKey, label: 'Remover desconto' });
+  }
+  return list;
+});
 
 const cancelSearchResults = computed(() => {
   if (!cancelSearchMode.value || !isCancellationMode.value) return [];
@@ -930,6 +942,15 @@ async function handleRemoveCoupon() {
   }
 }
 
+async function handleRemoveManualDiscount() {
+  try {
+    await cartStore.removeManualDiscount();
+    toast.success('Desconto removido.');
+  } catch (err) {
+    toast.error(err?.message ?? 'Erro ao remover desconto.');
+  }
+}
+
 function focusSearch() {
   const el = document.querySelector('#product-search');
   if (el) el.focus();
@@ -1357,6 +1378,10 @@ function handleShortcutClick(key) {
     showDiscountModal.value = true;
     return;
   }
+  if (key === removeDiscountShortcutKey) {
+    if (hasManualDiscount.value) handleRemoveManualDiscount();
+    return;
+  }
   if (key === 'F10') {
     handleF10Finalize();
     return;
@@ -1395,6 +1420,14 @@ function handleKeydown(e) {
 
   if (key === 'Escape') {
     e.preventDefault();
+    if (showOperationsMenu.value) {
+      showOperationsMenu.value = false;
+      return;
+    }
+    if (showBalanceModal.value) {
+      showBalanceModal.value = false;
+      return;
+    }
     if (feedbackMessage.value) {
       feedbackMessage.value = null;
       feedbackType.value = 'info';
@@ -1520,6 +1553,11 @@ function handleKeydown(e) {
   }
   if (key === 'F8') {
     showDiscountModal.value = true;
+    return;
+  }
+  if (key === 'F3' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    if (hasManualDiscount.value) handleRemoveManualDiscount();
     return;
   }
   if (key === 'F10') {
@@ -1739,11 +1777,10 @@ watch(
   async () => {
     if (cartStore.items.length > 0) {
       await nextTick();
-      if (cartListRef.value) {
-        cartListRef.value.scrollTop = cartListRef.value.scrollHeight;
-      }
+      scrollToBottom();
     }
-  }
+  },
+  { immediate: true }
 );
 
 watch(isIdle, (idle) => {
@@ -1774,6 +1811,9 @@ onMounted(async () => {
   if (cashRegisterStore.isOpen) {
     await nextTick();
     focusSearch();
+    if (!isIdle.value && cartStore.items.length > 0) {
+      scrollToBottom();
+    }
   }
   window.addEventListener('keydown', handleKeydown);
   window.addEventListener('keydown', handleScanBufferKeydown, true);
@@ -1930,7 +1970,7 @@ onUnmounted(() => {
       </div>
 
       <div v-else class="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-16">
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
+        <div class="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 gap-4 xl:grid-cols-3">
           <div class="flex min-h-0 flex-col space-y-4 lg:col-span-2">
             <div>
               <div v-if="lastScannedCode && !lastScannedProduct && lastScanError" class="mb-2 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -2086,7 +2126,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex h-full max-h-full flex-col rounded-lg border border-slate-200 bg-white lg:col-span-1">
+          <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-1">
             <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
               <h3 class="text-lg font-semibold text-slate-800">Itens da Venda</h3>
               <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
@@ -2097,8 +2137,7 @@ onUnmounted(() => {
             <div
               ref="cartListRef"
               tabindex="-1"
-              class="flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
-              style="max-height: calc(100vh - 388px);"
+              class="min-h-0 flex-1 overflow-y-auto scroll-smooth p-4 outline-none"
             >
               <div v-if="cartStore.items.length === 0" class="flex h-32 items-center justify-center">
                 <p class="text-sm text-slate-400">Nenhum item.</p>
@@ -2173,18 +2212,30 @@ onUnmounted(() => {
                 v-else-if="cartStore.discountAmount > 0"
                 class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3"
               >
-                <p class="text-sm font-semibold text-blue-800">
-                  Desconto manual aplicado
-                </p>
-                <p class="mt-1 text-xs text-blue-700">
-                  Subtotal: {{ formatCurrency(cartStore.totalAmount) }}
-                </p>
-                <p class="mt-0.5 text-xs text-blue-700">
-                  Desconto: {{ formatCurrency(cartStore.discountAmount) }}
-                  <span v-if="cartStore.totalAmount > 0" class="text-blue-600">
-                    ({{ manualDiscountPercent }}%)
-                  </span>
-                </p>
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-blue-800">
+                      Desconto manual aplicado
+                    </p>
+                    <p class="mt-1 text-xs text-blue-700">
+                      Subtotal: {{ formatCurrency(cartStore.totalAmount) }}
+                    </p>
+                    <p class="mt-0.5 text-xs text-blue-700">
+                      Desconto: {{ formatCurrency(cartStore.discountAmount) }}
+                      <span v-if="cartStore.totalAmount > 0" class="text-blue-600">
+                        ({{ manualDiscountPercent }}%)
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 underline"
+                    :title="`Remover desconto manual (${removeDiscountShortcutKey})`"
+                    @click="handleRemoveManualDiscount"
+                  >
+                    Remover desconto <span class="ml-1 text-slate-400">[{{ removeDiscountShortcutKey }}]</span>
+                  </button>
+                </div>
               </div>
               <div class="mb-4 flex items-center justify-between">
                 <span class="text-lg font-semibold text-slate-700">TOTAL</span>
