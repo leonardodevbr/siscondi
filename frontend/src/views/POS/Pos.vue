@@ -839,23 +839,20 @@ function handleScanBufferKeydown(e) {
 
   if (key === 'Enter') {
     const buf = scanBuffer.value.trim();
-    const rapid = now - scanLastKeyTime.value < 50;
     scanBuffer.value = '';
     if (!buf) return;
-    if (rapid) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      if (cartStore.saleStarted) {
-        handleScannedCode(buf);
-      } else {
-        if (isIdleScanLoading.value) return;
-        if (buf === lastIdleScanCode.value && now - lastIdleScanAt.value < 500) return;
-        lastIdleScanCode.value = buf;
-        lastIdleScanAt.value = now;
-        isIdleScanLoading.value = true;
-        handleIdleScan(buf, true);
-      }
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (cartStore.saleStarted) {
+      handleScannedCode(buf);
+    } else {
+      if (isIdleScanLoading.value) return;
+      if (buf === lastIdleScanCode.value && now - lastIdleScanAt.value < 500) return;
+      lastIdleScanCode.value = buf;
+      lastIdleScanAt.value = now;
+      isIdleScanLoading.value = true;
+      handleIdleScan(buf, true);
     }
     return;
   }
