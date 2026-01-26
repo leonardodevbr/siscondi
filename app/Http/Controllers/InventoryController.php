@@ -458,7 +458,7 @@ class InventoryController extends Controller
         }
 
         return response()->json([
-            'message' => 'Produto não encontrado.',
+            'message' => 'Produto não cadastrado.',
         ], 404);
     }
 }

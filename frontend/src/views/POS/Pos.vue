@@ -360,8 +360,8 @@ async function handleIdleScan(code, callerDidLock = false) {
     if (viaScan(parsed.code)) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
-      } catch {
-        lastScanError.value = 'PRODUTO NÃO CADASTRADO';
+      } catch (err) {
+        lastScanError.value = err?.response?.data?.message ?? 'Erro ao consultar produto.';
         lastScannedProduct.value = null;
       }
     } else {
@@ -680,7 +680,7 @@ async function handleScannedCode(code) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
       } catch (err) {
-        lastScanError.value = 'PRODUTO NÃO CADASTRADO';
+        lastScanError.value = err?.response?.data?.message ?? 'Erro ao consultar produto.';
         lastScannedProduct.value = null;
       }
     } else {
@@ -2091,7 +2091,7 @@ onUnmounted(() => {
                 <div class="min-w-0 flex-1">
                   <p class="text-xs font-medium text-slate-600">Último código bipado:</p>
                   <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ lastScannedCode }}</p>
-                  <p class="mt-2 text-base font-bold text-red-600">PRODUTO NÃO CADASTRADO</p>
+                  <p class="mt-2 text-base font-bold text-red-600">{{ lastScanError }}</p>
                 </div>
               </div>
               <div v-else-if="lastScannedCode && !lastScannedProduct" class="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
