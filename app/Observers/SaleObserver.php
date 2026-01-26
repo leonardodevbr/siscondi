@@ -30,16 +30,37 @@ class SaleObserver
      * Dispara quando uma Sale é atualizada.
      * 
      * Verifica se o status mudou e processa a movimentação de estoque adequada.
+     * 
+     * NOTA: Este Observer escuta APENAS o evento 'updated'.
+     * Não confundir com 'saved' (que dispara em create E update).
      */
     public function updated(Sale $sale): void
     {
-        // Verifica se o status mudou
+        // Proteção 1: Só processa se o status realmente mudou
         if (! $sale->wasChanged('status')) {
+            Log::debug('SaleObserver: status não mudou, ignorando', [
+                'sale_id' => $sale->id,
+                'status_atual' => $sale->status->value,
+            ]);
+            return;
+        }
+
+        // Proteção 2: Verifica se está "sujo" (dirty) - garante que mudou nesta requisição
+        if (! $sale->isDirty('status') && ! $sale->wasChanged('status')) {
+            Log::debug('SaleObserver: status não está dirty nem changed, ignorando', [
+                'sale_id' => $sale->id,
+            ]);
             return;
         }
 
         $oldStatus = $this->getOriginalStatusAsEnum($sale);
         $newStatus = $sale->status;
+
+        Log::info('SaleObserver: Detectada mudança de status', [
+            'sale_id' => $sale->id,
+            'old_status' => $oldStatus?->value ?? 'null',
+            'new_status' => $newStatus->value,
+        ]);
 
         // Regra 1: Se mudou para COMPLETED, baixa o estoque
         if ($newStatus === SaleStatus::COMPLETED) {
@@ -52,6 +73,12 @@ class SaleObserver
             $this->returnStockOnCancellation($sale);
             return;
         }
+
+        Log::debug('SaleObserver: Mudança de status não requer processamento de estoque', [
+            'sale_id' => $sale->id,
+            'old_status' => $oldStatus?->value,
+            'new_status' => $newStatus->value,
+        ]);
     }
 
     /**
@@ -62,9 +89,20 @@ class SaleObserver
      */
     private function processStockOutOnCompletion(Sale $sale): void
     {
+        // Validação crítica: branch_id obrigatório
         if (! $sale->branch_id) {
-            Log::error('Venda sem branch_id ao tentar baixar estoque', [
+            Log::error('SaleObserver: Venda sem branch_id - impossível processar estoque', [
                 'sale_id' => $sale->id,
+                'user_id' => $sale->user_id,
+            ]);
+            return;
+        }
+
+        // Validação crítica: user_id obrigatório
+        if (! $sale->user_id) {
+            Log::error('SaleObserver: Venda sem user_id - impossível processar estoque', [
+                'sale_id' => $sale->id,
+                'branch_id' => $sale->branch_id,
             ]);
             return;
         }
@@ -76,63 +114,87 @@ class SaleObserver
             ->exists();
 
         if ($movementsAlreadyExist) {
-            Log::info('StockMovements tipo SALE já existem para esta venda (evitando duplicação)', [
+            Log::info('SaleObserver: StockMovements SALE já existem, pulando processamento (idempotência)', [
                 'sale_id' => $sale->id,
                 'reason' => $reason,
             ]);
-            return;
+            return; // Sai silenciosamente, não é erro
         }
 
-        DB::transaction(function () use ($sale, $reason): void {
-            $sale->load('items.productVariant');
+        try {
+            DB::transaction(function () use ($sale, $reason): void {
+                $sale->load('items.productVariant');
 
-            if ($sale->items->isEmpty()) {
-                Log::warning('Venda finalizada sem itens', [
-                    'sale_id' => $sale->id,
-                ]);
-                return;
-            }
-
-            $totalItemsProcessed = 0;
-            $itemsWithoutVariant = 0;
-
-            foreach ($sale->items as $item) {
-                if (! $item->product_variant_id) {
-                    Log::warning('SaleItem sem product_variant_id - estoque não será baixado', [
+                if ($sale->items->isEmpty()) {
+                    Log::warning('SaleObserver: Venda finalizada sem itens', [
                         'sale_id' => $sale->id,
-                        'sale_item_id' => $item->id,
                     ]);
-                    $itemsWithoutVariant++;
-                    continue;
+                    return;
                 }
 
-                // Cria StockMovement - o Observer irá atualizar o inventário automaticamente
-                $stockMovement = StockMovement::create([
-                    'product_variant_id' => $item->product_variant_id,
-                    'branch_id' => $sale->branch_id,
-                    'user_id' => $sale->user_id,
-                    'type' => StockMovementType::SALE,
-                    'quantity' => $item->quantity,
-                    'reason' => $reason,
-                ]);
+                $totalItemsProcessed = 0;
+                $itemsWithoutVariant = 0;
 
-                $totalItemsProcessed++;
+                foreach ($sale->items as $item) {
+                    if (! $item->product_variant_id) {
+                        Log::warning('SaleObserver: SaleItem sem product_variant_id', [
+                            'sale_id' => $sale->id,
+                            'sale_item_id' => $item->id,
+                        ]);
+                        $itemsWithoutVariant++;
+                        continue;
+                    }
 
-                Log::info('StockMovement SALE criado via SaleObserver', [
-                    'stock_movement_id' => $stockMovement->id,
+                    try {
+                        // Cria StockMovement (tabela única e moderna para todas as movimentações)
+                        $stockMovement = StockMovement::create([
+                            'product_variant_id' => $item->product_variant_id,
+                            'branch_id' => $sale->branch_id,
+                            'user_id' => $sale->user_id,
+                            'type' => StockMovementType::SALE,
+                            'quantity' => $item->quantity,
+                            'reason' => $reason,
+                        ]);
+
+                        $totalItemsProcessed++;
+
+                        Log::info('SaleObserver: StockMovement SALE criado com sucesso', [
+                            'stock_movement_id' => $stockMovement->id,
+                            'sale_id' => $sale->id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'branch_id' => $sale->branch_id,
+                            'user_id' => $sale->user_id,
+                            'quantity' => $item->quantity,
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::error('SaleObserver: ERRO ao criar StockMovement', [
+                            'sale_id' => $sale->id,
+                            'sale_item_id' => $item->id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                        throw $e; // Re-lança para fazer rollback da transaction
+                    }
+                }
+
+                Log::info('SaleObserver: Baixa de estoque concluída com sucesso', [
                     'sale_id' => $sale->id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'branch_id' => $sale->branch_id,
-                    'quantity' => $item->quantity,
+                    'total_items_processed' => $totalItemsProcessed,
+                    'items_without_variant' => $itemsWithoutVariant,
                 ]);
-            }
-
-            Log::info('Processamento de baixa de estoque concluído', [
+            });
+        } catch (\Throwable $e) {
+            Log::error('SaleObserver: ERRO CRÍTICO ao processar baixa de estoque', [
                 'sale_id' => $sale->id,
-                'total_items_processed' => $totalItemsProcessed,
-                'items_without_variant' => $itemsWithoutVariant,
+                'branch_id' => $sale->branch_id,
+                'user_id' => $sale->user_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-        });
+            // NÃO re-lança - permite que a venda seja finalizada mesmo se o estoque falhar
+            // O erro já foi logado e pode ser corrigido manualmente depois
+        }
     }
 
     /**
@@ -143,9 +205,20 @@ class SaleObserver
      */
     private function returnStockOnCancellation(Sale $sale): void
     {
+        // Validação crítica: branch_id obrigatório
         if (! $sale->branch_id) {
-            Log::error('Venda sem branch_id ao tentar devolver estoque', [
+            Log::error('SaleObserver: Venda sem branch_id - impossível devolver estoque', [
                 'sale_id' => $sale->id,
+                'user_id' => $sale->user_id,
+            ]);
+            return;
+        }
+
+        // Validação crítica: user_id obrigatório
+        if (! $sale->user_id) {
+            Log::error('SaleObserver: Venda sem user_id - impossível devolver estoque', [
+                'sale_id' => $sale->id,
+                'branch_id' => $sale->branch_id,
             ]);
             return;
         }
@@ -158,60 +231,84 @@ class SaleObserver
             ->exists();
 
         if ($returnsAlreadyExist) {
-            Log::info('StockMovements tipo RETURN já existem para esta venda (evitando duplicação)', [
+            Log::info('SaleObserver: StockMovements RETURN já existem, pulando processamento (idempotência)', [
                 'sale_id' => $sale->id,
                 'reason' => $reason,
             ]);
-            return;
+            return; // Sai silenciosamente, não é erro
         }
 
-        DB::transaction(function () use ($sale, $reason): void {
-            $sale->load('items.productVariant');
+        try {
+            DB::transaction(function () use ($sale, $reason): void {
+                $sale->load('items.productVariant');
 
-            if ($sale->items->isEmpty()) {
-                Log::warning('Venda cancelada sem itens', [
-                    'sale_id' => $sale->id,
-                ]);
-                return;
-            }
-
-            $totalItemsProcessed = 0;
-
-            foreach ($sale->items as $item) {
-                if (! $item->product_variant_id) {
-                    Log::warning('SaleItem sem product_variant_id - estoque não será devolvido', [
+                if ($sale->items->isEmpty()) {
+                    Log::warning('SaleObserver: Venda cancelada sem itens', [
                         'sale_id' => $sale->id,
-                        'sale_item_id' => $item->id,
                     ]);
-                    continue;
+                    return;
                 }
 
-                // Cria StockMovement tipo RETURN - o Observer irá adicionar ao inventário automaticamente
-                $stockMovement = StockMovement::create([
-                    'product_variant_id' => $item->product_variant_id,
-                    'branch_id' => $sale->branch_id,
-                    'user_id' => $sale->user_id,
-                    'type' => StockMovementType::RETURN,
-                    'quantity' => $item->quantity,
-                    'reason' => $reason,
-                ]);
+                $totalItemsProcessed = 0;
 
-                $totalItemsProcessed++;
+                foreach ($sale->items as $item) {
+                    if (! $item->product_variant_id) {
+                        Log::warning('SaleObserver: SaleItem sem product_variant_id (cancelamento)', [
+                            'sale_id' => $sale->id,
+                            'sale_item_id' => $item->id,
+                        ]);
+                        continue;
+                    }
 
-                Log::info('StockMovement RETURN criado via SaleObserver', [
-                    'stock_movement_id' => $stockMovement->id,
+                    try {
+                        // Cria StockMovement RETURN (tabela única e moderna)
+                        $stockMovement = StockMovement::create([
+                            'product_variant_id' => $item->product_variant_id,
+                            'branch_id' => $sale->branch_id,
+                            'user_id' => $sale->user_id,
+                            'type' => StockMovementType::RETURN,
+                            'quantity' => $item->quantity,
+                            'reason' => $reason,
+                        ]);
+
+                        $totalItemsProcessed++;
+
+                        Log::info('SaleObserver: StockMovement RETURN criado com sucesso', [
+                            'stock_movement_id' => $stockMovement->id,
+                            'sale_id' => $sale->id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'branch_id' => $sale->branch_id,
+                            'user_id' => $sale->user_id,
+                            'quantity' => $item->quantity,
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::error('SaleObserver: ERRO ao criar StockMovement RETURN', [
+                            'sale_id' => $sale->id,
+                            'sale_item_id' => $item->id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                        throw $e; // Re-lança para fazer rollback da transaction
+                    }
+                }
+
+                Log::info('SaleObserver: Devolução de estoque concluída com sucesso', [
                     'sale_id' => $sale->id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'branch_id' => $sale->branch_id,
-                    'quantity' => $item->quantity,
+                    'total_items_processed' => $totalItemsProcessed,
                 ]);
-            }
-
-            Log::info('Processamento de devolução de estoque concluído', [
+            });
+        } catch (\Throwable $e) {
+            Log::error('SaleObserver: ERRO CRÍTICO ao processar devolução de estoque', [
                 'sale_id' => $sale->id,
-                'total_items_processed' => $totalItemsProcessed,
+                'branch_id' => $sale->branch_id,
+                'user_id' => $sale->user_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-        });
+            // NÃO re-lança - permite que o cancelamento seja processado mesmo se o estoque falhar
+            // O erro já foi logado e pode ser corrigido manualmente depois
+        }
     }
 
     /**

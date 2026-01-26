@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @deprecated Este model é LEGADO e não deve mais ser usado.
+ * Use App\Models\StockMovement ao invés disso.
+ * 
+ * Este model será removido em versão futura.
+ * Todas as movimentações de estoque agora usam a tabela stock_movements.
+ */
 class InventoryMovement extends Model
 {
     use HasFactory;

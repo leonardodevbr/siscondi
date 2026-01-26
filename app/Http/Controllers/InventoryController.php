@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\StockMovementType;
 use App\Http\Requests\StoreInventoryAdjustmentRequest;
-use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,24 +73,26 @@ class InventoryController extends Controller
         }
 
         $quantity = abs((int) $request->quantity);
-        $finalType = $request->type;
-        $operation = $request->operation ?? $this->getDefaultOperation($request->type);
+        $stockMovementType = $this->mapTypeToEnum($request->type, $request->operation);
 
-        if ($operation === 'sub' && $currentStock < $quantity) {
-            return response()->json([
-                'message' => "Saldo insuficiente para realizar esta baixa. Estoque atual: {$currentStock}",
-            ], 422);
+        // Valida estoque apenas para operações de saída/perda
+        if (in_array($stockMovementType, [StockMovementType::LOSS, StockMovementType::ADJUSTMENT], true)) {
+            // ADJUSTMENT com quantidade negativa significa subtração
+            if ($currentStock < $quantity) {
+                return response()->json([
+                    'message' => "Saldo insuficiente para realizar esta baixa. Estoque atual: {$currentStock}",
+                ], 422);
+            }
         }
 
-        $movement = InventoryMovement::create([
-            'product_id' => $productId,
-            'variation_id' => $request->variation_id,
+        // Cria StockMovement (tabela única e moderna)
+        $movement = StockMovement::create([
+            'product_variant_id' => $variant->id,
             'user_id' => auth()->id(),
             'branch_id' => $branchId,
-            'type' => $finalType,
-            'operation' => $operation,
+            'type' => $stockMovementType,
             'quantity' => $quantity,
-            'reason' => $request->reason,
+            'reason' => $request->reason ?? 'Ajuste manual de estoque',
         ]);
 
         $product->refresh();
@@ -111,8 +114,8 @@ class InventoryController extends Controller
             'message' => 'Movimentação registrada com sucesso',
             'movement' => [
                 'id' => $movement->id,
-                'type' => $movement->type,
-                'operation' => $movement->operation,
+                'type' => $movement->type->value,
+                'type_label' => $this->getTypeLabel($movement->type->value),
                 'quantity' => $movement->quantity,
                 'reason' => $movement->reason,
                 'created_at' => $movement->created_at,
@@ -122,20 +125,21 @@ class InventoryController extends Controller
     }
 
     /**
-     * Get default operation based on movement type.
+     * Mapeia o type/operation legado para o novo Enum StockMovementType.
      */
-    private function getDefaultOperation(string $type): string
+    private function mapTypeToEnum(string $type, ?string $operation = null): StockMovementType
     {
         return match ($type) {
-            'entry', 'return' => 'add',
-            'exit' => 'sub',
-            'adjustment' => 'sub',
-            default => 'add',
+            'entry' => StockMovementType::ENTRY,
+            'return' => StockMovementType::RETURN,
+            'exit' => StockMovementType::LOSS,
+            'adjustment' => StockMovementType::ADJUSTMENT,
+            default => StockMovementType::ADJUSTMENT,
         };
     }
 
     /**
-     * Get inventory movement history for a product.
+     * Get stock movement history for a product.
      */
     public function history(Request $request, int $productId): JsonResponse
     {
@@ -146,8 +150,12 @@ class InventoryController extends Controller
 
         $user = auth()->user();
         $branchId = $user?->branch_id ?? $request->header('X-Branch-ID');
-        $query = InventoryMovement::with(['user:id,name', 'variation:id,sku,attributes'])
-            ->where('product_id', $productId)
+        
+        // Busca variantes do produto
+        $variantIds = ProductVariant::where('product_id', $productId)->pluck('id');
+        
+        $query = StockMovement::with(['user:id,name', 'productVariant:id,sku,barcode,attributes'])
+            ->whereIn('product_variant_id', $variantIds)
             ->orderBy('created_at', 'desc');
 
         if ($branchId) {
@@ -157,7 +165,7 @@ class InventoryController extends Controller
         }
 
         if ($request->has('variation_id') && $request->variation_id) {
-            $query->where('variation_id', $request->variation_id);
+            $query->where('product_variant_id', $request->variation_id);
         }
 
         $movements = $query->paginate(20);
@@ -165,8 +173,8 @@ class InventoryController extends Controller
         return response()->json([
             'data' => $movements->map(function ($movement) {
                 $variantInfo = '';
-                if ($movement->variation) {
-                    $attrs = $movement->variation->attributes ?? [];
+                if ($movement->productVariant) {
+                    $attrs = $movement->productVariant->attributes ?? [];
                     $variantParts = [];
                     if (isset($attrs['cor'])) {
                         $variantParts[] = $attrs['cor'];
@@ -176,26 +184,26 @@ class InventoryController extends Controller
                     }
                     $variantInfo = count($variantParts) > 0 
                         ? implode('/', $variantParts) 
-                        : ($movement->variation->sku ?? '');
+                        : ($movement->productVariant->sku ?? '');
                 }
 
-                $op = $movement->operation ?? 'add';
+                $isNegative = in_array($movement->type, [StockMovementType::SALE, StockMovementType::LOSS], true);
+                
                 return [
                     'id' => $movement->id,
-                    'type' => $movement->type,
-                    'type_label' => $this->getTypeLabel($movement->type),
-                    'operation' => $op,
+                    'type' => $movement->type->value,
+                    'type_label' => $this->getTypeLabel($movement->type->value),
                     'quantity' => $movement->quantity,
-                    'quantity_display' => ($op === 'sub' ? '-' : '+') . $movement->quantity,
+                    'quantity_display' => ($isNegative ? '-' : '+') . $movement->quantity,
                     'reason' => $movement->reason,
                     'user' => $movement->user ? [
                         'id' => $movement->user->id,
                         'name' => $movement->user->name,
                     ] : null,
-                    'variation' => $movement->variation ? [
-                        'id' => $movement->variation->id,
-                        'sku' => $movement->variation->sku,
-                        'barcode' => $movement->variation->barcode,
+                    'variation' => $movement->productVariant ? [
+                        'id' => $movement->productVariant->id,
+                        'sku' => $movement->productVariant->sku,
+                        'barcode' => $movement->productVariant->barcode,
                         'info' => $variantInfo,
                     ] : null,
                     'created_at' => $movement->created_at->format('d/m/Y H:i'),
@@ -211,7 +219,7 @@ class InventoryController extends Controller
     }
 
     /**
-     * Get all inventory movements with filters.
+     * Get all stock movements with filters.
      */
     public function index(Request $request): JsonResponse
     {
@@ -222,10 +230,10 @@ class InventoryController extends Controller
         $user = auth()->user();
         $userBranchId = $user?->branch_id ? (int) $user->branch_id : null;
 
-        $query = InventoryMovement::with([
+        $query = StockMovement::with([
             'user:id,name',
-            'product:id,name',
-            'variation:id,sku,barcode,attributes',
+            'productVariant.product:id,name',
+            'productVariant:id,product_id,sku,barcode,attributes',
             'branch:id,name',
         ])->orderBy('created_at', 'desc');
 
@@ -238,15 +246,13 @@ class InventoryController extends Controller
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search): void {
-                $q->whereHas('product', function ($q2) use ($search): void {
+                $q->whereHas('productVariant.product', function ($q2) use ($search): void {
                     $q2->where('name', 'like', "%{$search}%");
                 })
-                    ->orWhere(function ($q2) use ($search): void {
-                        $q2->whereNotNull('variation_id')
-                            ->whereHas('variation', function ($q3) use ($search): void {
-                                $q3->where('sku', 'like', "%{$search}%");
-                            });
-                    });
+                ->orWhereHas('productVariant', function ($q2) use ($search): void {
+                    $q2->where('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -270,11 +276,11 @@ class InventoryController extends Controller
 
         return response()->json([
             'data' => $movements->map(function ($movement) {
-                $productName = $movement->product?->name ?? 'N/A';
+                $productName = $movement->productVariant?->product?->name ?? 'N/A';
                 $variantInfo = '';
                 
-                if ($movement->variation) {
-                    $attrs = $movement->variation->attributes ?? [];
+                if ($movement->productVariant) {
+                    $attrs = $movement->productVariant->attributes ?? [];
                     $variantParts = [];
                     if (isset($attrs['cor'])) {
                         $variantParts[] = $attrs['cor'];
@@ -282,17 +288,17 @@ class InventoryController extends Controller
                     if (isset($attrs['tamanho'])) {
                         $variantParts[] = $attrs['tamanho'];
                     }
-                    $variantInfo = count($variantParts) > 0 ? ' - ' . implode('/', $variantParts) : ' - ' . ($movement->variation->sku ?? '');
+                    $variantInfo = count($variantParts) > 0 ? ' - ' . implode('/', $variantParts) : ' - ' . ($movement->productVariant->sku ?? '');
                 }
 
-                $op = $movement->operation ?? 'add';
+                $isNegative = in_array($movement->type, [StockMovementType::SALE, StockMovementType::LOSS], true);
+                
                 return [
                     'id' => $movement->id,
-                    'type' => $movement->type,
-                    'type_label' => $this->getTypeLabel($movement->type),
-                    'operation' => $op,
+                    'type' => $movement->type->value,
+                    'type_label' => $this->getTypeLabel($movement->type->value),
                     'quantity' => $movement->quantity,
-                    'quantity_display' => ($op === 'sub' ? '-' : '+') . $movement->quantity,
+                    'quantity_display' => ($isNegative ? '-' : '+') . $movement->quantity,
                     'reason' => $movement->reason,
                     'product_name' => $productName . $variantInfo,
                     'branch' => $movement->branch ? [
@@ -304,10 +310,10 @@ class InventoryController extends Controller
                         'id' => $movement->user->id,
                         'name' => $movement->user->name,
                     ] : null,
-                    'variation' => $movement->variation ? [
-                        'id' => $movement->variation->id,
-                        'sku' => $movement->variation->sku,
-                        'barcode' => $movement->variation->barcode,
+                    'variation' => $movement->productVariant ? [
+                        'id' => $movement->productVariant->id,
+                        'sku' => $movement->productVariant->sku,
+                        'barcode' => $movement->productVariant->barcode,
                     ] : null,
                     'created_at' => $movement->created_at->format('d/m/Y H:i'),
                     'created_at_raw' => $movement->created_at,
@@ -361,9 +367,10 @@ class InventoryController extends Controller
     {
         return match ($type) {
             'entry' => 'Entrada',
-            'exit' => 'Saída',
-            'adjustment' => 'Ajuste',
+            'sale' => 'Venda',
             'return' => 'Devolução',
+            'loss' => 'Perda',
+            'adjustment' => 'Ajuste',
             default => $type,
         };
     }

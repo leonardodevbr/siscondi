@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('super-admin') ? true : null;
         });
 
-        InventoryMovement::observe(InventoryMovementObserver::class);
+        // InventoryMovement::observe(InventoryMovementObserver::class); // DEPRECATED - Usar apenas StockMovement
         StockMovement::observe(StockMovementObserver::class);
         Sale::observe(SaleObserver::class);
     }
