@@ -67,6 +67,9 @@ const feedbackType = ref('info'); // 'info', 'error', 'warning'
 const isIdleScanLoading = ref(false);
 /** Throttle para evitar double request em F1/botão (ms) */
 const lastStartSaleAt = ref(0);
+/** Evita processar o mesmo bipe em idle duas vezes (race do leitor) */
+const lastIdleScanCode = ref('');
+const lastIdleScanAt = ref(0);
 const showOperationsMenu = ref(false);
 const showBalanceModal = ref(false);
 const operationsMenuRef = ref(null);
@@ -335,35 +338,25 @@ function viaScan(code) {
 /**
  * Fluxo quando bipa código de barras em CAIXA LIVRE.
  * Inicia venda + adiciona produto automaticamente.
+ * @param {string} code - Código bipado
+ * @param {boolean} [callerDidLock=false] - true quando o caller já setou isIdleScanLoading (evita janela de race)
  */
-async function handleIdleScan(code) {
-  // Bloqueia double submit durante início de venda
-  if (isIdleScanLoading.value) return;
-  
-  const c = String(code ?? '').trim();
-  if (!c) return;
+async function handleIdleScan(code, callerDidLock = false) {
+  if (!callerDidLock && isIdleScanLoading.value) return;
+  if (!callerDidLock) isIdleScanLoading.value = true;
 
-  const parsed = parseQuantityMultiplier(c);
-  
-  // Bloqueia e inicia a venda
-  isIdleScanLoading.value = true;
   try {
+    const c = String(code ?? '').trim();
+    if (!c) return;
+
+    const parsed = parseQuantityMultiplier(c);
     const branchId = branchIdForSale();
     await cartStore.startSale(null, branchId);
-  } catch (err) {
-    toast.error(err.message ?? 'Erro ao iniciar venda.');
-    isIdleScanLoading.value = false;
-    return;
-  }
-  
-  // Venda iniciada com sucesso, agora libera o lock e adiciona o produto
-  isIdleScanLoading.value = false;
-  
-  quantityMultiplier.value = parsed.quantity;
-  lastScannedCode.value = parsed.code;
-  lastScanError.value = null;
 
-  try {
+    quantityMultiplier.value = parsed.quantity;
+    lastScannedCode.value = parsed.code;
+    lastScanError.value = null;
+
     if (viaScan(parsed.code)) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
@@ -374,8 +367,11 @@ async function handleIdleScan(code) {
     } else {
       await runProductSearchAndAdd(parsed.code, parsed.quantity);
     }
+  } catch (err) {
+    if (err.message) toast.error(err.message);
   } finally {
     quantityMultiplier.value = 1;
+    isIdleScanLoading.value = false;
     nextTick(focusSearch);
   }
 }
@@ -849,12 +845,16 @@ function handleScanBufferKeydown(e) {
     if (rapid) {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       if (cartStore.saleStarted) {
         handleScannedCode(buf);
       } else {
-        // Bloqueia double submit durante início de venda
         if (isIdleScanLoading.value) return;
-        handleIdleScan(buf);
+        if (buf === lastIdleScanCode.value && now - lastIdleScanAt.value < 500) return;
+        lastIdleScanCode.value = buf;
+        lastIdleScanAt.value = now;
+        isIdleScanLoading.value = true;
+        handleIdleScan(buf, true);
       }
     }
     return;
