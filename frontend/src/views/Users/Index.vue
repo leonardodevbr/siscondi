@@ -5,7 +5,7 @@
         <h2 class="text-lg font-semibold text-slate-800">Usuários</h2>
         <p class="text-xs text-slate-500">Gerencie os usuários da filial</p>
       </div>
-      <Button type="button" variant="primary" @click="openForm(null)">Novo Usuário</Button>
+      <Button v-if="authStore.can('users.create')" type="button" variant="primary" @click="openForm(null)">Novo Usuário</Button>
     </div>
 
     <div class="card p-4 sm:p-6">
@@ -31,6 +31,7 @@
             <tr>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">E-mail</th>
+              <th v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Filial</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cargo</th>
               <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">Ações</th>
             </tr>
@@ -39,7 +40,11 @@
             <tr v-for="u in userStore.users" :key="u.id">
               <td class="px-4 sm:px-6 py-4 text-sm font-medium text-slate-900">{{ u.name }}</td>
               <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.email }}</td>
-              <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ roleLabel(u.role) }}</td>
+              <td v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.branch?.name ?? '—' }}</td>
+              <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">
+                <span v-if="u.role" class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">{{ roleLabel(u.role) }}</span>
+                <span v-else>—</span>
+              </td>
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 text-right border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
                   <button type="button" class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors" title="Editar" @click="openForm(u)">
@@ -73,6 +78,7 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '@/stores/user';
+import { useAuthStore } from '@/stores/auth';
 import { useAlert } from '@/composables/useAlert';
 import Button from '@/components/Common/Button.vue';
 import Modal from '@/components/Common/Modal.vue';
@@ -83,6 +89,7 @@ const ROLE_LABELS = { seller: 'Vendedor', stockist: 'Estoquista', manager: 'Gere
 
 const toast = useToast();
 const { confirm } = useAlert();
+const authStore = useAuthStore();
 const userStore = useUserStore();
 const searchQuery = ref('');
 const showFormModal = ref(false);

@@ -81,7 +81,15 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $branchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
+        $user = auth()->user();
+        if ($user && $user->hasRole('super-admin') && $request->filled('branch_id')) {
+            $branchId = (int) $request->input('branch_id');
+            if (! Branch::whereKey($branchId)->exists()) {
+                throw ValidationException::withMessages(['branch_id' => ['Filial inválida.']]);
+            }
+        } else {
+            $branchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
+        }
 
         $data = $request->safe()->only(['name', 'email', 'role']);
         $data['password'] = $request->validated('password');
@@ -123,7 +131,7 @@ class UserController extends Controller
     {
         $user = $this->branchScope()->with('roles', 'branch')->findOrFail((int) $id);
 
-        $data = $request->safe()->only(['name', 'email', 'role']);
+        $data = $request->safe()->only(['name', 'email', 'role', 'branch_id']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -133,7 +141,8 @@ class UserController extends Controller
                 : null;
         }
 
-        DB::transaction(function () use ($user, $data): void {
+        $authUser = auth()->user();
+        DB::transaction(function () use ($user, $data, $authUser): void {
             $payload = [
                 'name' => $data['name'] ?? $user->name,
                 'email' => $data['email'] ?? $user->email,
@@ -143,6 +152,9 @@ class UserController extends Controller
             }
             if (array_key_exists('operation_password', $data)) {
                 $payload['operation_password'] = $data['operation_password'];
+            }
+            if ($authUser && $authUser->hasRole('super-admin') && array_key_exists('branch_id', $data)) {
+                $payload['branch_id'] = $data['branch_id'];
             }
             $user->update($payload);
             if (isset($data['role'])) {

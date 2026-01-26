@@ -11,6 +11,13 @@
       <Input v-model="form.password_confirmation" label="Confirmação da nova senha" type="password" autocomplete="new-password" />
     </div>
     <Input v-model="form.operation_password" label="Senha de operação (opcional)" type="password" autocomplete="off" />
+    <SelectInput
+      v-if="authStore.user?.is_super_admin"
+      v-model="form.branch_id"
+      label="Filial"
+      :options="branchOptions"
+      placeholder="Selecione a filial"
+    />
     <SelectInput v-model="form.role" label="Cargo" :options="roleOptions" placeholder="Selecione o cargo" />
     <div class="flex justify-end gap-2 pt-4">
       <Button type="button" variant="outline" @click="$emit('close')">Cancelar</Button>
@@ -20,9 +27,11 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '@/stores/user';
+import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 import Input from '@/components/Common/Input.vue';
 import Button from '@/components/Common/Button.vue';
 import SelectInput from '@/components/Common/SelectInput.vue';
@@ -42,7 +51,13 @@ const emit = defineEmits(['close', 'saved']);
 
 const toast = useToast();
 const userStore = useUserStore();
+const authStore = useAuthStore();
+const appStore = useAppStore();
 const saving = ref(false);
+
+const branchOptions = computed(() =>
+  (appStore.branches || []).map((b) => ({ value: b.id, label: b.name }))
+);
 
 const form = ref({
   name: '',
@@ -50,7 +65,14 @@ const form = ref({
   password: '',
   password_confirmation: '',
   operation_password: '',
+  branch_id: null,
   role: null,
+});
+
+onMounted(() => {
+  if (authStore.user?.is_super_admin) {
+    appStore.fetchBranches();
+  }
 });
 
 watch(
@@ -63,6 +85,7 @@ watch(
         password: '',
         password_confirmation: '',
         operation_password: '',
+        branch_id: u.branch_id ?? u.branch?.id ?? null,
         role: u.role ?? null,
       };
     } else {
@@ -72,6 +95,7 @@ watch(
         password: '',
         password_confirmation: '',
         operation_password: '',
+        branch_id: authStore.user?.is_super_admin ? (appStore.currentBranch?.id ?? null) : null,
         role: null,
       };
     }
@@ -96,6 +120,10 @@ async function submit() {
     toast.error('Selecione o cargo.');
     return;
   }
+  if (authStore.user?.is_super_admin && !form.value.branch_id) {
+    toast.error('Selecione a filial.');
+    return;
+  }
 
   saving.value = true;
   try {
@@ -104,6 +132,9 @@ async function submit() {
       email: form.value.email,
       role: form.value.role,
     };
+    if (authStore.user?.is_super_admin && form.value.branch_id) {
+      payload.branch_id = form.value.branch_id;
+    }
     if (form.value.password) {
       payload.password = form.value.password;
       payload.password_confirmation = form.value.password_confirmation;
