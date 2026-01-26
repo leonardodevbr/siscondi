@@ -783,7 +783,26 @@ function handleScanBufferKeydown(e) {
   if (showDiscountModal.value) return;
   if (showBalanceModal.value) return;
   if (showOperationsMenu.value) return;
-  if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible() && (e.key === 'Enter' || e.key === 'Escape')) return;
+  if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) {
+    if (e.key === 'Enter') {
+      const confirmBtn = document.querySelector('.swal2-container .swal2-confirm');
+      if (confirmBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        confirmBtn.click();
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      const cancelBtn = document.querySelector('.swal2-container .swal2-cancel');
+      if (cancelBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelBtn.click();
+      }
+      return;
+    }
+  }
 
   const key = e.key;
   const now = Date.now();
