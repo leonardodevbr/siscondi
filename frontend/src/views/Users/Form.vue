@@ -14,11 +14,14 @@
     <Input
       v-if="form.role === 'manager' || form.role === 'super-admin'"
       v-model="form.operation_pin"
-      label="PIN de autorização (PDV – máx. 10 caracteres)"
+      label="PIN de autorização (PDV – apenas números, máx. 10)"
       type="text"
+      inputmode="numeric"
+      pattern="[0-9]*"
       autocomplete="off"
       maxlength="10"
       placeholder="Ex.: 1234"
+      @input="form.operation_pin = form.operation_pin.replace(/[^0-9]/g, '')"
     />
     <SelectInput
       v-if="authStore.user?.is_super_admin"

@@ -31,7 +31,7 @@ class StoreUserRequest extends FormRequest
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'role' => ['required', 'string', Rule::in(['seller', 'stockist', 'manager', 'super-admin'])],
             'branch_id' => ['sometimes', 'nullable', 'integer', 'exists:branches,id'],
-            'operation_pin' => ['nullable', 'string', 'max:10', 'unique:users,operation_pin'],
+            'operation_pin' => ['nullable', 'string', 'max:10', 'regex:/^[0-9]+$/', 'unique:users,operation_pin'],
             'operation_password' => [
                 'nullable',
                 'string',

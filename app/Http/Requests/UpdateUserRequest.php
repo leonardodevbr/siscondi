@@ -33,7 +33,7 @@ class UpdateUserRequest extends FormRequest
             'password' => ['sometimes', 'nullable', 'string', 'confirmed', Password::defaults()],
             'role' => ['sometimes', 'required', 'string', Rule::in(['seller', 'stockist', 'manager', 'super-admin'])],
             'branch_id' => ['sometimes', 'nullable', 'integer', 'exists:branches,id'],
-            'operation_pin' => ['sometimes', 'nullable', 'string', 'max:10', Rule::unique('users', 'operation_pin')->ignore($userId)],
+            'operation_pin' => ['sometimes', 'nullable', 'string', 'max:10', 'regex:/^[0-9]+$/', Rule::unique('users', 'operation_pin')->ignore($userId)],
             'operation_password' => [
                 'nullable',
                 'string',
