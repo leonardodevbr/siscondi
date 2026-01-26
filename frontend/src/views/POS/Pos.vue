@@ -777,6 +777,18 @@ function handleSearchKeydown(e) {
     confirmCancellation(results[sel]);
     return;
   }
+  
+  // Verifica se foi um scan rápido (leitor de código de barras)
+  // Se sim, o handleScanBufferKeydown já processou, então ignora aqui
+  const currentTime = Date.now();
+  const timeSinceLastScan = currentTime - scanLastKeyTime.value;
+  const isRapidScan = timeSinceLastScan < 100; // 100ms de tolerância
+  
+  if (isRapidScan && scanBuffer.value) {
+    // Foi processado pelo handleScanBufferKeydown, ignora aqui para evitar duplicação
+    return;
+  }
+  
   const code = searchQuery.value.trim();
   if (!code) return;
   handleScannedCode(code);
