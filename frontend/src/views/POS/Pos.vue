@@ -333,6 +333,9 @@ function viaScan(code) {
 }
 
 async function handleIdleScan(code) {
+  // Bloqueia double submit durante início de venda
+  if (isIdleScanLoading.value) return;
+  
   const c = String(code ?? '').trim();
   if (!c) return;
 
@@ -841,6 +844,8 @@ function handleScanBufferKeydown(e) {
       if (cartStore.saleStarted) {
         handleScannedCode(buf);
       } else {
+        // Bloqueia double submit durante início de venda
+        if (isIdleScanLoading.value) return;
         handleIdleScan(buf);
       }
     }
