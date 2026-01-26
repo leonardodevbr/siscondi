@@ -699,19 +699,24 @@ async function authorizePaymentRemoval() {
     focusConfirm: false,
     allowOutsideClick: false,
     inputValidator: (value) => (value ? null : 'Informe a senha.'),
+    preConfirm: async (value) => {
+      if (!value) return undefined;
+      try {
+        const ok = await authStore.validateOperationPassword(value);
+        if (!ok) {
+          Swal.showValidationMessage('Senha incorreta.');
+          return false;
+        }
+        return value;
+      } catch {
+        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+        return false;
+      }
+    },
   });
   if (!result.isConfirmed) return;
-  try {
-    const ok = await authStore.validateOperationPassword(result.value);
-    if (!ok) {
-      toast.error('Senha incorreta.');
-      return;
-    }
-    paymentRemovalAuthorized.value = true;
-    selectedPaymentIndex.value = 0;
-  } catch {
-    toast.error('Erro ao validar senha. Tente novamente.');
-  }
+  paymentRemovalAuthorized.value = true;
+  selectedPaymentIndex.value = 0;
 }
 
 async function removeSelectedPayment() {

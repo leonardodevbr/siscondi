@@ -609,22 +609,24 @@ async function confirmCancellation(codeOrItem) {
           return 'Por favor, insira a senha.';
         }
       },
+      preConfirm: async (value) => {
+        if (!value) return undefined;
+        try {
+          const isValid = await authStore.validateOperationPassword(value);
+          if (!isValid) {
+            Swal.showValidationMessage('Senha incorreta.');
+            return false;
+          }
+          return value;
+        } catch {
+          Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+          return false;
+        }
+      },
     });
 
     if (result.isConfirmed) {
-      try {
-        const isValid = await authStore.validateOperationPassword(result.value);
-        if (!isValid) {
-          toast.error('Senha incorreta.');
-          clearCancellationAndFocus();
-          return;
-        }
-        confirmed = true;
-      } catch {
-        toast.error('Erro ao validar senha. Tente novamente.');
-        clearCancellationAndFocus();
-        return;
-      }
+      confirmed = true;
     }
   }
 
@@ -1061,20 +1063,24 @@ async function handleRemoveManualDiscount() {
           return 'Por favor, insira a senha.';
         }
       },
+      preConfirm: async (value) => {
+        if (!value) return undefined;
+        try {
+          const isValid = await authStore.validateOperationPassword(value);
+          if (!isValid) {
+            Swal.showValidationMessage('Senha incorreta.');
+            return false;
+          }
+          return value;
+        } catch {
+          Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+          return false;
+        }
+      },
     });
 
     if (result.isConfirmed) {
-      try {
-        const isValid = await authStore.validateOperationPassword(result.value);
-        if (!isValid) {
-          toast.error('Senha incorreta.');
-          return;
-        }
-        proceed = true;
-      } catch {
-        toast.error('Erro ao validar senha. Tente novamente.');
-        return;
-      }
+      proceed = true;
     }
   }
 
@@ -1329,7 +1335,7 @@ async function requestBalanceAccess() {
     return;
   }
   
-  const { value: password } = await Swal.fire({
+  const result = await Swal.fire({
     title: 'Senha de Gerente',
     text: 'Informe a Senha de Gerente para visualizar o saldo',
     input: 'text',
@@ -1361,21 +1367,26 @@ async function requestBalanceAccess() {
     },
     allowOutsideClick: false,
     allowEscapeKey: true,
-  });
-  
-  if (password) {
-    try {
-      const isValid = await authStore.validateOperationPassword(password);
-      if (isValid) {
-        isBalanceVisible.value = true;
-        hideBalanceAfterTimeout();
-        feedbackMessage.value = null;
-      } else {
-        toast.error('Senha incorreta.');
+    preConfirm: async (value) => {
+      if (!value) return undefined;
+      try {
+        const isValid = await authStore.validateOperationPassword(value);
+        if (!isValid) {
+          Swal.showValidationMessage('Senha incorreta.');
+          return false;
+        }
+        return value;
+      } catch {
+        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+        return false;
       }
-    } catch {
-      toast.error('Erro ao validar senha. Tente novamente.');
-    }
+    },
+  });
+
+  if (result.isConfirmed) {
+    isBalanceVisible.value = true;
+    hideBalanceAfterTimeout();
+    feedbackMessage.value = null;
   }
 }
 

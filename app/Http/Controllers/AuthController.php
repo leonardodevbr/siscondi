@@ -83,6 +83,7 @@ class AuthController extends Controller
 
     /**
      * Validar senha de operação do usuário logado.
+     * A senha é armazenada com bcrypt (cast 'hashed' no model). Hash::check(plain, hash).
      */
     public function validateOperationPassword(Request $request): JsonResponse
     {
@@ -91,9 +92,18 @@ class AuthController extends Controller
         ]);
 
         $user = $request->user();
-        $valid = $user?->operation_password
-            ? Hash::check($request->input('password'), $user->operation_password)
-            : false;
+        if (! $user) {
+            return response()->json(['valid' => false]);
+        }
+
+        $plain = $request->input('password');
+        $stored = $user->getRawOriginal('operation_password') ?? $user->operation_password;
+
+        if ($stored === null || $stored === '') {
+            return response()->json(['valid' => false]);
+        }
+
+        $valid = Hash::check($plain, $stored);
 
         return response()->json(['valid' => $valid]);
     }
