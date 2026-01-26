@@ -233,15 +233,7 @@ class CreateSaleAction
             $variantId = $item['product_variant_id'];
             $quantity = $item['quantity'];
 
-            $inventory = Inventory::where('branch_id', $branchId)
-                ->where('product_variant_id', $variantId)
-                ->lockForUpdate()
-                ->first();
-
-            if ($inventory) {
-                $inventory->decrement('quantity', $quantity);
-            }
-
+            // Cria o StockMovement - o Observer irá atualizar o inventário automaticamente
             StockMovement::create([
                 'product_variant_id' => $variantId,
                 'branch_id' => $branchId,

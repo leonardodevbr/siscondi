@@ -32,6 +32,7 @@ const lastScannedCode = ref('');
 const allowNavigation = ref(false);
 const scanBuffer = ref('');
 const scanLastKeyTime = ref(0);
+const isScanInProgress = ref(false);
 const products = ref([]);
 const loadingProducts = ref(false);
 const searchTimeout = ref(null);
@@ -642,30 +643,32 @@ async function confirmCancellation(codeOrItem) {
 async function handleScannedCode(code) {
   const c = String(code).trim();
   if (!c) return;
+  if (isScanInProgress.value) return;
+  isScanInProgress.value = true;
 
-  if (isCancellationMode.value) {
+  try {
+    if (isCancellationMode.value) {
+      searchQuery.value = '';
+      products.value = [];
+      if (searchTimeout.value) {
+        clearTimeout(searchTimeout.value);
+        searchTimeout.value = null;
+      }
+      await confirmCancellation(c);
+      return;
+    }
+
+    const parsed = parseQuantityMultiplier(c);
+    quantityMultiplier.value = parsed.quantity;
+    lastScannedCode.value = parsed.code;
+    lastScanError.value = null;
     searchQuery.value = '';
     products.value = [];
     if (searchTimeout.value) {
       clearTimeout(searchTimeout.value);
       searchTimeout.value = null;
     }
-    await confirmCancellation(c);
-    return;
-  }
 
-  const parsed = parseQuantityMultiplier(c);
-  quantityMultiplier.value = parsed.quantity;
-  lastScannedCode.value = parsed.code;
-  lastScanError.value = null;
-  searchQuery.value = '';
-  products.value = [];
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value);
-    searchTimeout.value = null;
-  }
-
-  try {
     if (viaScan(parsed.code)) {
       try {
         await processScanApi(parsed.code, parsed.quantity);
@@ -684,6 +687,7 @@ async function handleScannedCode(code) {
     }
   } finally {
     quantityMultiplier.value = 1;
+    isScanInProgress.value = false;
     nextTick(() => {
       const el = document.querySelector('#product-search');
       if (el) {

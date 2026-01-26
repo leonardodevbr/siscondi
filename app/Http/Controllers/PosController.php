@@ -879,23 +879,16 @@ class PosController extends Controller
 
         $sale = DB::transaction(function () use ($sale, $user): Sale {
 
+            // Cria os StockMovements - o Observer irá atualizar o inventário automaticamente
             foreach ($sale->items as $item) {
-                $inventory = Inventory::where('branch_id', $sale->branch_id)
-                    ->where('product_variant_id', $item->product_variant_id)
-                    ->first();
-
-                if ($inventory) {
-                    $inventory->decrement('quantity', $item->quantity);
-
-                    StockMovement::create([
-                        'branch_id' => $sale->branch_id,
-                        'product_variant_id' => $item->product_variant_id,
-                        'type' => StockMovementType::SALE,
-                        'quantity' => $item->quantity,
-                        'reason' => "Venda #{$sale->id}",
-                        'user_id' => $user->id,
-                    ]);
-                }
+                StockMovement::create([
+                    'branch_id' => $sale->branch_id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'type' => StockMovementType::SALE,
+                    'quantity' => $item->quantity,
+                    'reason' => "Venda #{$sale->id}",
+                    'user_id' => $user->id,
+                ]);
             }
 
             $hasPixPayment = $sale->salePayments->contains(fn (SalePayment $payment) => 

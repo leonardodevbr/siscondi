@@ -10,7 +10,6 @@ use App\Enums\PaymentStatus;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Models\CashRegister;
-use App\Models\Inventory;
 use App\Models\Payment;
 use App\Models\Sale;
 use App\Models\StockMovement;
@@ -98,17 +97,9 @@ class PixController extends Controller
                 $reason = "Venda #{$sale->id}";
                 $movementsAlreadyExist = StockMovement::where('reason', $reason)->exists();
 
+                // Cria os StockMovements se ainda não existem - o Observer irá atualizar o inventário automaticamente
                 if (! $movementsAlreadyExist) {
                     foreach ($sale->items as $item) {
-                        $inventory = Inventory::where('branch_id', $sale->branch_id)
-                            ->where('product_variant_id', $item->product_variant_id)
-                            ->lockForUpdate()
-                            ->first();
-
-                        if ($inventory) {
-                            $inventory->decrement('quantity', $item->quantity);
-                        }
-
                         StockMovement::create([
                             'branch_id' => $sale->branch_id,
                             'product_variant_id' => $item->product_variant_id,
