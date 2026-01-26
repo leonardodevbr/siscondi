@@ -557,49 +557,41 @@ async function confirmCancellation(codeOrItem) {
 
   const result = await Swal.fire({
     title: 'Cancelar Item',
-    html: `<strong>${qtyLabel} de ${productName}</strong><br><br>Insira a senha de operação.`,
+    html: `<div style="margin-bottom: 1rem;"><strong style="font-size: 1rem;">${qtyLabel} de ${productName}</strong></div>
+      <div style="text-align: left; margin-top: 0.5rem;">
+        <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
+        <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
+        <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
+        <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
+      </div>`,
     icon: 'warning',
-    input: 'text',
-    inputPlaceholder: 'Senha de operação',
-    customClass: {
-      input: 'swal-manager-auth-input',
-    },
-    inputAttributes: {
-      autocomplete: 'off',
-      autocapitalize: 'off',
-      autocorrect: 'off',
-      spellcheck: 'false',
-      name: 'manager-auth-cancel',
-      'data-lpignore': 'true',
-      'data-1p-ignore': 'true',
-      'data-bwignore': 'true',
-      'data-form-type': 'other',
-    },
+    width: '400px',
     showCancelButton: true,
     confirmButtonText: 'Confirmar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
     confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
     focusConfirm: false,
     allowOutsideClick: false,
-    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-    inputValidator: (value) => {
-      if (!value) {
-        return 'Por favor, insira a senha.';
-      }
+    customClass: {
+      popup: 'swal-compact',
+      title: 'swal-compact-title',
+      htmlContainer: 'swal-compact-content',
+      actions: 'swal-compact-actions'
     },
-    preConfirm: async (value) => {
-      if (!value) return undefined;
-      try {
-        const isValid = await authStore.validateOperationPassword(value);
-        if (!isValid) {
-          Swal.showValidationMessage('Senha incorreta.');
-          return false;
-        }
-        return value;
-      } catch {
-        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+    preConfirm: async () => {
+      const pin = (document.getElementById('swal-op-pin')?.value ?? '').trim();
+      const password = document.getElementById('swal-op-password')?.value ?? '';
+      if (!pin || !password) {
+        Swal.showValidationMessage('Informe PIN e senha de operação.');
         return false;
       }
+      const res = await authStore.validateOperationPassword({ pin, password });
+      if (!res.valid) {
+        Swal.showValidationMessage('PIN ou senha incorretos.');
+        return false;
+      }
+      return res;
     },
   });
 
@@ -612,12 +604,14 @@ async function confirmCancellation(codeOrItem) {
     return;
   }
 
+  const authorizedByUserId = result.value?.authorized_by_user_id;
+
   try {
     if (byItem) {
-      await cartStore.removeItemById(item.id);
+      await cartStore.removeItemById(item.id, authorizedByUserId);
     } else {
       const barcodeToSend = item.barcode || item.sku || codeOrItem;
-      await cartStore.removeItemByCode(barcodeToSend);
+      await cartStore.removeItemByCode(barcodeToSend, authorizedByUserId);
     }
     toast.success(qty === 1 ? 'Item removido.' : 'Itens removidos.');
     isCancellationMode.value = false;
@@ -984,57 +978,50 @@ async function handleRemoveCoupon() {
 
 async function handleRemoveManualDiscount() {
   const result = await Swal.fire({
-    title: 'Remover desconto manual',
-    html: 'Insira a senha de operação.',
+    title: 'Remover Desconto',
+    html: `<div style="text-align: left; margin-top: 0.5rem;">
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
+      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
+      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
+    </div>`,
     icon: 'warning',
-    input: 'password',
-    inputPlaceholder: 'Senha de operação',
-    customClass: {
-      input: 'swal-manager-auth-input',
-    },
-    inputAttributes: {
-      autocomplete: 'off',
-      autocapitalize: 'off',
-      autocorrect: 'off',
-      spellcheck: 'false',
-      name: 'manager-auth-remove-discount',
-      'data-lpignore': 'true',
-      'data-1p-ignore': 'true',
-      'data-bwignore': 'true',
-      'data-form-type': 'other',
-    },
+    width: '400px',
     showCancelButton: true,
     confirmButtonText: 'Confirmar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
     confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
     focusConfirm: false,
     allowOutsideClick: false,
-    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-    inputValidator: (value) => {
-      if (!value) {
-        return 'Por favor, insira a senha.';
-      }
+    customClass: {
+      popup: 'swal-compact',
+      title: 'swal-compact-title',
+      htmlContainer: 'swal-compact-content',
+      actions: 'swal-compact-actions'
     },
-    preConfirm: async (value) => {
-      if (!value) return undefined;
-      try {
-        const isValid = await authStore.validateOperationPassword(value);
-        if (!isValid) {
-          Swal.showValidationMessage('Senha incorreta.');
-          return false;
-        }
-        return value;
-      } catch {
-        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+    preConfirm: async () => {
+      const pin = (document.getElementById('swal-op-pin')?.value ?? '').trim();
+      const password = document.getElementById('swal-op-password')?.value ?? '';
+      if (!pin || !password) {
+        Swal.showValidationMessage('Informe PIN e senha de operação.');
         return false;
       }
+      const res = await authStore.validateOperationPassword({ pin, password });
+      if (!res.valid) {
+        Swal.showValidationMessage('PIN ou senha incorretos.');
+        return false;
+      }
+      return res;
     },
   });
 
   if (!result.isConfirmed) return;
 
+  const authorizedByUserId = result.value?.authorized_by_user_id;
+
   try {
-    await cartStore.removeManualDiscount();
+    await cartStore.removeManualDiscount(authorizedByUserId);
     toast.success('Desconto removido.');
   } catch (err) {
     toast.error(err?.message ?? 'Erro ao remover desconto.');
@@ -1262,53 +1249,49 @@ function hideBalanceAfterTimeout() {
 async function requestBalanceAccess() {
   const result = await Swal.fire({
     title: 'Visualizar Saldo',
-    text: 'Insira a senha de operação.',
-    input: 'text',
-    inputPlaceholder: 'Senha de operação',
-    customClass: {
-      input: 'swal-manager-auth-input',
-    },
-    inputAttributes: {
-      autocomplete: 'off',
-      autocapitalize: 'off',
-      autocorrect: 'off',
-      spellcheck: 'false',
-      name: 'manager-auth-balance',
-      'data-lpignore': 'true',
-      'data-1p-ignore': 'true',
-      'data-bwignore': 'true',
-      'data-form-type': 'other',
-    },
+    html: `<div style="text-align: left; margin-top: 0.5rem;">
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
+      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
+      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
+    </div>`,
+    icon: 'info',
+    width: '400px',
     showCancelButton: true,
     confirmButtonText: 'Confirmar (ENTER)',
     cancelButtonText: 'Cancelar (ESC)',
     confirmButtonColor: '#2563eb',
     cancelButtonColor: '#64748b',
-    footer: '<p class="swal-cpf-shortcuts">ENTER para confirmar · ESC para cancelar</p>',
-    inputValidator: (value) => {
-      if (!value) {
-        return 'Por favor, informe a senha';
-      }
-    },
+    focusConfirm: false,
     allowOutsideClick: false,
     allowEscapeKey: true,
-    preConfirm: async (value) => {
-      if (!value) return undefined;
-      try {
-        const isValid = await authStore.validateOperationPassword(value);
-        if (!isValid) {
-          Swal.showValidationMessage('Senha incorreta.');
-          return false;
-        }
-        return value;
-      } catch {
-        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+    customClass: {
+      popup: 'swal-compact',
+      title: 'swal-compact-title',
+      htmlContainer: 'swal-compact-content',
+      actions: 'swal-compact-actions'
+    },
+    preConfirm: async () => {
+      const pin = (document.getElementById('swal-op-pin')?.value ?? '').trim();
+      const password = document.getElementById('swal-op-password')?.value ?? '';
+      if (!pin || !password) {
+        Swal.showValidationMessage('Informe PIN e senha de operação.');
         return false;
       }
+      const res = await authStore.validateOperationPassword({ pin, password });
+      if (!res.valid) {
+        Swal.showValidationMessage('PIN ou senha incorretos.');
+        return false;
+      }
+      return res;
     },
   });
 
   if (result.isConfirmed) {
+    const authorizedByUserId = result.value?.authorized_by_user_id;
+    if (authorizedByUserId) {
+      await cartStore.logManagerAction('view_balance', authorizedByUserId);
+    }
     isBalanceVisible.value = true;
     hideBalanceAfterTimeout();
     feedbackMessage.value = null;
@@ -2409,3 +2392,44 @@ onUnmounted(() => {
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Estilos globais para modais SweetAlert2 compactos */
+:deep(.swal-compact) {
+  padding: 1.25rem !important;
+}
+
+:deep(.swal-compact-title) {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.75rem !important;
+  padding: 0 !important;
+}
+
+:deep(.swal-compact-content) {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.swal-compact-actions) {
+  margin-top: 1rem !important;
+  gap: 0.5rem !important;
+}
+
+:deep(.swal2-input) {
+  height: 2.5rem !important;
+  border-radius: 0.375rem !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:deep(.swal2-input:focus) {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+:deep(.swal2-validation-message) {
+  font-size: 0.813rem !important;
+  padding: 0.5rem !important;
+  margin: 0.5rem 0 0 0 !important;
+}
+</style>

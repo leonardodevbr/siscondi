@@ -80,15 +80,19 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removeItem(itemId) {
+    async removeItem(itemId, authorizedByUserId = null) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/remove-item', {
+        const payload = {
           sale_id: this.saleId,
           item_id: itemId,
-        });
+        };
+        if (authorizedByUserId) {
+          payload.authorized_by_user_id = authorizedByUserId;
+        }
+        const { data } = await api.post('/pos/remove-item', payload);
         if (data.sale) {
           this.syncFromSale(data.sale);
         }
@@ -97,15 +101,19 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removeItemByCode(barcode) {
+    async removeItemByCode(barcode, authorizedByUserId = null) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/remove-item-by-code', {
+        const payload = {
           barcode,
           sale_id: this.saleId,
-        });
+        };
+        if (authorizedByUserId) {
+          payload.authorized_by_user_id = authorizedByUserId;
+        }
+        const { data } = await api.post('/pos/remove-item-by-code', payload);
         if (data.sale) {
           this.syncFromSale(data.sale);
         }
@@ -114,15 +122,19 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removeItemById(itemId) {
+    async removeItemById(itemId, authorizedByUserId = null) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/remove-item-by-code', {
+        const payload = {
           item_id: itemId,
           sale_id: this.saleId,
-        });
+        };
+        if (authorizedByUserId) {
+          payload.authorized_by_user_id = authorizedByUserId;
+        }
+        const { data } = await api.post('/pos/remove-item-by-code', payload);
         if (data.sale) {
           this.syncFromSale(data.sale);
         }
@@ -191,16 +203,20 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async applyDiscount(type, value) {
+    async applyDiscount(type, value, authorizedByUserId = null) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/apply-discount', {
+        const payload = {
           sale_id: this.saleId,
           type,
           value,
-        });
+        };
+        if (authorizedByUserId) {
+          payload.authorized_by_user_id = authorizedByUserId;
+        }
+        const { data } = await api.post('/pos/apply-discount', payload);
         if (data.sale) {
           this.syncFromSale(data.sale);
         }
@@ -209,8 +225,8 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removeManualDiscount() {
-      return this.applyDiscount('fixed', 0);
+    async removeManualDiscount(authorizedByUserId = null) {
+      return this.applyDiscount('fixed', 0, authorizedByUserId);
     },
     async applyCoupon(couponCode) {
       if (!this.saleId) {
@@ -253,14 +269,18 @@ export const useCartStore = defineStore('cart', {
         throw new Error(message);
       }
     },
-    async removePayment(paymentId) {
+    async removePayment(paymentId, authorizedByUserId = null) {
       if (!this.saleId) {
         throw new Error('Venda não iniciada.');
       }
       try {
-        const { data } = await api.post('/pos/remove-payment', {
+        const payload = {
           payment_id: paymentId,
-        });
+        };
+        if (authorizedByUserId) {
+          payload.authorized_by_user_id = authorizedByUserId;
+        }
+        const { data } = await api.post('/pos/remove-payment', payload);
         if (data.sale) {
           this.syncFromSale(data.sale);
         }
@@ -268,6 +288,16 @@ export const useCartStore = defineStore('cart', {
       } catch (error) {
         const message = error.response?.data?.message || 'Erro ao remover pagamento.';
         throw new Error(message);
+      }
+    },
+    async logManagerAction(action, authorizedByUserId) {
+      try {
+        await api.post('/pos/log-manager-action', {
+          action,
+          authorized_by_user_id: authorizedByUserId,
+        });
+      } catch (error) {
+        console.error('Erro ao registrar ação do gerente:', error);
       }
     },
     async cancel() {

@@ -83,15 +83,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Validar senha de operação para autorizar ação (cancelar item, desconto, saldo, etc.).
-     *
-     * - GERENTE/Super-admin logado: valida a senha de operação DELE MESMO.
-     * - VENDEDOR (ou outro) logado: a senha digitada deve ser a de algum GERENTE ou Super-admin
-     *   (mesma filial do vendedor, ou super-admin). Assim o vendedor chama um gerente para autorizar.
+     * Validar autorização do gerente: PIN + senha de operação.
+     * O gerente é quem digita (vendedor aciona, gerente vem e insere). 1 query por PIN, 1 Hash::check.
+     * Retorna authorized_by_user_id para vincular a ação ao usuário que autorizou.
      */
     public function validateOperationPassword(Request $request): JsonResponse
     {
         $request->validate([
+            'pin' => ['required', 'string', 'max:10'],
             'password' => ['required', 'string'],
         ]);
 
@@ -100,53 +99,42 @@ class AuthController extends Controller
             return response()->json(['valid' => false, 'message' => 'Usuário não autenticado.']);
         }
 
+        $pin = trim($request->input('pin'));
         $plain = $request->input('password');
-        $isManagerOrSuperAdmin = $user->hasRole('super-admin') || $user->hasRole('manager');
-
-        if ($isManagerOrSuperAdmin) {
-            $stored = $user->getRawOriginal('operation_password') ?? $user->operation_password;
-            if ($stored === null || $stored === '') {
-                return response()->json([
-                    'valid' => false,
-                    'message' => 'Este usuário não possui senha de operação cadastrada.',
-                    'user_id' => $user->id,
-                ]);
-            }
-            $valid = Hash::check($plain, $stored);
-
-            return response()->json([
-                'valid' => $valid,
-                'user_id' => $user->id,
-            ]);
-        }
-
-        // Vendedor/estoquista logado: a senha digitada deve ser de algum gerente (ou super-admin)
         $branchId = $user->branch_id;
-        $managers = User::query()
+
+        $manager = User::query()
+            ->where('operation_pin', $pin)
             ->whereNotNull('operation_password')
             ->where('operation_password', '!=', '')
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['manager', 'super-admin']))
-            ->when($branchId !== null, function ($q) use ($branchId) {
-                $q->where(function ($sub) use ($branchId) {
-                    $sub->where('branch_id', $branchId)
-                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'super-admin'));
-                });
-            })
-            ->get();
+            ->first();
 
-        foreach ($managers as $manager) {
-            $stored = $manager->getRawOriginal('operation_password') ?? $manager->operation_password;
-            if ($stored && Hash::check($plain, $stored)) {
-                return response()->json([
-                    'valid' => true,
-                    'authorized_by_user_id' => $manager->id,
-                ]);
-            }
+        if (! $manager) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'PIN inválido ou gerente sem senha de operação cadastrada.',
+            ]);
+        }
+
+        if ($branchId !== null && ! $manager->hasRole('super-admin') && (int) $manager->branch_id !== (int) $branchId) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Gerente de outra filial.',
+            ]);
+        }
+
+        $stored = $manager->getRawOriginal('operation_password') ?? $manager->operation_password;
+        if (! Hash::check($plain, $stored)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Senha de operação incorreta.',
+            ]);
         }
 
         return response()->json([
-            'valid' => false,
-            'message' => 'Senha de gerente incorreta.',
+            'valid' => true,
+            'authorized_by_user_id' => $manager->id,
         ]);
     }
 }

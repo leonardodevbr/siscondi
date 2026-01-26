@@ -259,6 +259,7 @@ const selectedInstallmentIndex = ref(0);
 const selectedPaymentIndex = ref(-1);
 const isFinishing = ref(false);
 const paymentRemovalAuthorized = ref(false);
+const authorizedByUserIdForRemoval = ref(null);
 const paymentsSnapshotForFinishing = ref([]);
 
 const amountInputRef = ref(null);
@@ -674,47 +675,44 @@ async function handleRemoveCouponInCheckout() {
 async function authorizePaymentRemoval() {
   const result = await Swal.fire({
     title: 'Remover Pagamento',
-    html: 'Insira a senha de gerente para autorizar a remoção de pagamentos:',
+    html: `<div style="text-align: left; margin-top: 0.5rem;">
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem;">PIN do gerente</label>
+      <input type="text" id="swal-op-pin" placeholder="Ex: 1234" class="swal2-input" inputmode="numeric" maxlength="10" autocomplete="off" style="margin-top: 0; margin-bottom: 0.5rem; padding: 0.5rem; font-size: 0.875rem;" />
+      <label style="display: block; font-size: 0.813rem; color: #64748b; margin-bottom: 0.25rem; margin-top: 0.5rem;">Senha de operação</label>
+      <input type="password" id="swal-op-password" placeholder="Senha" class="swal2-input" autocomplete="off" style="margin-top: 0; padding: 0.5rem; font-size: 0.875rem;" />
+    </div>`,
     icon: 'warning',
-    input: 'text',
-    inputPlaceholder: 'Senha de gerente',
-    customClass: {
-      input: 'swal-manager-auth-input',
-    },
-    inputAttributes: {
-      autocomplete: 'off',
-      autocapitalize: 'off',
-      autocorrect: 'off',
-      spellcheck: 'false',
-      name: 'manager-auth-removal',
-      'data-lpignore': 'true',
-      'data-1p-ignore': 'true',
-      'data-bwignore': 'true',
-      'data-form-type': 'other',
-    },
+    width: '400px',
     showCancelButton: true,
-    confirmButtonText: 'Confirmar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Confirmar (ENTER)',
+    cancelButtonText: 'Cancelar (ESC)',
     confirmButtonColor: '#ea580c',
+    cancelButtonColor: '#64748b',
     focusConfirm: false,
     allowOutsideClick: false,
-    inputValidator: (value) => (value ? null : 'Informe a senha.'),
-    preConfirm: async (value) => {
-      if (!value) return undefined;
-      try {
-        const ok = await authStore.validateOperationPassword(value);
-        if (!ok) {
-          Swal.showValidationMessage('Senha incorreta.');
-          return false;
-        }
-        return value;
-      } catch {
-        Swal.showValidationMessage('Erro ao validar senha. Tente novamente.');
+    customClass: {
+      popup: 'swal-compact',
+      title: 'swal-compact-title',
+      htmlContainer: 'swal-compact-content',
+      actions: 'swal-compact-actions'
+    },
+    preConfirm: async () => {
+      const pin = (document.getElementById('swal-op-pin')?.value ?? '').trim();
+      const password = document.getElementById('swal-op-password')?.value ?? '';
+      if (!pin || !password) {
+        Swal.showValidationMessage('Informe PIN e senha de operação.');
         return false;
       }
+      const res = await authStore.validateOperationPassword({ pin, password });
+      if (!res.valid) {
+        Swal.showValidationMessage('PIN ou senha incorretos.');
+        return false;
+      }
+      return res;
     },
   });
   if (!result.isConfirmed) return;
+  authorizedByUserIdForRemoval.value = result.value?.authorized_by_user_id;
   paymentRemovalAuthorized.value = true;
   selectedPaymentIndex.value = 0;
 }
@@ -726,11 +724,12 @@ async function removeSelectedPayment() {
   const id = payment.id;
   if (!id) return;
   try {
-    await cartStore.removePayment(id);
+    await cartStore.removePayment(id, authorizedByUserIdForRemoval.value);
     toast.success('Pagamento removido.');
     if (payments.value.length === 0) {
       selectedPaymentIndex.value = -1;
       paymentRemovalAuthorized.value = false;
+      authorizedByUserIdForRemoval.value = null;
     } else {
       selectedPaymentIndex.value = 0;
     }
@@ -760,6 +759,7 @@ function handleKeydown(e) {
     if (selectedPaymentIndex.value >= 0 && payments.value.length > 0) {
       selectedPaymentIndex.value = -1;
       paymentRemovalAuthorized.value = false;
+      authorizedByUserIdForRemoval.value = null;
       return;
     }
     emit('close');
@@ -923,3 +923,44 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown, true);
 });
 </script>
+
+<style scoped>
+/* Estilos globais para modais SweetAlert2 compactos */
+:deep(.swal-compact) {
+  padding: 1.25rem !important;
+}
+
+:deep(.swal-compact-title) {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.75rem !important;
+  padding: 0 !important;
+}
+
+:deep(.swal-compact-content) {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.swal-compact-actions) {
+  margin-top: 1rem !important;
+  gap: 0.5rem !important;
+}
+
+:deep(.swal2-input) {
+  height: 2.5rem !important;
+  border-radius: 0.375rem !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:deep(.swal2-input:focus) {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+:deep(.swal2-validation-message) {
+  font-size: 0.813rem !important;
+  padding: 0.5rem !important;
+  margin: 0.5rem 0 0 0 !important;
+}
+</style>

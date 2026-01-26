@@ -92,16 +92,22 @@ export const useAuthStore = defineStore('auth', {
       window.localStorage.removeItem('user');
     },
     /**
-     * Valida a senha de operação do usuário logado (ex.: descontos, cancelamentos).
-     * @param {string} password - Senha informada
-     * @returns {Promise<boolean>} true se válida, false caso contrário
+     * Valida autorização do gerente: PIN + senha de operação (o gerente digita no PDV).
+     * @param {{ pin: string, password: string }} payload - PIN e senha informados pelo gerente
+     * @returns {Promise<{ valid: boolean, authorized_by_user_id?: number }>}
      */
-    async validateOperationPassword(password) {
+    async validateOperationPassword(payload) {
       try {
-        const { data } = await api.post('/validate-operation-password', { password });
-        return data?.valid === true;
+        const { data } = await api.post('/validate-operation-password', {
+          pin: payload?.pin ?? '',
+          password: payload?.password ?? '',
+        });
+        return {
+          valid: data?.valid === true,
+          authorized_by_user_id: data?.authorized_by_user_id ?? null,
+        };
       } catch {
-        return false;
+        return { valid: false, authorized_by_user_id: null };
       }
     },
     setBranch(branch) {

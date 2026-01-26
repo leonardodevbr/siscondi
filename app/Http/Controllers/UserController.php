@@ -91,7 +91,7 @@ class UserController extends Controller
             $branchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
         }
 
-        $data = $request->safe()->only(['name', 'email', 'role']);
+        $data = $request->safe()->only(['name', 'email', 'role', 'operation_pin']);
         $data['password'] = $request->validated('password');
         $data['branch_id'] = $branchId;
         if ($request->filled('operation_password')) {
@@ -104,6 +104,7 @@ class UserController extends Controller
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'operation_password' => $data['operation_password'] ?? null,
+                'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
                 'branch_id' => $data['branch_id'],
             ]);
             $user->assignRole($data['role']);
@@ -131,7 +132,7 @@ class UserController extends Controller
     {
         $user = $this->branchScope()->with('roles', 'branch')->findOrFail((int) $id);
 
-        $data = $request->safe()->only(['name', 'email', 'role', 'branch_id']);
+        $data = $request->safe()->only(['name', 'email', 'role', 'branch_id', 'operation_pin']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -152,6 +153,9 @@ class UserController extends Controller
             }
             if (array_key_exists('operation_password', $data)) {
                 $payload['operation_password'] = $data['operation_password'];
+            }
+            if (array_key_exists('operation_pin', $data)) {
+                $payload['operation_pin'] = $data['operation_pin'] !== null && $data['operation_pin'] !== '' ? $data['operation_pin'] : null;
             }
             if ($authUser && $authUser->hasRole('super-admin') && array_key_exists('branch_id', $data)) {
                 $payload['branch_id'] = $data['branch_id'];

@@ -12,6 +12,7 @@ use App\Models\CashRegister;
 use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\Inventory;
+use App\Models\ManagerAuthorizationLog;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -222,12 +223,14 @@ class PosController extends Controller
 
     /**
      * Remove item da venda.
+     * Quando autorizado por gerente, enviar authorized_by_user_id para auditoria.
      */
     public function removeItem(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'sale_id' => ['required', 'exists:sales,id'],
             'item_id' => ['required', 'exists:sale_items,id'],
+            'authorized_by_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -245,12 +248,24 @@ class PosController extends Controller
             ], 400);
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
-            $itemId = $request->input('item_id');
+        $itemId = (int) $request->input('item_id');
+        $authorizedByUserId = $request->has('authorized_by_user_id') ? (int) $request->input('authorized_by_user_id') : null;
+
+        $sale = DB::transaction(function () use ($sale, $itemId, $authorizedByUserId): Sale {
             $item = SaleItem::where('sale_id', $sale->id)
                 ->findOrFail($itemId);
 
             $item->delete();
+
+            if ($authorizedByUserId) {
+                ManagerAuthorizationLog::query()->create([
+                    'authorized_by_user_id' => $authorizedByUserId,
+                    'action' => ManagerAuthorizationLog::ACTION_CANCEL_ITEM,
+                    'sale_id' => $sale->id,
+                    'branch_id' => $sale->branch_id,
+                    'metadata' => ['item_id' => $itemId],
+                ]);
+            }
 
             $this->recalculateSaleTotals($sale);
 
@@ -271,6 +286,7 @@ class PosController extends Controller
             'sale_id' => ['required', 'exists:sales,id'],
             'barcode' => ['required_without:item_id', 'nullable', 'string'],
             'item_id' => ['required_without:barcode', 'nullable', 'integer', 'exists:sale_items,id'],
+            'authorized_by_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -284,6 +300,7 @@ class PosController extends Controller
         $saleId = (int) $request->input('sale_id');
         $barcode = $request->input('barcode');
         $itemId = $request->input('item_id') ? (int) $request->input('item_id') : null;
+        $authorizedByUserId = $request->has('authorized_by_user_id') ? (int) $request->input('authorized_by_user_id') : null;
 
         $sale = Sale::where('id', $saleId)
             ->where('user_id', $user->id)
@@ -297,7 +314,7 @@ class PosController extends Controller
         }
 
         try {
-            $sale = DB::transaction(function () use ($sale, $barcode, $itemId): Sale {
+            $sale = DB::transaction(function () use ($sale, $barcode, $itemId, $authorizedByUserId): Sale {
                 $item = $itemId
                     ? SaleItem::where('sale_id', $sale->id)->where('id', $itemId)->lockForUpdate()->first()
                     : SaleItem::where('sale_id', $sale->id)
@@ -312,7 +329,23 @@ class PosController extends Controller
                     throw new \InvalidArgumentException('Este produto não consta na venda atual.');
                 }
 
+                $itemIdToLog = $item->id;
+                $metadata = ['item_id' => $itemIdToLog];
+                if ($barcode !== null && $barcode !== '') {
+                    $metadata['barcode'] = $barcode;
+                }
+
                 $item->delete();
+
+                if ($authorizedByUserId) {
+                    ManagerAuthorizationLog::query()->create([
+                        'authorized_by_user_id' => $authorizedByUserId,
+                        'action' => ManagerAuthorizationLog::ACTION_CANCEL_ITEM,
+                        'sale_id' => $sale->id,
+                        'branch_id' => $sale->branch_id,
+                        'metadata' => $metadata,
+                    ]);
+                }
 
                 $this->recalculateSaleTotals($sale);
 
@@ -475,12 +508,14 @@ class PosController extends Controller
 
     /**
      * Aplica desconto na venda.
+     * Para remover desconto manual (type=fixed, value=0), enviar authorized_by_user_id para auditoria.
      */
     public function applyDiscount(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'type' => ['required', 'in:percentage,fixed'],
             'value' => ['required', 'numeric', 'min:0'],
+            'authorized_by_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -511,7 +546,10 @@ class PosController extends Controller
             }
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
+        $authorizedByUserId = $request->has('authorized_by_user_id') ? (int) $request->input('authorized_by_user_id') : null;
+        $isRemoveDiscount = $type === 'fixed' && $value == 0;
+
+        $sale = DB::transaction(function () use ($sale, $request, $authorizedByUserId, $isRemoveDiscount): Sale {
             $type = $request->input('type');
             $value = (float) $request->input('value');
 
@@ -521,11 +559,22 @@ class PosController extends Controller
                 $discountAmount = min($value, (float) $sale->total_amount);
             }
 
+            $previousDiscount = (float) $sale->discount_amount;
             $sale->coupon_id = null;
             $sale->coupon_code = null;
             $sale->discount_amount = $discountAmount;
             $sale->final_amount = (float) $sale->total_amount - $discountAmount;
             $sale->save();
+
+            if ($isRemoveDiscount && $authorizedByUserId) {
+                ManagerAuthorizationLog::query()->create([
+                    'authorized_by_user_id' => $authorizedByUserId,
+                    'action' => ManagerAuthorizationLog::ACTION_REMOVE_DISCOUNT,
+                    'sale_id' => $sale->id,
+                    'branch_id' => $sale->branch_id,
+                    'metadata' => ['previous_discount_amount' => $previousDiscount],
+                ]);
+            }
 
             return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
         });
@@ -803,11 +852,13 @@ class PosController extends Controller
 
     /**
      * Remove um pagamento da venda.
+     * Quando autorizado por gerente, enviar authorized_by_user_id para auditoria.
      */
     public function removePayment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'payment_id' => ['required', 'integer', 'exists:sale_payments,id'],
+            'authorized_by_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -826,9 +877,10 @@ class PosController extends Controller
             ], 400);
         }
 
-        $sale = DB::transaction(function () use ($sale, $request): Sale {
-            $paymentId = (int) $request->input('payment_id');
-            
+        $paymentId = (int) $request->input('payment_id');
+        $authorizedByUserId = $request->has('authorized_by_user_id') ? (int) $request->input('authorized_by_user_id') : null;
+
+        $sale = DB::transaction(function () use ($sale, $paymentId, $authorizedByUserId): Sale {
             $payment = SalePayment::where('id', $paymentId)
                 ->where('sale_id', $sale->id)
                 ->first();
@@ -837,7 +889,22 @@ class PosController extends Controller
                 throw new \InvalidArgumentException('Pagamento não encontrado nesta venda.');
             }
 
+            $metadata = [
+                'payment_id' => $payment->id,
+                'amount' => (float) $payment->amount,
+                'method' => $payment->method?->value ?? (string) $payment->method,
+            ];
             $payment->delete();
+
+            if ($authorizedByUserId) {
+                ManagerAuthorizationLog::query()->create([
+                    'authorized_by_user_id' => $authorizedByUserId,
+                    'action' => ManagerAuthorizationLog::ACTION_REMOVE_PAYMENT,
+                    'sale_id' => $sale->id,
+                    'branch_id' => $sale->branch_id,
+                    'metadata' => $metadata,
+                ]);
+            }
 
             return $sale->fresh(['items.productVariant.product', 'customer', 'salePayments']);
         });
@@ -850,6 +917,42 @@ class PosController extends Controller
             'total_payments' => $totalPayments,
             'can_finish' => $canFinish,
         ], 200);
+    }
+
+    /**
+     * Registra ação do gerente no PDV (ex.: visualização de saldo).
+     * Usado pelo front após validar PIN+senha para auditoria.
+     */
+    public function logManagerAction(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'action' => ['required', 'string', 'in:view_balance'],
+            'authorized_by_user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $branchId = $user->branch_id;
+        $cashRegister = CashRegister::where('user_id', $user->id)
+            ->where('status', CashRegisterStatus::OPEN)
+            ->first();
+
+        ManagerAuthorizationLog::query()->create([
+            'authorized_by_user_id' => (int) $request->input('authorized_by_user_id'),
+            'action' => ManagerAuthorizationLog::ACTION_VIEW_BALANCE,
+            'sale_id' => null,
+            'cash_register_id' => $cashRegister?->id,
+            'branch_id' => $branchId,
+            'metadata' => null,
+        ]);
+
+        return response()->noContent();
     }
 
     /**

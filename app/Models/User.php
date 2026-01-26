@@ -26,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'operation_password',
+        'operation_pin',
         'branch_id',
     ];
 

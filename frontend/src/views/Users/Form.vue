@@ -11,6 +11,15 @@
       <Input v-model="form.password_confirmation" label="Confirmação da nova senha" type="password" autocomplete="new-password" />
     </div>
     <Input v-model="form.operation_password" label="Senha de operação (opcional)" type="password" autocomplete="off" />
+    <Input
+      v-if="form.role === 'manager' || form.role === 'super-admin'"
+      v-model="form.operation_pin"
+      label="PIN de autorização (PDV – máx. 10 caracteres)"
+      type="text"
+      autocomplete="off"
+      maxlength="10"
+      placeholder="Ex.: 1234"
+    />
     <SelectInput
       v-if="authStore.user?.is_super_admin"
       v-model="form.branch_id"
@@ -65,6 +74,7 @@ const form = ref({
   password: '',
   password_confirmation: '',
   operation_password: '',
+  operation_pin: '',
   branch_id: null,
   role: null,
 });
@@ -85,6 +95,7 @@ watch(
         password: '',
         password_confirmation: '',
         operation_password: '',
+        operation_pin: '', // não exposto na API por segurança; em edição pode ser alterado
         branch_id: u.branch_id ?? u.branch?.id ?? null,
         role: u.role ?? null,
       };
@@ -95,6 +106,7 @@ watch(
         password: '',
         password_confirmation: '',
         operation_password: '',
+        operation_pin: '',
         branch_id: authStore.user?.is_super_admin ? (appStore.currentBranch?.id ?? null) : null,
         role: null,
       };
@@ -141,6 +153,10 @@ async function submit() {
     }
     if (form.value.operation_password && !props.user) {
       payload.operation_password = form.value.operation_password;
+    }
+    const isManagerOrSuperAdmin = form.value.role === 'manager' || form.value.role === 'super-admin';
+    if (isManagerOrSuperAdmin) {
+      payload.operation_pin = form.value.operation_pin?.trim() || null;
     }
     if (props.user) {
       payload.operation_password = form.value.operation_password === '' ? null : (form.value.operation_password || null);
