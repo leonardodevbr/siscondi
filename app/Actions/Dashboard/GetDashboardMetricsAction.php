@@ -150,12 +150,15 @@ class GetDashboardMetricsAction
 
     private function calculateNetProfitMonth(Carbon $startOfMonth, float $profitMonth, ?int $branchId = null): float
     {
-        // NOTA: Despesas não são filtradas por filial pois a tabela 'expenses' não possui 'branch_id'
-        // Se o sistema tiver múltiplas filiais, considere adicionar essa coluna no futuro
-        $expensesPaid = Expense::query()
+        $query = Expense::query()
             ->whereNotNull('paid_at')
-            ->where('paid_at', '>=', $startOfMonth)
-            ->sum('amount');
+            ->where('paid_at', '>=', $startOfMonth);
+        
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $expensesPaid = $query->sum('amount');
 
         return (float) ($profitMonth - $expensesPaid);
     }

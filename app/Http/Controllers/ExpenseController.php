@@ -30,7 +30,25 @@ class ExpenseController extends Controller
     {
         $this->authorize('financial.manage');
 
-        $query = Expense::query()->with(['category', 'user']);
+        $user = $request->user();
+        
+        // Determina a filial ativa
+        $activeBranchId = $request->header('X-Branch-ID') 
+            ? (int) $request->header('X-Branch-ID') 
+            : $user->branch_id;
+
+        $query = Expense::query()->with(['category', 'user', 'branch']);
+
+        // Filtro por filial (respeita roles)
+        if ($user->hasRole('super-admin')) {
+            // Super Admin pode ver despesas de todas as filiais ou filtrar por uma específica
+            if ($activeBranchId) {
+                $query->where('branch_id', $activeBranchId);
+            }
+        } else {
+            // Gerentes e outros veem apenas despesas de sua filial
+            $query->where('branch_id', $activeBranchId ?? $user->branch_id);
+        }
 
         if ($request->has('category_id')) {
             $query->where('expense_category_id', $request->integer('category_id'));
@@ -53,7 +71,12 @@ class ExpenseController extends Controller
             $query->whereDate('due_date', '<=', $request->input('end_date'));
         }
 
-        $expenses = $query->orderBy('due_date', 'desc')->paginate(15);
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where('description', 'like', "%{$search}%");
+        }
+
+        $expenses = $query->latest('due_date')->paginate(15);
 
         return ExpenseResource::collection($expenses)->response();
     }
@@ -63,8 +86,18 @@ class ExpenseController extends Controller
      */
     public function store(StoreExpenseRequest $request): JsonResponse
     {
-        $expense = $this->createExpenseAction->execute($request->validated(), $request->user());
-        $expense->load(['category', 'user']);
+        $user = $request->user();
+        $validated = $request->validated();
+        
+        // Adiciona branch_id automaticamente
+        $activeBranchId = $request->header('X-Branch-ID') 
+            ? (int) $request->header('X-Branch-ID') 
+            : $user->branch_id;
+            
+        $validated['branch_id'] = $activeBranchId;
+        
+        $expense = $this->createExpenseAction->execute($validated, $user);
+        $expense->load(['category', 'user', 'branch']);
 
         return response()->json(new ExpenseResource($expense), 201);
     }

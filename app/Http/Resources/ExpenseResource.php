@@ -32,6 +32,11 @@ class ExpenseResource extends JsonResource
                 'id' => $this->user->id,
                 'name' => $this->user->name,
             ]),
+            'branch' => $this->whenLoaded('branch', fn () => $this->branch ? [
+                'id' => $this->branch->id,
+                'name' => $this->branch->name,
+            ] : null),
+            'branch_name' => $this->branch?->name,
             'cash_register_transaction' => $this->whenLoaded('cashRegisterTransaction', fn () => $this->cashRegisterTransaction ? [
                 'id' => $this->cashRegisterTransaction->id,
                 'type' => $this->cashRegisterTransaction->type->value,

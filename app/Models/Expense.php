@@ -22,6 +22,7 @@ class Expense extends Model
         'paid_at',
         'expense_category_id',
         'user_id',
+        'branch_id',
         'cash_register_transaction_id',
     ];
 
@@ -48,6 +49,14 @@ class Expense extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Branch, Expense>
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**
