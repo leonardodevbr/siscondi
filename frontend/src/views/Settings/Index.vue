@@ -137,13 +137,27 @@
 
         <!-- Vendas & PDV -->
         <template v-else-if="activeTab === 'sales'">
-          <div class="border border-slate-200 rounded-lg p-6 mb-6">
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
             <h2 class="text-base font-semibold text-slate-800 mb-2">
               Vendas & PDV
             </h2>
-            <p class="text-sm text-slate-600">
-              Configurações de recibo, abertura de caixa e fluxo do PDV serão configuradas aqui.
+            <p class="text-sm text-slate-600 mb-4">
+              Configurações de recibo, abertura de caixa e fluxo do PDV.
             </p>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-slate-700">
+                  Imprimir comprovante ao confirmar pagamento PIX
+                </label>
+                <p class="text-xs text-slate-500 mt-1">
+                  Se ativado, abre a janela do comprovante sempre que um pagamento PIX for confirmado no PDV.
+                </p>
+              </div>
+              <Toggle
+                v-model="form.printPixReceipt"
+                label=""
+              />
+            </div>
           </div>
         </template>
 
@@ -433,6 +447,7 @@ export default {
       ccNoInterestInstallments: 3,
       ccInterestRate: 2.99,
       ccMinInstallmentValue: 10.0,
+      printPixReceipt: true,
     });
     const connecting = ref(false);
     const mercadopagoConnected = computed(() => settingsStore.mercadopagoConnected);
@@ -458,6 +473,7 @@ export default {
         form.value.ccNoInterestInstallments = settingsStore.getSetting('cc_no_interest_installments') ?? 3;
         form.value.ccInterestRate = settingsStore.getSetting('cc_interest_rate') ?? 2.99;
         form.value.ccMinInstallmentValue = settingsStore.getSetting('cc_min_installment_value') ?? 10.0;
+        form.value.printPixReceipt = settingsStore.getSetting('print_pix_receipt') ?? true;
       } catch (error) {
         toast.error('Erro ao carregar configurações');
       } finally {
@@ -542,6 +558,12 @@ export default {
             value: form.value.ccMinInstallmentValue,
             type: 'string',
             group: 'payments',
+          },
+          {
+            key: 'print_pix_receipt',
+            value: form.value.printPixReceipt,
+            type: 'boolean',
+            group: 'sales',
           },
         ];
 

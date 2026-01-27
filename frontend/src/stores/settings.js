@@ -52,6 +52,7 @@ export const useSettingsStore = defineStore('settings', {
           sku_auto_generation: response.data.sku_auto_generation ?? true,
           sku_pattern: response.data.sku_pattern ?? '{NAME}-{VARIANTS}-{SEQ}',
           active_payment_gateway: response.data.active_payment_gateway ?? 'manual',
+          print_pix_receipt: response.data.print_pix_receipt ?? true,
         };
       } catch (error) {
         console.error('Erro ao carregar configurações públicas:', error);
@@ -60,6 +61,7 @@ export const useSettingsStore = defineStore('settings', {
           sku_auto_generation: true,
           sku_pattern: '{NAME}-{VARIANTS}-{SEQ}',
           active_payment_gateway: 'manual',
+          print_pix_receipt: true,
         };
       }
     },

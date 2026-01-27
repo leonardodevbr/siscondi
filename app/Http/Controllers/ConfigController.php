@@ -26,6 +26,7 @@ class ConfigController extends Controller
             'sku_auto_generation' => Settings::get('sku_auto_generation', true),
             'sku_pattern' => Settings::get('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}'),
             'active_payment_gateway' => $activePaymentGateway,
+            'print_pix_receipt' => (bool) Settings::get('print_pix_receipt', true),
         ]);
     }
 }

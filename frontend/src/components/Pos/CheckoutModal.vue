@@ -126,45 +126,8 @@
           </div>
         </div>
 
-        <!-- PASSO 2: Confirmar Valor (editável para pagamento parcial) -->
-        <div v-else-if="methodSelected && !isProcessingPayment && !showingPixQrCode" class="space-y-3">
-          <div class="flex items-center justify-between mb-3">
-            <h5 class="text-sm font-semibold text-slate-700">{{ formatPaymentMethod(newPayment.method) }}</h5>
-            <button
-              type="button"
-              @click="goBackToMethodList"
-              class="text-xs text-slate-500 hover:text-slate-700 underline"
-            >
-              Mudar método (ESC)
-            </button>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Valor a pagar</label>
-            <input
-              ref="amountInputRef"
-              v-model="amountFormatted"
-              type="text"
-              inputmode="decimal"
-              class="h-12 w-full rounded border border-slate-300 px-3 text-lg font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="R$ 0,00"
-              @input="handleAmountInput"
-              @keydown.enter="confirmAmountAndProcess"
-              @keydown.esc.stop.prevent="goBackToMethodList"
-            >
-            <p class="mt-1 text-xs text-slate-500">
-              Pressione ENTER para confirmar ou edite para pagamento parcial
-            </p>
-          </div>
-
-          <div class="flex justify-end gap-2">
-            <Button variant="outline" size="sm" @click="goBackToMethodList">Voltar (ESC)</Button>
-            <Button variant="primary" size="sm" @click="confirmAmountAndProcess">Confirmar (ENTER)</Button>
-          </div>
-        </div>
-
-        <!-- PASSO 3: Parcelamento (apenas CRÉDITO) -->
-        <div v-else-if="methodSelected && newPayment.method === 'credit_card' && !installmentsSelected" class="space-y-3">
+        <!-- PASSO 2b: Parcelamento (CRÉDITO — antes do valor para aparecer após confirmar valor) -->
+        <div v-else-if="methodSelected && newPayment.method === 'credit_card' && !installmentsSelected && (installmentsFromApi.length > 0 || loadingInstallments)" class="space-y-3">
           <div class="flex items-center justify-between mb-3">
             <h5 class="text-sm font-semibold text-slate-700">Cartão de Crédito - {{ formatCurrency(newPayment.amount) }}</h5>
             <button
@@ -200,6 +163,43 @@
               <span v-if="opt.interest_free" class="ml-2 text-xs text-green-600">(sem juros)</span>
               <span v-else class="ml-2 text-xs text-slate-500">(total: {{ formatCurrency(opt.total) }})</span>
             </button>
+          </div>
+        </div>
+
+        <!-- PASSO 2: Confirmar Valor (editável para pagamento parcial) -->
+        <div v-else-if="methodSelected && !isProcessingPayment && !showingPixQrCode" class="space-y-3">
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-sm font-semibold text-slate-700">{{ formatPaymentMethod(newPayment.method) }}</h5>
+            <button
+              type="button"
+              @click="goBackToMethodList"
+              class="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Mudar método (ESC)
+            </button>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Valor a pagar</label>
+            <input
+              ref="amountInputRef"
+              v-model="amountFormatted"
+              type="text"
+              inputmode="decimal"
+              class="h-12 w-full rounded border border-slate-300 px-3 text-lg font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="R$ 0,00"
+              @input="handleAmountInput"
+              @keydown.enter="confirmAmountAndProcess"
+              @keydown.esc.stop.prevent="goBackToMethodList"
+            >
+            <p class="mt-1 text-xs text-slate-500">
+              Pressione ENTER para confirmar ou edite para pagamento parcial
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" size="sm" @click="goBackToMethodList">Voltar (ESC)</Button>
+            <Button variant="primary" size="sm" @click="confirmAmountAndProcess">Confirmar (ENTER)</Button>
           </div>
         </div>
 
@@ -704,7 +704,7 @@ function startPixChargePolling() {
           const isCompleted = sale?.status === 'completed' || sale?.status === 'COMPLETED';
 
           if (isCompleted && sale?.id) {
-            openReceiptWindow(sale);
+            if (settingsStore.publicConfig?.print_pix_receipt !== false) openReceiptWindow(sale);
             await new Promise((r) => setTimeout(r, 1000));
             emit('finish', { id: sid, status: 'completed' });
             emit('close');
@@ -750,7 +750,7 @@ function startPixSaleStatusPolling() {
         try {
           const { data: saleData } = await api.get(`sales/${sid}`);
           const sale = saleData?.data ?? saleData?.sale ?? saleData;
-          if (sale?.id) {
+          if (sale?.id && settingsStore.publicConfig?.print_pix_receipt !== false) {
             openReceiptWindow(sale);
             await new Promise((r) => setTimeout(r, 1000));
           }
