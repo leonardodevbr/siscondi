@@ -237,35 +237,35 @@
             </div>
           </div>
 
-          <div v-else-if="pixQrCodeBase64" class="space-y-4">
-            <div class="flex flex-col items-center gap-3">
+          <div v-else-if="pixQrCodeBase64" class="space-y-3">
+            <!-- Status em uma linha compacta acima do QR -->
+            <div class="flex items-center justify-center gap-2 text-xs" :class="pixLastStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-slate-500'">
+              <span class="h-1.5 w-1.5 rounded-full shrink-0" :class="pixLastStatus === 'paid' ? 'bg-emerald-500' : 'bg-blue-500 animate-pulse'"></span>
+              <span>{{ pixLastStatus === 'paid' ? 'Pagamento confirmado!' : 'Aguardando confirmação do pagamento...' }}</span>
+              <span v-if="pixTimer > 0 && pixLastStatus !== 'paid'" class="font-mono">({{ formatTimer(pixTimer) }})</span>
+            </div>
+
+            <!-- QR Code em destaque (maior) -->
+            <div class="flex flex-col items-center">
               <img
                 :src="`data:image/png;base64,${pixQrCodeBase64}`"
                 alt="QR Code PIX"
-                class="h-48 w-48 rounded-lg border border-slate-200 object-contain bg-white"
+                class="h-64 w-64 sm:h-72 sm:w-72 rounded-lg border border-slate-200 object-contain bg-white shrink-0"
               >
-              <div class="w-full space-y-2">
-                <label class="block text-xs font-medium text-slate-700">Pix Copia e Cola</label>
-                <div class="flex gap-2">
-                  <input
-                    :value="pixQrCode"
-                    type="text"
-                    readonly
-                    class="flex-1 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs"
-                  >
-                  <Button variant="outline" size="sm" @click="copyPixCode">Copiar</Button>
-                </div>
-              </div>
             </div>
 
-            <div class="flex items-center justify-center gap-2 text-sm" :class="pixLastStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-slate-600'">
-              <div class="h-2 w-2 rounded-full shrink-0" :class="pixLastStatus === 'paid' ? 'bg-emerald-500' : 'bg-blue-500 animate-pulse'"></div>
-              <span>{{ pixLastStatus === 'paid' ? 'Pagamento confirmado!' : 'Aguardando confirmação do pagamento...' }}</span>
-              <span v-if="pixTimer > 0 && pixLastStatus !== 'paid'" class="font-mono text-xs text-slate-500">({{ formatTimer(pixTimer) }})</span>
-            </div>
-
-            <div class="flex justify-end">
-              <Button variant="outline" size="sm" @click="cancelPixInFlow">Cancelar Pagamento (ESC)</Button>
+            <!-- Copia e Cola compacto: só botão (código fica oculto, copia ao clicar) -->
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <Button variant="outline" size="sm" @click="copyPixCode" class="shrink-0">
+                Copiar código PIX
+              </Button>
+              <button
+                type="button"
+                @click="cancelPixInFlow"
+                class="text-xs text-slate-500 hover:text-slate-700 underline shrink-0"
+              >
+                Cancelar pagamento (ESC)
+              </button>
             </div>
           </div>
         </div>
@@ -403,6 +403,9 @@ const amountInputRef = ref(null);
 const installmentsListRef = ref(null);
 const amountFormatted = ref('');
 
+/** Config de comprovante lida ao abrir o modal, para evitar valor desatualizado no meio do fluxo. */
+const receiptConfig = ref({ print_pix_receipt: true, print_card_receipt: false });
+
 const paymentMethods = [
   { value: 'cash', label: 'Dinheiro', apiValues: ['money'] },
   { value: 'pix', label: 'PIX', apiValues: ['pix'] },
@@ -503,8 +506,26 @@ const paymentSummary = computed(() => {
   return `R$ ${formatCurrency(amount)}`;
 });
 
-watch(() => props.isOpen, (open) => {
+watch(() => props.isOpen, async (open) => {
   if (open) {
+    try {
+      await settingsStore.fetchPublicConfig();
+      const cfg = settingsStore.publicConfig;
+      receiptConfig.value = {
+        print_pix_receipt: cfg?.print_pix_receipt !== false,
+        print_card_receipt: cfg?.print_card_receipt === true || cfg?.print_card_receipt === 'true' || cfg?.print_card_receipt === 1,
+      };
+      // Garante config fresca: busca direta com cache-bust para evitar resposta antiga
+      const { data } = await api.get('/config', { params: { _t: Date.now() }, headers: { 'Cache-Control': 'no-cache' } });
+      if (data && (data.print_pix_receipt !== undefined || data.print_card_receipt !== undefined)) {
+        receiptConfig.value = {
+          print_pix_receipt: data.print_pix_receipt !== false,
+          print_card_receipt: data.print_card_receipt === true || data.print_card_receipt === 'true' || data.print_card_receipt === 1,
+        };
+      }
+    } catch (_) {
+      receiptConfig.value = { print_pix_receipt: true, print_card_receipt: false };
+    }
     resetPaymentForm();
     nextTick(() => {
       nextTick(() => {
@@ -653,7 +674,7 @@ async function handleFinish() {
       const methods = payments.map((p) => String(p.method || '').toLowerCase());
       const hasCard = methods.some((m) => ['credit_card', 'debit_card', 'point'].includes(m));
       const hasPix = methods.includes('pix');
-      const shouldOpen = (!hasCard && !hasPix) || (hasCard && settingsStore.publicConfig?.print_card_receipt !== false) || (hasPix && settingsStore.publicConfig?.print_pix_receipt !== false);
+      const shouldOpen = (!hasCard && !hasPix) || (hasCard && receiptConfig.value.print_card_receipt) || (hasPix && receiptConfig.value.print_pix_receipt);
       if (shouldOpen) openReceiptWindow(result.sale);
     }
 
@@ -708,9 +729,11 @@ function startPixChargePolling() {
           const sale = saleData?.data ?? saleData?.sale ?? saleData;
           const isCompleted = sale?.status === 'completed' || sale?.status === 'COMPLETED';
 
-          if (isCompleted && sale?.id) {
-            if (settingsStore.publicConfig?.print_pix_receipt !== false) openReceiptWindow(sale);
-            await new Promise((r) => setTimeout(r, 1000));
+          if (sale?.id && receiptConfig.value.print_pix_receipt) {
+            openReceiptWindow(sale);
+            await new Promise((r) => setTimeout(r, 800));
+          }
+          if (isCompleted) {
             emit('finish', { id: sid, status: 'completed' });
             emit('close');
           } else {
@@ -755,7 +778,7 @@ function startPixSaleStatusPolling() {
         try {
           const { data: saleData } = await api.get(`sales/${sid}`);
           const sale = saleData?.data ?? saleData?.sale ?? saleData;
-          if (sale?.id && settingsStore.publicConfig?.print_pix_receipt !== false) {
+          if (sale?.id && receiptConfig.value.print_pix_receipt) {
             openReceiptWindow(sale);
             await new Promise((r) => setTimeout(r, 1000));
           }
@@ -1367,7 +1390,7 @@ async function confirmAddPayment() {
         }
         
         // Se não é Point, emite comprovante (respeitando config de impressão para cartão)
-        if (result?.sale && settingsStore.publicConfig?.print_card_receipt !== false) {
+        if (result?.sale && receiptConfig.value.print_card_receipt) {
           openReceiptWindow(result.sale);
           await new Promise((resolve) => setTimeout(resolve, 1000));
           emit('finish', result.sale);
@@ -1400,7 +1423,7 @@ async function confirmAddPayment() {
           return;
         }
         
-        if (result?.sale && settingsStore.publicConfig?.print_card_receipt !== false) {
+        if (result?.sale && receiptConfig.value.print_card_receipt) {
           openReceiptWindow(result.sale);
           await new Promise((resolve) => setTimeout(resolve, 1000));
           emit('finish', result.sale);
