@@ -22,7 +22,7 @@
       <div v-if="userStore.loading" class="text-center py-8">
         <p class="text-slate-500">Carregando usuários...</p>
       </div>
-      <div v-else-if="!userStore.users.length" class="text-center py-8">
+      <div v-else-if="!filteredUsers.length" class="text-center py-8">
         <p class="text-slate-500">Nenhum usuário encontrado</p>
       </div>
       <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
@@ -40,7 +40,18 @@
             <tr v-for="u in userStore.users" :key="u.id">
               <td class="px-4 sm:px-6 py-4 text-sm font-medium text-slate-900">{{ u.name }}</td>
               <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.email }}</td>
-              <td v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.branch?.name ?? '—' }}</td>
+              <td v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-4 text-sm text-slate-900">
+                <div class="flex items-center gap-2">
+                  <span>{{ u.branch?.name ?? '—' }}</span>
+                  <span
+                    v-if="u.branch_ids && u.branch_ids.length > 1"
+                    class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+                    :title="`Acesso a ${u.branch_ids.length} filiais`"
+                  >
+                    +{{ u.branch_ids.length - 1 }}
+                  </span>
+                </div>
+              </td>
               <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">
                 <span v-if="u.role" class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">{{ roleLabel(u.role) }}</span>
                 <span v-else>—</span>
@@ -71,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '@/stores/user';
 import { useAuthStore } from '@/stores/auth';
@@ -87,6 +98,11 @@ const authStore = useAuthStore();
 const userStore = useUserStore();
 const searchQuery = ref('');
 let searchTimeout = null;
+
+// Filtra para remover o próprio usuário logado
+const filteredUsers = computed(() => {
+  return userStore.users.filter(u => u.id !== authStore.user?.id);
+});
 
 function roleLabel(role) {
   return role ? (ROLE_LABELS[role] ?? role) : '—';

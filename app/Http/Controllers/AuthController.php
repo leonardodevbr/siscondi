@@ -35,7 +35,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user->load('branch');
+        $user->load(['branch', 'branches', 'roles']);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -64,7 +64,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user?->load('branch');
+        $user?->load(['branch', 'branches', 'roles']);
 
         $payload = (new UserResource($user))->toArray($request);
 

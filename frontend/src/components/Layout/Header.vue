@@ -1,5 +1,6 @@
 <script setup>
 import BranchSwitcher from '@/components/Common/BranchSwitcher.vue';
+import UserMenu from '@/components/Common/UserMenu.vue';
 
 const props = defineProps({
   userName: {
@@ -43,17 +44,8 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
     </div>
 
     <div class="flex items-center gap-4">
-      <BranchSwitcher class="hidden sm:block" />
-      <span class="hidden text-sm text-slate-700 sm:inline">
-        {{ props.userName }}
-      </span>
-      <button
-        type="button"
-        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        @click="emit('logout')"
-      >
-        Sair
-      </button>
+      <BranchSwitcher />
+      <UserMenu :user-name="props.userName" @logout="emit('logout')" />
     </div>
   </header>
 </template>

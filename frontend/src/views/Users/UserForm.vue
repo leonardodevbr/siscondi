@@ -379,6 +379,12 @@ onMounted(async () => {
   }
 
   if (userId.value) {
+    // Impede edição do próprio usuário
+    if (userId.value === authStore.user?.id) {
+      toast.error('Você não pode editar seu próprio usuário por aqui. Use a página de Perfil.');
+      router.push({ name: 'profile' });
+      return;
+    }
     await loadUser();
   }
 });

@@ -75,7 +75,21 @@ export const useAuthStore = defineStore('auth', {
           return r?.name === 'super-admin';
         });
 
+        const isOwner = user?.roles?.some((r) => {
+          if (typeof r === 'string') {
+            return r === 'owner';
+          }
+          return r?.name === 'owner';
+        });
+
         const appStore = useAppStore();
+        
+        // Carrega lista de filiais se necessário
+        if (isAdmin || isOwner || (user?.branch_ids && user.branch_ids.length > 1)) {
+          await appStore.fetchBranches();
+        }
+
+        // Define filial inicial
         if (!isAdmin && user?.branch) {
           appStore.currentBranch = {
             id: user.branch.id,
@@ -83,8 +97,7 @@ export const useAuthStore = defineStore('auth', {
           };
           window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
           window.localStorage.setItem('selected_branch_id', String(user.branch.id));
-        } else if (isAdmin) {
-          await appStore.fetchBranches();
+        } else if (isAdmin || isOwner) {
           if (appStore.branches?.length) {
             const first = appStore.branches[0];
             appStore.currentBranch = { id: first.id, name: first.name };

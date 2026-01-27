@@ -18,14 +18,49 @@ const isSuperAdmin = computed(() => {
   });
 });
 
+const isOwner = computed(() => {
+  const roles = auth.user?.roles || [];
+  return roles.some((r) => {
+    if (typeof r === 'string') return r === 'owner';
+    return r?.name === 'owner';
+  });
+});
+
+// Usuário tem múltiplas filiais?
+const hasMultipleBranches = computed(() => {
+  const branchIds = auth.user?.branch_ids || [];
+  return branchIds.length > 1;
+});
+
+// Deve mostrar o switcher? (Super Admin, Owner ou usuário com múltiplas filiais)
+const showSwitcher = computed(() => {
+  return isSuperAdmin.value || isOwner.value || hasMultipleBranches.value;
+});
+
 const currentBranchName = computed(() => {
-  if (isSuperAdmin.value) {
+  if (isSuperAdmin.value || isOwner.value || hasMultipleBranches.value) {
     return appStore.currentBranch?.name || 'Sem filial';
   }
   return auth.user?.branch?.name || 'Sem filial';
 });
 
-const branches = computed(() => appStore.branches || []);
+// Lista de filiais disponíveis
+const branches = computed(() => {
+  if (isSuperAdmin.value || isOwner.value) {
+    // Super Admin e Owner veem todas
+    return appStore.branches || [];
+  } else if (hasMultipleBranches.value) {
+    // Usuário com múltiplas filiais: usa a lista que veio do backend
+    const userBranches = auth.user?.branches || [];
+    if (userBranches.length > 0) {
+      return userBranches; // Já vem completo do backend
+    }
+    // Fallback: filtra do appStore
+    const userBranchIds = auth.user?.branch_ids || [];
+    return (appStore.branches || []).filter(b => userBranchIds.includes(b.id));
+  }
+  return [];
+});
 
 function toggleDropdown() {
   isOpen.value = !isOpen.value;
@@ -45,10 +80,20 @@ function handleClickOutside(event) {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
 
-  if (isSuperAdmin.value) {
-    await appStore.fetchBranches();
-    if (!appStore.currentBranch && appStore.branches?.length > 0) {
-      appStore.setBranch(appStore.branches[0]);
+  // Carrega filiais se necessário
+  if (showSwitcher.value) {
+    // Se o usuário já tem branches no auth, usa elas
+    if (hasMultipleBranches.value && auth.user?.branches?.length > 0) {
+      // Já tem as branches carregadas
+      if (!appStore.currentBranch && auth.user.branches.length > 0) {
+        appStore.setBranch(auth.user.branches[0]);
+      }
+    } else {
+      // Caso contrário, busca do backend
+      await appStore.fetchBranches();
+      if (!appStore.currentBranch && branches.value.length > 0) {
+        appStore.setBranch(branches.value[0]);
+      }
     }
   }
 });
@@ -60,7 +105,7 @@ onUnmounted(() => {
 
 <template>
   <div class="flex items-center gap-2">
-    <template v-if="isSuperAdmin">
+    <template v-if="showSwitcher">
       <div ref="dropdownRef" class="relative">
         <button
           type="button"
@@ -89,7 +134,7 @@ onUnmounted(() => {
         >
           <div
             v-if="isOpen"
-            class="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+            class="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 border border-slate-200"
             style="z-index: 9999;"
           >
             <div class="py-1">

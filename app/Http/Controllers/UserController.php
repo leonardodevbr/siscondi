@@ -61,7 +61,7 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $this->branchScope()->with('branch')->with('roles');
+        $query = $this->branchScope()->with('branch', 'roles', 'branches');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();

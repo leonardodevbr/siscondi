@@ -21,6 +21,7 @@ import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
 import UsersIndex from '@/views/Users/Index.vue';
 import UserForm from '@/views/Users/UserForm.vue';
+import ProfileIndex from '@/views/Profile/Index.vue';
 import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
 
 const routes = [
@@ -153,6 +154,11 @@ const routes = [
         name: 'users.form.edit',
         component: UserForm,
         meta: { roles: ['super-admin', 'manager'] },
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: ProfileIndex,
       },
       {
         path: 'settings',
