@@ -39,7 +39,7 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
         </svg>
       </button>
 
-      <AppLogo icon-class="h-8 w-8" text-class="text-base" />
+      <AppLogo icon-class="h-9 w-9" text-class="text-xl" />
     </div>
 
     <div class="flex items-center gap-4">

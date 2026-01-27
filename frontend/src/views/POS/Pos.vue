@@ -2035,7 +2035,7 @@ onUnmounted(() => {
         </button>
       </div>
       <header :class="['flex shrink-0 items-center justify-between gap-4 bg-slate-800 px-4 py-2 text-white', feedbackMessage ? 'mt-12' : '']">
-        <div><AppLogo icon-class="h-6 w-6" text-class="text-sm" light /></div>
+        <div><AppLogo icon-class="h-9 w-9" text-class="text-lg" light /></div>
         <div class="flex flex-1 items-center justify-center gap-4 text-sm">
           <span>{{ operatorName }}</span>
           <span class="text-slate-400">|</span>
