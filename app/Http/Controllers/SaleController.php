@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Sales\CreateSaleAction;
+use App\Enums\SaleStatus;
 use App\Exceptions\InvalidCouponException;
 use App\Exceptions\NoOpenCashRegisterException;
 use App\Http\Requests\StoreSaleRequest;
@@ -28,8 +29,24 @@ class SaleController extends Controller
     {
         $this->authorize('pos.access');
 
+        $user = $request->user();
         $query = Sale::query()->with(['user', 'customer', 'coupon', 'items.productVariant.product', 'payments', 'branch']);
 
+        // Aplicar regras de visibilidade baseadas no cargo
+        if ($user->hasRole('super-admin')) {
+            // Super Admin vê tudo, mas pode filtrar por filial se enviado
+            if ($request->has('branch_id')) {
+                $query->where('branch_id', $request->integer('branch_id'));
+            }
+        } elseif ($user->hasRole('manager')) {
+            // Gerente vê apenas vendas da sua filial
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            // Vendedor/Operador vê apenas suas próprias vendas
+            $query->where('user_id', $user->id);
+        }
+
+        // Filtros adicionais
         if ($request->has('status')) {
             $query->where('status', $request->string('status'));
         }
@@ -38,11 +55,11 @@ class SaleController extends Controller
             $query->where('customer_id', $request->integer('customer_id'));
         }
 
-        if ($request->has('user_id')) {
+        if ($request->has('user_id') && $user->hasRole(['super-admin', 'manager'])) {
             $query->where('user_id', $request->integer('user_id'));
         }
 
-        $sales = $query->latest()->paginate(15);
+        $sales = $query->latest('created_at')->paginate(15);
 
         return SaleResource::collection($sales)->response();
     }

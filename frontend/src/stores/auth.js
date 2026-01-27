@@ -22,6 +22,36 @@ export const useAuthStore = defineStore('auth', {
       const perms = state.user.permissions || [];
       return Array.isArray(perms) && perms.includes(permissionName);
     },
+    /**
+     * Verifica se o usuário tem uma role específica.
+     * @param {string|string[]} roleName - Ex: 'super-admin', 'manager', ['manager', 'super-admin']
+     * @returns {boolean}
+     */
+    hasRole: (state) => (roleName) => {
+      if (!state.user) return false;
+      const roles = state.user.roles || [];
+      const roleNames = Array.isArray(roleName) ? roleName : [roleName];
+      return roles.some((r) => {
+        const name = typeof r === 'string' ? r : r?.name;
+        return roleNames.includes(name);
+      });
+    },
+    isSuperAdmin: (state) => {
+      if (!state.user) return false;
+      const roles = state.user.roles || [];
+      return roles.some((r) => {
+        const name = typeof r === 'string' ? r : r?.name;
+        return name === 'super-admin';
+      });
+    },
+    isManager: (state) => {
+      if (!state.user) return false;
+      const roles = state.user.roles || [];
+      return roles.some((r) => {
+        const name = typeof r === 'string' ? r : r?.name;
+        return name === 'manager';
+      });
+    },
   },
   actions: {
     async login(email, password) {

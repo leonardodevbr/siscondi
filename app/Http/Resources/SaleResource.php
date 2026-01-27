@@ -22,10 +22,17 @@ class SaleResource extends JsonResource
                 'id' => $this->user->id,
                 'name' => $this->user->name,
             ],
+            'user_name' => $this->user->name,
+            'branch' => $this->whenLoaded('branch', fn () => $this->branch ? [
+                'id' => $this->branch->id,
+                'name' => $this->branch->name,
+            ] : null),
+            'branch_name' => $this->whenLoaded('branch', fn () => $this->branch?->name),
             'customer' => $this->customer ? [
                 'id' => $this->customer->id,
                 'name' => $this->customer->name,
             ] : null,
+            'customer_name' => $this->customer?->name ?? 'Cliente Avulso',
             'coupon' => $this->whenLoaded('coupon', fn () => $this->coupon ? [
                 'id' => $this->coupon->id,
                 'code' => $this->coupon->code,
