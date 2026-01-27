@@ -22,5 +22,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('pos/cancel', [PosController::class, 'cancel']);
     Route::post('pos/finish', [PosController::class, 'finish']);
     Route::post('pos/pix/generate', [PosController::class, 'generatePix']);
+    Route::post('pos/pix/request', [PosController::class, 'requestPix']);
     Route::get('pos/pix/status', [PosController::class, 'checkPixStatus']);
+    Route::get('pos/pix/charge-status', [PosController::class, 'checkPixChargeStatus']);
 });

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\CashRegisterStatus;
 use App\Enums\CashRegisterTransactionType;
+use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Models\Coupon;
+use App\Models\PixPendingCharge;
 use App\Models\Sale;
+use App\Models\SalePayment;
+use App\Models\CashRegister;
 use App\Services\Payment\MercadoPagoPointService;
 use App\Services\Payment\MercadoPagoService;
 use Illuminate\Http\JsonResponse;
@@ -160,6 +165,59 @@ class WebhookController extends Controller
                 return response()->json(['received' => true]);
             }
 
+            $transactionId = (string) $paymentId;
+
+            // Fluxo novo: cobrança PIX pendente (pos/pix/request) — frontend faz polling em charge-status
+            $pendingCharge = PixPendingCharge::where('transaction_id', $transactionId)->first();
+
+            if ($pendingCharge) {
+                DB::transaction(function () use ($pendingCharge, $transactionId): void {
+                    $pendingCharge->update(['status' => 'paid']);
+
+                    SalePayment::create([
+                        'sale_id' => $pendingCharge->sale_id,
+                        'method' => PaymentMethod::PIX,
+                        'amount' => $pendingCharge->amount,
+                        'installments' => 1,
+                        'transaction_id' => $transactionId,
+                    ]);
+
+                    $sale = Sale::with('salePayments', 'items', 'cashRegister')->find($pendingCharge->sale_id);
+                    $totalPayments = (float) $sale->salePayments->sum('amount');
+                    $isFullyPaid = $totalPayments >= (float) $sale->final_amount;
+
+                    if ($isFullyPaid) {
+                        $sale->update(['status' => SaleStatus::COMPLETED]);
+
+                        if ($sale->coupon_id) {
+                            Coupon::where('id', $sale->coupon_id)->increment('used_count');
+                        }
+
+                        $cashRegister = $sale->cashRegister ?? CashRegister::query()
+                            ->where('user_id', $sale->user_id)
+                            ->where('status', CashRegisterStatus::OPEN)
+                            ->first();
+
+                        if ($cashRegister) {
+                            $cashRegister->transactions()->create([
+                                'type' => CashRegisterTransactionType::SALE,
+                                'amount' => (float) $sale->final_amount,
+                                'description' => "Venda #{$sale->id}",
+                                'sale_id' => $sale->id,
+                            ]);
+                        }
+                    }
+                });
+
+                Log::info('WebhookController::handleMercadoPagoPayment - Cobrança PIX pendente confirmada', [
+                    'sale_id' => $pendingCharge->sale_id,
+                    'payment_id' => $paymentId,
+                ]);
+
+                return response()->json(['received' => true]);
+            }
+
+            // Fluxo legado: venda já tinha PIX (addPayment antes de gerar QR)
             $externalRef = $payment['external_reference'] ?? '';
             if ($externalRef === '') {
                 Log::warning('WebhookController::handleMercadoPagoPayment - external_reference vazio', ['payment_id' => $paymentId]);

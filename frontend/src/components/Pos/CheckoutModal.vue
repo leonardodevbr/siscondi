@@ -1,48 +1,6 @@
 <template>
-  <Modal :is-open="isOpen" :title="pixStep === 'qr' ? 'Pagamento PIX' : (pixStep === 'error' ? 'Erro ao Gerar PIX' : 'Finalizar Venda')" @close="(pixStep === 'qr' || pixStep === 'error') ? cancelPixFlow() : handleModalClose()">
-    <div v-if="pixStep === 'qr'" class="space-y-4">
-      <p class="text-sm text-slate-600">Escaneie o QR Code ou copie o código Pix Copia e Cola para pagar.</p>
-      <div class="flex flex-col items-center gap-4">
-        <img
-          v-if="pixQrCodeBase64"
-          :src="`data:image/png;base64,${pixQrCodeBase64}`"
-          alt="QR Code PIX"
-          class="h-48 w-48 rounded-lg border border-slate-200 object-contain bg-white"
-        >
-        <div class="w-full space-y-2">
-          <label class="block text-xs font-medium text-slate-700">Pix Copia e Cola</label>
-          <div class="flex gap-2">
-            <input
-              :value="pixQrCode"
-              type="text"
-              readonly
-              class="flex-1 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs"
-            >
-            <Button variant="outline" size="sm" @click="copyPixCode">Copiar</Button>
-          </div>
-        </div>
-        <p class="text-xs text-slate-500">Aguardando confirmação do pagamento...</p>
-        <Button variant="outline" @click="cancelPixFlow">Fechar</Button>
-      </div>
-    </div>
-    <div v-else-if="pixStep === 'error'" class="space-y-4">
-      <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-        <p class="text-sm font-medium text-red-800">Não foi possível gerar o QR Code PIX.</p>
-        <p class="mt-2 text-xs text-red-700">A venda está aguardando pagamento. Você pode:</p>
-        <ul class="mt-2 ml-4 list-disc text-xs text-red-700">
-          <li>Tentar gerar o PIX novamente</li>
-          <li>Adicionar outro método de pagamento</li>
-          <li>Cancelar a venda manualmente no sistema</li>
-        </ul>
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button variant="outline" @click="cancelPixFlow">Fechar</Button>
-        <Button variant="primary" @click="runPixQrFlow(pixPendingSaleId)" :disabled="!pixPendingSaleId || pixGenerating">
-          {{ pixGenerating ? 'Gerando...' : 'Tentar Novamente' }}
-        </Button>
-      </div>
-    </div>
-    <div v-else class="space-y-4">
+  <Modal :is-open="isOpen" :title="'Finalizar Venda'" :closable="false" @close="handleModalClose">
+    <div class="space-y-4">
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-slate-700">Total Venda:</span>
@@ -169,7 +127,7 @@
         </div>
 
         <!-- PASSO 2: Confirmar Valor (editável para pagamento parcial) -->
-        <div v-else-if="methodSelected && !isProcessingPayment" class="space-y-3">
+        <div v-else-if="methodSelected && !isProcessingPayment && !showingPixQrCode" class="space-y-3">
           <div class="flex items-center justify-between mb-3">
             <h5 class="text-sm font-semibold text-slate-700">{{ formatPaymentMethod(newPayment.method) }}</h5>
             <button
@@ -187,8 +145,9 @@
               ref="amountInputRef"
               v-model="amountFormatted"
               type="text"
+              inputmode="decimal"
               class="h-12 w-full rounded border border-slate-300 px-3 text-lg font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0,00"
+              placeholder="R$ 0,00"
               @input="handleAmountInput"
               @keydown.enter="confirmAmountAndProcess"
               @keydown.esc.stop.prevent="goBackToMethodList"
@@ -245,9 +204,70 @@
         </div>
 
         <!-- Estado de Processamento -->
-        <div v-else-if="isProcessingPayment" class="flex flex-col items-center justify-center py-8">
+        <div v-else-if="isProcessingPayment && !showingPixQrCode" class="flex flex-col items-center justify-center py-8">
           <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mb-3"></div>
           <p class="text-sm font-medium text-slate-700">Processando pagamento...</p>
+        </div>
+
+        <!-- QR Code PIX (substitui apenas o bloco azul) -->
+        <div v-else-if="showingPixQrCode" class="space-y-4">
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-sm font-semibold text-slate-700">PIX - {{ formatCurrency(newPayment.amount) }}</h5>
+            <button
+              type="button"
+              @click="cancelPixInFlow"
+              class="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Cancelar (ESC)
+            </button>
+          </div>
+
+          <div v-if="pixGenerating" class="flex flex-col items-center justify-center py-8">
+            <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mb-3"></div>
+            <p class="text-sm font-medium text-slate-700">Gerando QR Code...</p>
+          </div>
+
+          <div v-else-if="pixStep === 'error'" class="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p class="text-sm font-medium text-red-800 mb-2">Não foi possível gerar o QR Code PIX.</p>
+            <div class="flex justify-end gap-2 mt-3">
+              <Button variant="outline" size="sm" @click="cancelPixInFlow">Voltar</Button>
+              <Button variant="primary" size="sm" @click="retryPixGeneration" :disabled="pixGenerating">
+                {{ pixGenerating ? 'Gerando...' : 'Tentar Novamente' }}
+              </Button>
+            </div>
+          </div>
+
+          <div v-else-if="pixQrCodeBase64" class="space-y-4">
+            <div class="flex flex-col items-center gap-3">
+              <img
+                :src="`data:image/png;base64,${pixQrCodeBase64}`"
+                alt="QR Code PIX"
+                class="h-48 w-48 rounded-lg border border-slate-200 object-contain bg-white"
+              >
+              <div class="w-full space-y-2">
+                <label class="block text-xs font-medium text-slate-700">Pix Copia e Cola</label>
+                <div class="flex gap-2">
+                  <input
+                    :value="pixQrCode"
+                    type="text"
+                    readonly
+                    class="flex-1 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs"
+                  >
+                  <Button variant="outline" size="sm" @click="copyPixCode">Copiar</Button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 text-sm" :class="pixLastStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-slate-600'">
+              <div class="h-2 w-2 rounded-full shrink-0" :class="pixLastStatus === 'paid' ? 'bg-emerald-500' : 'bg-blue-500 animate-pulse'"></div>
+              <span>{{ pixLastStatus === 'paid' ? 'Pagamento confirmado!' : 'Aguardando confirmação do pagamento...' }}</span>
+              <span v-if="pixTimer > 0 && pixLastStatus !== 'paid'" class="font-mono text-xs text-slate-500">({{ formatTimer(pixTimer) }})</span>
+            </div>
+
+            <div class="flex justify-end">
+              <Button variant="outline" size="sm" @click="cancelPixInFlow">Cancelar Pagamento (ESC)</Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -373,6 +393,11 @@ const pixQrCode = ref('');
 const pixQrCodeBase64 = ref('');
 const pixPollingInterval = ref(null);
 const pixGenerating = ref(false);
+const showingPixQrCode = ref(false);
+const pixChargeId = ref(null);
+const pixLastStatus = ref(null); // 'pending' | 'paid' — atualizado pelo polling para refletir na UI
+const pixTimer = ref(0);
+const pixTimerInterval = ref(null);
 
 const amountInputRef = ref(null);
 const installmentsListRef = ref(null);
@@ -544,6 +569,10 @@ function resetPaymentForm() {
   amountFormatted.value = '';
   isFinishing.value = false;
   isProcessingPayment.value = false;
+  showingPixQrCode.value = false;
+  pixChargeId.value = null;
+  pixLastStatus.value = null;
+  pixTimer.value = 0;
   paymentsSnapshotForFinishing.value = [];
   newPayment.value = {
     method: 'cash',
@@ -594,20 +623,21 @@ async function handleFinish() {
       }
       return;
     }
+    // Legado: F10 com venda já contendo PIX (ex.: outro cliente/add-payment antigo) → gera QR e poll por status da venda
     if (result?.sale?.id && (result.sale.status === 'pending_payment' || result.sale.status === 'PENDING_PAYMENT')) {
-      const hadPix = (result.sale.payments || result.sale.sale_payments || []).some((p) => (p.method || '').toLowerCase() === 'pix');
+      const hadPix = (result.sale.payments || result.sale.sale_payments || []).some((p) => (String(p.method || '')).toLowerCase() === 'pix');
       if (hadPix) {
         pixGenerating.value = true;
+        showingPixQrCode.value = true;
         try {
-          // Usa a rota do POS que agora utiliza o gateway unificado
           const { data } = await api.post('pos/pix/generate', { sale_id: result.sale.id });
           pixPendingSaleId.value = result.sale.id;
           pixQrCode.value = data.qr_code || '';
           pixQrCodeBase64.value = data.qr_code_base64 || '';
           pixStep.value = 'qr';
-          startPixPolling();
+          startPixSaleStatusPolling();
         } catch (e) {
-          toast.error(e?.response?.data?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
+          toast.error(e?.response?.data?.message || 'Erro ao gerar PIX.');
           pixStep.value = 'error';
           pixPendingSaleId.value = result?.sale?.id ?? null;
         } finally {
@@ -633,8 +663,76 @@ async function handleFinish() {
   }
 }
 
-function startPixPolling() {
+function startPixChargePolling() {
   stopPixPolling();
+  const cid = pixChargeId.value;
+  if (!cid) return;
+
+  pixLastStatus.value = 'pending';
+  pixTimer.value = 30 * 60;
+  pixTimerInterval.value = setInterval(() => {
+    if (pixTimer.value > 0) pixTimer.value--;
+    else stopPixPolling();
+  }, 1000);
+
+  pixPollingInterval.value = setInterval(async () => {
+    if (!pixChargeId.value) return;
+    try {
+      const { data } = await api.get('pos/pix/charge-status', {
+        params: { charge_id: pixChargeId.value, _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
+      const paid = data.paid === true || data.status === 'paid';
+      if (data.status != null) pixLastStatus.value = data.status;
+      if (paid) {
+        const sid = pixPendingSaleId.value;
+        pixLastStatus.value = 'paid';
+        stopPixPolling();
+        pixStep.value = null;
+        showingPixQrCode.value = false;
+        pixChargeId.value = null;
+        pixPendingSaleId.value = null;
+        pixQrCode.value = '';
+        pixQrCodeBase64.value = '';
+
+        toast.success('Pagamento PIX confirmado!');
+
+        await cartStore.init();
+        try {
+          const { data: saleData } = await api.get(`sales/${sid}`);
+          const sale = saleData?.data ?? saleData?.sale ?? saleData;
+          const isCompleted = sale?.status === 'completed' || sale?.status === 'COMPLETED';
+
+          if (isCompleted && sale?.id) {
+            openReceiptWindow(sale);
+            await new Promise((r) => setTimeout(r, 1000));
+            emit('finish', { id: sid, status: 'completed' });
+            emit('close');
+          } else {
+            resetPaymentForm();
+            nextTick(() => checkAndShowPaymentInput());
+          }
+        } catch (err) {
+          console.error('Erro ao buscar venda para comprovante:', err);
+          resetPaymentForm();
+          nextTick(() => checkAndShowPaymentInput());
+        }
+      }
+    } catch (_) {}
+  }, 3000);
+}
+
+/** Polling por status da venda (fluxo legado: generatePix após finish). */
+function startPixSaleStatusPolling() {
+  stopPixPolling();
+  if (!pixPendingSaleId.value) return;
+
+  pixTimer.value = 30 * 60;
+  pixTimerInterval.value = setInterval(() => {
+    if (pixTimer.value > 0) pixTimer.value--;
+    else stopPixPolling();
+  }, 1000);
+
   pixPollingInterval.value = setInterval(async () => {
     if (!pixPendingSaleId.value) return;
     try {
@@ -643,25 +741,22 @@ function startPixPolling() {
         const sid = pixPendingSaleId.value;
         stopPixPolling();
         pixStep.value = null;
+        showingPixQrCode.value = false;
         pixPendingSaleId.value = null;
         pixQrCode.value = '';
         pixQrCodeBase64.value = '';
-        
+
         toast.success('Pagamento PIX confirmado!');
-        
-        // Busca os dados completos da venda para emitir o comprovante
         try {
           const { data: saleData } = await api.get(`sales/${sid}`);
-          const sale = saleData?.data ?? saleData;
-          
-          // Emite o comprovante
-          openReceiptWindow(sale);
-          
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const sale = saleData?.data ?? saleData?.sale ?? saleData;
+          if (sale?.id) {
+            openReceiptWindow(sale);
+            await new Promise((r) => setTimeout(r, 1000));
+          }
         } catch (err) {
-          console.error('Erro ao buscar dados da venda para comprovante:', err);
+          console.error('Erro ao buscar venda para comprovante:', err);
         }
-        
         cartStore.resetState();
         emit('finish', { id: sid, status: 'completed' });
         emit('close');
@@ -675,16 +770,56 @@ function stopPixPolling() {
     clearInterval(pixPollingInterval.value);
     pixPollingInterval.value = null;
   }
+  if (pixTimerInterval.value) {
+    clearInterval(pixTimerInterval.value);
+    pixTimerInterval.value = null;
+  }
 }
 
 function cancelPixFlow() {
   stopPixPolling();
   pixStep.value = null;
   pixPendingSaleId.value = null;
+  pixLastStatus.value = null;
   pixQrCode.value = '';
   pixQrCodeBase64.value = '';
   cartStore.resetState();
   emit('close');
+}
+
+function cancelPixInFlow() {
+  stopPixPolling();
+  showingPixQrCode.value = false;
+  pixStep.value = null;
+  pixChargeId.value = null;
+  pixPendingSaleId.value = null;
+  pixLastStatus.value = null;
+  pixQrCode.value = '';
+  pixQrCodeBase64.value = '';
+  pixTimer.value = 0;
+  
+  methodSelected.value = false;
+  isProcessingPayment.value = false;
+  selectedMethodIndex.value = 0;
+  newPayment.value = {
+    method: 'cash',
+    amount: 0,
+    installments: 1,
+    cardType: null,
+  };
+  
+  toast.info('Pagamento PIX cancelado. A venda permanece aguardando pagamento.');
+}
+
+function retryPixGeneration() {
+  if (!pixPendingSaleId.value || !newPayment.value?.amount) return;
+  runPixRequestFlow(pixPendingSaleId.value, newPayment.value.amount);
+}
+
+function formatTimer(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 function copyPixCode() {
@@ -798,45 +933,41 @@ function formatPaymentMethod(method) {
 }
 
 function parseAmount(value) {
-  if (!value) return 0;
-  const cleaned = value.replace(/\./g, '').replace(',', '.');
+  if (!value || typeof value !== 'string') return 0;
+  const cleaned = value.replace(/\s/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
 
+/** Formata valor para exibição no input: R$ 0,00 (centavos à direita, pt-BR) */
 function formatAmountInput(value) {
   let num;
   if (typeof value === 'string') {
     num = parseFloat(value.replace(/\./g, '').replace(',', '.'));
   } else {
-    num = typeof value === 'number' ? value : parseFloat(value);
+    num = typeof value === 'number' ? value : (value ? parseFloat(value) : 0);
   }
-  if (isNaN(num) || num === 0) return '';
+  if (isNaN(num) || num < 0) num = 0;
   const fixed = num.toFixed(2);
-  const parts = fixed.split('.');
-  return `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${parts[1]}`;
+  const [intPart, decPart] = fixed.split('.');
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `R$ ${intFormatted},${decPart}`;
 }
 
+/** Digitação da direita para a esquerda (centavos primeiro): só dígitos, valor = centavos/100 */
 function handleAmountInput(e) {
-  const input = e.target.value;
-  const cleaned = input.replace(/[^\d,]/g, '');
-  const parts = cleaned.split(',');
-  
-  if (parts.length > 2) {
-    e.target.value = amountFormatted.value;
-    return;
-  }
-  
-  if (parts.length === 2 && parts[1].length > 2) {
-    parts[1] = parts[1].substring(0, 2);
-  }
-  
-  const formatted = parts.length === 2 
-    ? `${parts[0]},${parts[1]}`
-    : parts[0];
-  
+  const digits = (e.target.value || '').replace(/\D/g, '');
+  const capped = digits.slice(0, 12);
+  const value = parseInt(capped || '0', 10) / 100;
+  const formatted = formatAmountInput(value);
   amountFormatted.value = formatted;
-  newPayment.value.amount = parseAmount(formatted);
+  newPayment.value.amount = value;
+  nextTick(() => {
+    const el = amountInputRef.value;
+    if (el && document.activeElement === el) {
+      el.setSelectionRange(formatted.length, formatted.length);
+    }
+  });
 }
 
 async function confirmAmountAndProcess() {
@@ -1005,20 +1136,24 @@ function focusAmountInput() {
   });
 }
 
-async function runPixQrFlow(saleId) {
+/**
+ * Solicita PIX sem adicionar pagamento. Gera QR e inicia polling por charge_id.
+ * O pagamento só é criado no backend quando o webhook confirmar.
+ */
+async function runPixRequestFlow(saleId, amount) {
   pixGenerating.value = true;
+  showingPixQrCode.value = true;
+  pixPendingSaleId.value = saleId;
   try {
-    // Usa a rota do POS que agora utiliza o gateway unificado
-    const { data } = await api.post('pos/pix/generate', { sale_id: saleId });
-    pixPendingSaleId.value = saleId;
+    const { data } = await api.post('pos/pix/request', { sale_id: saleId, amount });
     pixQrCode.value = data.qr_code || '';
     pixQrCodeBase64.value = data.qr_code_base64 || '';
+    pixChargeId.value = data.charge_id ?? null;
     pixStep.value = 'qr';
-    startPixPolling();
+    startPixChargePolling();
   } catch (e) {
-    toast.error(e?.response?.data?.message || e?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
+    toast.error(e?.response?.data?.message || e?.message || 'Erro ao gerar PIX.');
     pixStep.value = 'error';
-    pixPendingSaleId.value = saleId;
   } finally {
     pixGenerating.value = false;
   }
@@ -1172,7 +1307,18 @@ async function confirmAddPayment() {
     const method = newPayment.value.method;
     const installments = newPayment.value.method === 'credit_card' ? newPayment.value.installments : 1;
 
-    // Adiciona o pagamento ao carrinho
+    // PIX: não chama addPayment; gera QR e só registra pagamento após confirmação (webhook)
+    if (method === 'pix') {
+      const saleId = cartStore.saleId;
+      if (!saleId) {
+        toast.error('Venda não iniciada. Inicie uma venda primeiro.');
+        return;
+      }
+      await runPixRequestFlow(saleId, finalAmount);
+      return;
+    }
+
+    // Adiciona o pagamento ao carrinho (dinheiro, crédito, débito)
     const addResult = await cartStore.addPayment(method, finalAmount, installments);
 
     // FLUXO: DINHEIRO
@@ -1252,33 +1398,6 @@ async function confirmAddPayment() {
           emit('finish', result.sale);
           emit('close');
         }
-        return;
-      }
-      
-      resetPaymentForm();
-      nextTick(() => checkAndShowPaymentInput());
-      return;
-    }
-
-    // FLUXO: PIX
-    if (method === 'pix') {
-      if (addResult?.can_finish) {
-        resetPaymentForm();
-        const result = await cartStore.finish();
-        const sale = result?.sale;
-        const status = sale?.status ?? '';
-        const hadPix = (sale?.payments || sale?.sale_payments || []).some((p) => 
-          (String(p.method || '')).toLowerCase() === 'pix'
-        );
-        
-        // Gera QR Code e aguarda confirmação
-        if (sale?.id && (status === 'pending_payment' || status === 'PENDING_PAYMENT') && hadPix) {
-          await runPixQrFlow(sale.id);
-          // Após confirmar PIX, o comprovante será emitido no startPixPolling quando approved
-          return;
-        }
-        
-        toast.warning('PIX não disponível ou venda já finalizada.');
         return;
       }
       
@@ -1477,9 +1596,13 @@ async function removeSelectedPayment() {
 function handleModalClose() {
   stopPixPolling();
   pixStep.value = null;
+  showingPixQrCode.value = false;
+  pixChargeId.value = null;
   pixPendingSaleId.value = null;
+  pixLastStatus.value = null;
   pixQrCode.value = '';
   pixQrCodeBase64.value = '';
+  pixTimer.value = 0;
   if (pointStep.value) {
     cancelPointFlow();
   }
@@ -1497,6 +1620,12 @@ async function handleKeydown(e) {
     // ESC durante processo de Point
     if (pointStep.value) {
       cancelPointFlow();
+      return;
+    }
+    
+    // ESC durante exibição de QR Code PIX - volta para seleção de método
+    if (showingPixQrCode.value) {
+      cancelPixInFlow();
       return;
     }
     

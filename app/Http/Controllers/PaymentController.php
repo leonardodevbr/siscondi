@@ -10,6 +10,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Models\CashRegister;
 use App\Models\Coupon;
+use App\Models\PixPendingCharge;
 use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\StockMovement;
@@ -185,25 +186,77 @@ class PaymentController extends Controller
             return DB::transaction(function () use ($webhookData): JsonResponse {
                 $transactionId = $webhookData['transaction_id'];
                 $status = $webhookData['status'];
-                $saleId = $webhookData['sale_id'];
+                $saleId = (int) ($webhookData['sale_id'] ?? 0);
 
+                // Fluxo novo: cobrança PIX pendente (pagamento ainda não foi addPayment)
+                $pendingCharge = PixPendingCharge::where('transaction_id', $transactionId)->first();
+
+                if ($pendingCharge && $status === 'approved') {
+                    $pendingCharge->update(['status' => 'paid']);
+
+                    SalePayment::create([
+                        'sale_id' => $pendingCharge->sale_id,
+                        'method' => PaymentMethod::PIX,
+                        'amount' => $pendingCharge->amount,
+                        'installments' => 1,
+                        'transaction_id' => $transactionId,
+                    ]);
+
+                    $sale = Sale::with('salePayments', 'items')->find($pendingCharge->sale_id);
+                    $totalPayments = $sale->salePayments->sum('amount');
+                    $isFullyPaid = $totalPayments >= (float) $sale->final_amount;
+
+                    if ($isFullyPaid) {
+                        $reason = "Venda #{$sale->id}";
+                        $movementsAlreadyExist = StockMovement::where('reason', $reason)->exists();
+                        if (! $movementsAlreadyExist) {
+                            foreach ($sale->items as $item) {
+                                StockMovement::create([
+                                    'branch_id' => $sale->branch_id,
+                                    'product_variant_id' => $item->product_variant_id,
+                                    'type' => \App\Enums\StockMovementType::SALE,
+                                    'quantity' => $item->quantity,
+                                    'reason' => $reason,
+                                    'user_id' => $sale->user_id,
+                                ]);
+                            }
+                        }
+                        $sale->update(['status' => SaleStatus::COMPLETED]);
+                        if ($sale->coupon_id) {
+                            Coupon::where('id', $sale->coupon_id)->increment('used_count');
+                        }
+                        $cashRegister = CashRegister::query()
+                            ->where('user_id', $sale->user_id)
+                            ->where('status', CashRegisterStatus::OPEN)
+                            ->first();
+                        if ($cashRegister) {
+                            $cashRegister->transactions()->create([
+                                'type' => CashRegisterTransactionType::SALE,
+                                'amount' => (float) $sale->final_amount,
+                                'description' => "Venda #{$sale->id}",
+                                'sale_id' => $sale->id,
+                            ]);
+                        }
+                    }
+
+                    return response()->json(['message' => 'Webhook processed successfully.'], 200);
+                }
+
+                // Fluxo legado: SalePayment já existia (ex.: PIX gerado por generatePix)
                 $salePayment = SalePayment::where('transaction_id', $transactionId)->first();
 
                 if (! $salePayment) {
-                    Log::warning('PaymentController::webhook - SalePayment não encontrado', [
+                    Log::warning('PaymentController::webhook - SalePayment/PendingCharge não encontrado', [
                         'transaction_id' => $transactionId,
                         'sale_id' => $saleId,
                     ]);
 
-                    return response()->json([
-                        'message' => 'Payment not found.',
-                    ], 404);
+                    return response()->json(['message' => 'Payment not found.'], 404);
                 }
 
                 $sale = $salePayment->sale;
 
                 if ($status === 'approved') {
-                    // Pagamento aprovado
                     $sale->load('items');
                     $reason = "Venda #{$sale->id}";
                     $movementsAlreadyExist = StockMovement::where('reason', $reason)->exists();
@@ -223,12 +276,10 @@ class PaymentController extends Controller
 
                     $sale->update(['status' => SaleStatus::COMPLETED]);
 
-                    // Incrementa uso do cupom
                     if ($sale->coupon_id) {
                         Coupon::where('id', $sale->coupon_id)->increment('used_count');
                     }
 
-                    // Registra transação no caixa
                     $cashRegister = CashRegister::query()
                         ->where('user_id', $sale->user_id)
                         ->where('status', CashRegisterStatus::OPEN)
@@ -243,16 +294,13 @@ class PaymentController extends Controller
                         ]);
                     }
                 } elseif ($status === 'rejected') {
-                    // Pagamento rejeitado - pode implementar lógica de cancelamento se necessário
                     Log::info('PaymentController::webhook - Pagamento rejeitado', [
                         'transaction_id' => $transactionId,
                         'sale_id' => $sale->id,
                     ]);
                 }
 
-                return response()->json([
-                    'message' => 'Webhook processed successfully.',
-                ], 200);
+                return response()->json(['message' => 'Webhook processed successfully.'], 200);
             });
         } catch (\Throwable $e) {
             Log::error('PaymentController::webhook failed', [

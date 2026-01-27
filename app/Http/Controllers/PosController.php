@@ -16,8 +16,10 @@ use App\Models\ManagerAuthorizationLog;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\PixPendingCharge;
 use App\Models\SalePayment;
 use App\Models\StockMovement;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\Payment\DTOs\PaymentData;
 use App\Services\Payment\PaymentGatewayFactory;
@@ -874,7 +876,8 @@ class PosController extends Controller
             return response()->json(['message' => 'Venda não encontrada.'], 404);
         }
 
-        if ($sale->status !== SaleStatus::PENDING_PAYMENT) {
+        $allowedStatuses = [SaleStatus::OPEN, SaleStatus::PENDING_PAYMENT];
+        if (! in_array($sale->status, $allowedStatuses, true)) {
             return response()->json([
                 'message' => 'A venda não está aguardando pagamento PIX.',
             ], 400);
@@ -950,6 +953,130 @@ class PosController extends Controller
         return response()->json([
             'paid' => $sale->status === SaleStatus::COMPLETED,
         ], 200);
+    }
+
+    /**
+     * Solicita PIX sem adicionar pagamento. Gera QR e grava cobrança pendente.
+     * O pagamento é criado apenas quando o webhook confirmar.
+     * POST pos/pix/request { sale_id, amount }
+     */
+    public function requestPix(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'sale_id' => ['required', 'integer', 'exists:sales,id'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $saleId = (int) $request->input('sale_id');
+        $amount = (float) $request->input('amount');
+
+        $sale = Sale::where('id', $saleId)
+            ->where('user_id', $user->id)
+            ->with('salePayments')
+            ->first();
+
+        if (! $sale) {
+            return response()->json(['message' => 'Venda não encontrada.'], 404);
+        }
+
+        if ($sale->status !== SaleStatus::OPEN) {
+            return response()->json([
+                'message' => 'Só é possível solicitar PIX para venda em andamento (aberta).',
+            ], 400);
+        }
+
+        $totalPayments = $sale->salePayments->sum('amount');
+        $remaining = (float) $sale->final_amount - $totalPayments;
+        if ($amount > $remaining + 0.01) {
+            return response()->json([
+                'message' => 'Valor maior que o restante a pagar.',
+            ], 400);
+        }
+
+        try {
+            $gateway = $this->gatewayFactory->getGateway($sale->branch_id);
+            $gatewayName = (string) Setting::get('payment_gateway', '');
+
+            $paymentData = new PaymentData(
+                saleId: $saleId,
+                amount: $amount,
+                method: PaymentMethod::PIX,
+                installments: 1,
+                description: "Venda #{$saleId}",
+                payerEmail: $sale->customer?->email ?? 'cliente@pdv.com.br',
+            );
+
+            $paymentResponse = $gateway->createPayment($paymentData);
+
+            $transactionId = $paymentResponse->transactionId ?? '';
+            $charge = PixPendingCharge::create([
+                'sale_id' => $saleId,
+                'amount' => $amount,
+                'transaction_id' => $transactionId,
+                'gateway' => $gatewayName,
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'qr_code' => $paymentResponse->qrCode,
+                'qr_code_base64' => $paymentResponse->qrCodeBase64,
+                'charge_id' => $charge->id,
+                'transaction_id' => $transactionId,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('PosController::requestPix', [
+                'sale_id' => $saleId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Polling: verifica se uma cobrança PIX pendente foi paga.
+     * GET pos/pix/charge-status?charge_id=...
+     * Retorna status sempre lido do banco (sem cache) para refletir o que o webhook atualizou.
+     */
+    public function checkPixChargeStatus(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'charge_id' => ['required', 'integer', 'exists:pix_pending_charges,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $chargeId = (int) $request->input('charge_id');
+        $charge = PixPendingCharge::with('sale')->find($chargeId);
+
+        if (! $charge || $charge->sale->user_id !== $user->id) {
+            return response()->json(['message' => 'Cobrança não encontrada.'], 404);
+        }
+
+        // Força nova leitura do status do banco (webhook pode ter atualizado em outra requisição)
+        $charge->refresh();
+
+        return response()->json([
+            'paid' => $charge->status === 'paid',
+            'status' => $charge->status,
+        ], 200)->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     /**
