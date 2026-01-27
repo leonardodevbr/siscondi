@@ -158,6 +158,20 @@
                 label=""
               />
             </div>
+            <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+              <div>
+                <label class="text-sm font-medium text-slate-700">
+                  Imprimir comprovante ao confirmar pagamento no cartão
+                </label>
+                <p class="text-xs text-slate-500 mt-1">
+                  Se ativado, abre a janela do comprovante ao finalizar venda com crédito ou débito. Desative para deixar apenas a maquininha imprimir.
+                </p>
+              </div>
+              <Toggle
+                v-model="form.printCardReceipt"
+                label=""
+              />
+            </div>
           </div>
         </template>
 
@@ -448,6 +462,7 @@ export default {
       ccInterestRate: 2.99,
       ccMinInstallmentValue: 10.0,
       printPixReceipt: true,
+      printCardReceipt: false,
     });
     const connecting = ref(false);
     const mercadopagoConnected = computed(() => settingsStore.mercadopagoConnected);
@@ -474,6 +489,7 @@ export default {
         form.value.ccInterestRate = settingsStore.getSetting('cc_interest_rate') ?? 2.99;
         form.value.ccMinInstallmentValue = settingsStore.getSetting('cc_min_installment_value') ?? 10.0;
         form.value.printPixReceipt = settingsStore.getSetting('print_pix_receipt') ?? true;
+        form.value.printCardReceipt = settingsStore.getSetting('print_card_receipt') ?? false;
       } catch (error) {
         toast.error('Erro ao carregar configurações');
       } finally {
@@ -562,6 +578,12 @@ export default {
           {
             key: 'print_pix_receipt',
             value: form.value.printPixReceipt,
+            type: 'boolean',
+            group: 'sales',
+          },
+          {
+            key: 'print_card_receipt',
+            value: form.value.printCardReceipt,
             type: 'boolean',
             group: 'sales',
           },

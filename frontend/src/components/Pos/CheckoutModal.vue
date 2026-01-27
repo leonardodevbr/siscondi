@@ -647,11 +647,16 @@ async function handleFinish() {
         return;
       }
     }
-    // Exibe o cupom em uma nova janela (simulação de impressora térmica)
+    // Exibe o cupom conforme configuração (PIX e cartão são opcionais)
     if (result?.sale) {
-      openReceiptWindow(result.sale);
+      const payments = result.sale.payments || result.sale.sale_payments || [];
+      const methods = payments.map((p) => String(p.method || '').toLowerCase());
+      const hasCard = methods.some((m) => ['credit_card', 'debit_card', 'point'].includes(m));
+      const hasPix = methods.includes('pix');
+      const shouldOpen = (!hasCard && !hasPix) || (hasCard && settingsStore.publicConfig?.print_card_receipt !== false) || (hasPix && settingsStore.publicConfig?.print_pix_receipt !== false);
+      if (shouldOpen) openReceiptWindow(result.sale);
     }
-    
+
     await new Promise((resolve) => setTimeout(resolve, 2000));
     emit('finish', result?.sale ?? null);
     emit('close');
@@ -1361,10 +1366,13 @@ async function confirmAddPayment() {
           return;
         }
         
-        // Se não é Point, emite comprovante
-        if (result?.sale) {
+        // Se não é Point, emite comprovante (respeitando config de impressão para cartão)
+        if (result?.sale && settingsStore.publicConfig?.print_card_receipt !== false) {
           openReceiptWindow(result.sale);
           await new Promise((resolve) => setTimeout(resolve, 1000));
+          emit('finish', result.sale);
+          emit('close');
+        } else if (result?.sale) {
           emit('finish', result.sale);
           emit('close');
         }
@@ -1392,9 +1400,12 @@ async function confirmAddPayment() {
           return;
         }
         
-        if (result?.sale) {
+        if (result?.sale && settingsStore.publicConfig?.print_card_receipt !== false) {
           openReceiptWindow(result.sale);
           await new Promise((resolve) => setTimeout(resolve, 1000));
+          emit('finish', result.sale);
+          emit('close');
+        } else if (result?.sale) {
           emit('finish', result.sale);
           emit('close');
         }
