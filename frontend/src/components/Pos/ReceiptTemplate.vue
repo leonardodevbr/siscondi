@@ -94,7 +94,7 @@ const props = defineProps({
   },
   storeName: {
     type: String,
-    default: 'Adonai PDV',
+    default: 'NunPDV',
   },
   storeDocument: {
     type: String,

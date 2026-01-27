@@ -18,6 +18,7 @@ import DiscountModalContent from '@/components/Pos/DiscountModalContent.vue';
 import ShowBalanceModal from '@/components/Pos/ShowBalanceModal.vue';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XCircleIcon, EyeIcon, EyeSlashIcon, ShoppingCartIcon, PhotoIcon, TrashIcon, MagnifyingGlassIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import Swal from 'sweetalert2';
+import AppLogo from '@/components/Common/AppLogo.vue';
 
 const router = useRouter();
 const cashRegisterStore = useCashRegisterStore();
@@ -1998,7 +1999,7 @@ onUnmounted(() => {
       class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
     >
       <div class="text-center">
-        <h1 class="mb-4 text-3xl font-bold text-slate-800">Adonai System</h1>
+        <div class="mb-4 flex justify-center"><AppLogo icon-class="h-10 w-10" text-class="text-2xl" /></div>
         <p class="mb-6 text-lg text-slate-600">
           {{ cashRegisterStore.isOpen ? 'Verificando Status do Caixa...' : 'Carregando...' }}
         </p>
@@ -2034,9 +2035,7 @@ onUnmounted(() => {
         </button>
       </div>
       <header :class="['flex shrink-0 items-center justify-between gap-4 bg-slate-800 px-4 py-2 text-white', feedbackMessage ? 'mt-12' : '']">
-        <div class="font-semibold">
-          PDV
-        </div>
+        <div><AppLogo icon-class="h-6 w-6" text-class="text-sm" light /></div>
         <div class="flex flex-1 items-center justify-center gap-4 text-sm">
           <span>{{ operatorName }}</span>
           <span class="text-slate-400">|</span>

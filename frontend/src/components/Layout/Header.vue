@@ -1,6 +1,7 @@
 <script setup>
 import BranchSwitcher from '@/components/Common/BranchSwitcher.vue';
 import UserMenu from '@/components/Common/UserMenu.vue';
+import AppLogo from '@/components/Common/AppLogo.vue';
 
 const props = defineProps({
   userName: {
@@ -38,9 +39,7 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
         </svg>
       </button>
 
-      <h1 class="text-sm font-semibold text-slate-800">
-        Painel
-      </h1>
+      <AppLogo icon-class="h-8 w-8" text-class="text-base" />
     </div>
 
     <div class="flex items-center gap-4">

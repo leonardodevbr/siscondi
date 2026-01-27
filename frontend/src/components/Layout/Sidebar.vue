@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import AppLogo from '@/components/Common/AppLogo.vue';
 import {
   HomeIcon,
   ComputerDesktopIcon,
@@ -126,10 +127,7 @@ function handleClick() {
     }"
   >
     <div class="flex h-16 items-center gap-2 border-b border-slate-800 px-4">
-      <span class="text-sm font-semibold tracking-wide text-white">
-        ADONAI
-      </span>
-      <span class="text-xs text-slate-400">PDV • ERP</span>
+      <AppLogo icon-class="h-7 w-7" text-class="text-sm" light />
     </div>
 
     <nav class="flex-1 space-y-1 py-4 text-sm">

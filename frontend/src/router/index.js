@@ -33,6 +33,7 @@ const routes = [
         path: '',
         name: 'login',
         component: LoginView,
+        meta: { title: 'Entrar', guestOnly: true },
       },
     ],
     meta: { guestOnly: true },
@@ -46,6 +47,7 @@ const routes = [
         path: '',
         name: 'pos',
         component: PosView,
+        meta: { title: 'PDV' },
       },
     ],
   },
@@ -58,31 +60,37 @@ const routes = [
         path: '',
         name: 'dashboard',
         component: HomeView,
+        meta: { title: 'Painel' },
       },
       {
         path: 'sales',
         name: 'sales',
         component: SalesIndex,
+        meta: { title: 'Vendas' },
       },
       {
         path: 'products',
         name: 'products.index',
         component: ProductsIndex,
+        meta: { title: 'Produtos' },
       },
       {
         path: 'products/new',
         name: 'products.form',
         component: ProductForm,
+        meta: { title: 'Novo Produto' },
       },
       {
         path: 'products/:id/edit',
         name: 'products.form.edit',
         component: ProductForm,
+        meta: { title: 'Editar Produto' },
       },
       {
         path: 'products/labels',
         name: 'products.labels',
         component: LabelGenerator,
+        meta: { title: 'Gerar Etiquetas' },
       },
       {
         path: 'inventory/movements',
@@ -94,77 +102,79 @@ const routes = [
         path: 'customers',
         name: 'customers',
         component: CustomersIndex,
+        meta: { title: 'Clientes' },
       },
       {
         path: 'suppliers',
         name: 'suppliers',
         component: SuppliersIndex,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Fornecedores', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'expenses',
         name: 'expenses',
         component: ExpensesIndex,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Despesas', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'reports',
         name: 'reports',
         component: ReportsIndex,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Relatórios', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'coupons',
         name: 'coupons',
         component: CouponsIndex,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Cupons', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'coupons/create',
         name: 'coupons.create',
         component: CouponForm,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Novo Cupom', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'coupons/:id/edit',
         name: 'coupons.edit',
         component: CouponForm,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Editar Cupom', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'branches',
         name: 'branches.index',
         component: BranchesIndex,
-        meta: { roles: ['super-admin'] },
+        meta: { title: 'Filiais', roles: ['super-admin'] },
       },
       {
         path: 'users',
         name: 'users',
         component: UsersIndex,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Usuários', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'users/new',
         name: 'users.form',
         component: UserForm,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Novo Usuário', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'users/:id/edit',
         name: 'users.form.edit',
         component: UserForm,
-        meta: { roles: ['super-admin', 'manager'] },
+        meta: { title: 'Editar Usuário', roles: ['super-admin', 'manager'] },
       },
       {
         path: 'profile',
         name: 'profile',
         component: ProfileIndex,
+        meta: { title: 'Perfil' },
       },
       {
         path: 'settings',
         name: 'settings',
         component: SettingsIndex,
-        meta: { roles: ['super-admin'] },
+        meta: { title: 'Configurações', roles: ['super-admin'] },
       },
     ],
   },
@@ -221,6 +231,11 @@ router.beforeEach((to, from, next) => {
   }
 
   next();
+});
+
+router.afterEach((to) => {
+  const title = to.meta.title;
+  document.title = title ? `${title} | NunPDV` : 'NunPDV';
 });
 
 export default router;

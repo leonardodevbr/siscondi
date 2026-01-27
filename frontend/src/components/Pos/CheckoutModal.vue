@@ -1236,7 +1236,7 @@ function openReceiptWindow(sale) {
     <body>
       <div class="receipt">
         <div class="header">
-          <h1>ADONAI PDV</h1>
+          <h1>NunPDV</h1>
           <p>Cupom Não Fiscal</p>
         </div>
         <div class="divider"></div>
