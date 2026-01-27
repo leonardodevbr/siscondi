@@ -35,18 +35,31 @@ class SaleController extends Controller
         $user = $request->user();
         $query = Sale::query()->with(['user', 'customer', 'coupon', 'items.productVariant.product', 'payments', 'branch']);
 
+        // Obter filial ativa do header ou do usuário
+        $activeBranchId = $request->header('X-Branch-Id') 
+            ? (int) $request->header('X-Branch-Id') 
+            : $user->branch_id;
+
         // Aplicar regras de visibilidade baseadas no cargo
         if ($user->hasRole('super-admin')) {
-            // Super Admin vê tudo, mas pode filtrar por filial se enviado
-            if ($request->has('branch_id')) {
+            // Super Admin vê vendas da filial ativa/selecionada
+            if ($activeBranchId) {
+                $query->where('branch_id', $activeBranchId);
+            }
+            // Se não houver filial ativa, pode filtrar por branch_id via query param
+            elseif ($request->has('branch_id')) {
                 $query->where('branch_id', $request->integer('branch_id'));
             }
         } elseif ($user->hasRole('manager')) {
-            // Gerente vê apenas vendas da sua filial
-            $query->where('branch_id', $user->branch_id);
+            // Gerente vê apenas vendas da filial ativa ou da sua filial
+            $branchId = $activeBranchId ?? $user->branch_id;
+            $query->where('branch_id', $branchId);
         } else {
-            // Vendedor/Operador vê apenas suas próprias vendas
+            // Vendedor/Operador vê apenas suas próprias vendas da filial ativa
             $query->where('user_id', $user->id);
+            if ($activeBranchId) {
+                $query->where('branch_id', $activeBranchId);
+            }
         }
 
         // Filtros adicionais
@@ -101,13 +114,25 @@ class SaleController extends Controller
 
         $query = Sale::query()->with(['user', 'customer', 'branch', 'payments']);
 
+        // Obter filial ativa do header ou do usuário
+        $activeBranchId = $request->header('X-Branch-ID') 
+            ? (int) $request->header('X-Branch-ID') 
+            : $user->branch_id;
+
         // Aplicar mesmas regras de visibilidade
         if ($user->hasRole('super-admin')) {
-            if ($request->has('branch_id')) {
+            // Super Admin exporta vendas da filial ativa/selecionada
+            if ($activeBranchId) {
+                $query->where('branch_id', $activeBranchId);
+            }
+            // Se não houver filial ativa, pode filtrar por branch_id via query param
+            elseif ($request->has('branch_id')) {
                 $query->where('branch_id', $request->integer('branch_id'));
             }
         } elseif ($user->hasRole('manager')) {
-            $query->where('branch_id', $user->branch_id);
+            // Gerente exporta vendas da filial ativa ou da sua filial
+            $branchId = $activeBranchId ?? $user->branch_id;
+            $query->where('branch_id', $branchId);
         }
 
         // Aplicar mesmos filtros

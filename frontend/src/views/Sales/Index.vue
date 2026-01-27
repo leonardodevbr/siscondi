@@ -246,8 +246,8 @@
       </div>
     </div>
 
-    <!-- Modal de Detalhes -->
-    <SaleDetailsModal
+    <!-- Drawer de Detalhes -->
+    <SaleDetailsDrawer
       :is-open="showDetailsModal"
       :sale-id="selectedSale"
       @close="handleModalClose"
@@ -263,7 +263,7 @@ import api from '@/services/api';
 import { useToast } from 'vue-toastification';
 import Swal from 'sweetalert2';
 import Button from '@/components/Common/Button.vue';
-import SaleDetailsModal from '@/components/Sales/SaleDetailsModal.vue';
+import SaleDetailsDrawer from '@/components/Sales/SaleDetailsDrawer.vue';
 
 const toast = useToast();
 const authStore = useAuthStore();
