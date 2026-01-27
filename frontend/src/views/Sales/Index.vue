@@ -1,67 +1,77 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold text-slate-800">
-        Vendas Realizadas
-      </h1>
-      <Button v-if="authStore.hasRole(['super-admin', 'manager'])" variant="primary" @click="exportToExcel" :disabled="exporting">
-        {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
-      </Button>
+  <div class="space-y-4">
+    <!-- Cabeçalho -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-800">Vendas Realizadas</h2>
+        <p class="text-xs text-slate-500">
+          Visualize e gerencie todas as vendas
+        </p>
+      </div>
+      
+      <div v-if="authStore.hasRole(['super-admin', 'manager'])" class="flex gap-2">
+        <button
+          @click="exportToExcel"
+          :disabled="exporting"
+          class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+        >
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
+        </button>
+      </div>
     </div>
 
-    <!-- Filtros e Busca -->
-    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <!-- Busca -->
-        <div class="lg:col-span-2">
-          <label class="block text-xs font-medium text-slate-700 mb-1">Buscar</label>
-          <input
-            v-model="filters.search"
-            type="text"
-            placeholder="ID da venda ou nome do cliente..."
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            @input="debouncedSearch"
-          >
-        </div>
-
-        <!-- Status -->
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">Status</label>
-          <select
-            v-model="filters.status"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            @change="applyFilters"
-          >
-            <option value="">Todos</option>
-            <option value="completed">Concluída</option>
-            <option value="pending_payment">Aguardando Pagamento</option>
-            <option value="canceled">Cancelada</option>
-          </select>
-        </div>
-
-        <!-- Data -->
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">Data</label>
-          <input
-            v-model="filters.date"
-            type="date"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            @change="applyFilters"
-          >
-        </div>
+    <!-- Filtros -->
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <!-- Busca -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Buscar</label>
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="ID da venda ou nome do cliente..."
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          @input="debouncedSearch"
+        >
       </div>
 
-      <!-- Botões de Ação -->
-      <div class="mt-4 flex items-center gap-2">
+      <!-- Status -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+        <select
+          v-model="filters.status"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          @change="applyFilters"
+        >
+          <option value="">Todos</option>
+          <option value="completed">Concluída</option>
+          <option value="pending_payment">Aguardando Pagamento</option>
+          <option value="canceled">Cancelada</option>
+        </select>
+      </div>
+
+      <!-- Data -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Data</label>
+        <input
+          v-model="filters.date"
+          type="date"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          @change="applyFilters"
+        >
+      </div>
+
+      <!-- Ações -->
+      <div class="flex items-end">
         <Button variant="outline" size="sm" @click="clearFilters">
           Limpar Filtros
         </Button>
-        <span v-if="hasActiveFilters" class="text-xs text-slate-600">
-          {{ filteredCount }} resultado(s) encontrado(s)
-        </span>
       </div>
     </div>
 
+    <!-- Loading -->
     <div v-if="loading && !sales.length" class="flex items-center justify-center py-12">
       <div class="text-center">
         <div class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
@@ -69,168 +79,169 @@
       </div>
     </div>
 
-    <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4">
+    <!-- Erro -->
+    <div v-else-if="error" class="rounded-md border border-red-200 bg-red-50 p-4">
       <p class="text-sm font-medium text-red-800">{{ error }}</p>
     </div>
 
-    <div v-else class="space-y-4">
-      <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-slate-50">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600">
-                  ID
-                </th>
-                <th v-if="authStore.isSuperAdmin" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Filial
-                </th>
-                <th v-if="authStore.isManager || authStore.isSuperAdmin" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Vendedor
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Data
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Cliente
-                </th>
-                <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Valor Total
-                </th>
-                <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Status
-                </th>
-                <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-200">
-              <tr v-if="!sales.length">
-                <td :colspan="getColspan()" class="px-4 py-8 text-center text-sm text-slate-500">
-                  Nenhuma venda encontrada.
-                </td>
-              </tr>
-              <tr v-for="sale in sales" :key="sale.id" class="hover:bg-slate-50 transition-colors">
-                <td class="px-4 py-3 text-sm font-medium text-slate-900">
-                  #{{ sale.id }}
-                </td>
-                <td v-if="authStore.isSuperAdmin" class="px-4 py-3 text-sm text-slate-700">
-                  {{ sale.branch_name || '-' }}
-                </td>
-                <td v-if="authStore.isManager || authStore.isSuperAdmin" class="px-4 py-3 text-sm text-slate-700">
-                  {{ sale.user_name }}
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-700">
-                  {{ formatDate(sale.created_at) }}
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-700">
-                  {{ sale.customer_name }}
-                </td>
-                <td class="px-4 py-3 text-right text-sm font-medium text-slate-900">
-                  {{ formatCurrency(sale.final_amount) }}
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <span :class="getStatusBadgeClass(sale.status)" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
-                    {{ getStatusLabel(sale.status) }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <div class="flex items-center justify-center gap-2">
-                    <button
-                      @click="viewSale(sale)"
-                      class="inline-flex items-center justify-center rounded-lg p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
-                      title="Ver Detalhes"
-                    >
-                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </button>
-                    <button
-                      v-if="canCancelSale(sale)"
-                      @click="confirmCancelSale(sale)"
-                      class="inline-flex items-center justify-center rounded-lg p-2 text-red-600 hover:bg-red-50 hover:text-red-800 transition-colors"
-                      title="Cancelar Venda"
-                    >
-                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <!-- Tabela -->
+    <div v-else class="overflow-x-auto bg-white border border-slate-200 rounded-md">
+      <table class="min-w-full divide-y divide-slate-200">
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+              ID
+            </th>
+            <th v-if="authStore.isSuperAdmin" scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Filial
+            </th>
+            <th v-if="authStore.isManager || authStore.isSuperAdmin" scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Vendedor
+            </th>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Data
+            </th>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Cliente
+            </th>
+            <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Valor Total
+            </th>
+            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Status
+            </th>
+            <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-slate-700 uppercase tracking-wider">
+              Ações
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-slate-200">
+          <tr v-if="!sales.length">
+            <td :colspan="getColspan()" class="px-4 py-8 text-center text-sm text-slate-500">
+              Nenhuma venda encontrada.
+            </td>
+          </tr>
+          <tr v-for="sale in sales" :key="sale.id" class="hover:bg-slate-50">
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
+              #{{ sale.id }}
+            </td>
+            <td v-if="authStore.isSuperAdmin" class="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+              {{ sale.branch_name || '-' }}
+            </td>
+            <td v-if="authStore.isManager || authStore.isSuperAdmin" class="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+              {{ sale.user_name }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+              {{ formatDate(sale.created_at) }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+              {{ sale.customer_name }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 text-right">
+              {{ formatCurrency(sale.final_amount) }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-center">
+              <span :class="getStatusBadgeClass(sale.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ getStatusLabel(sale.status) }}
+              </span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  v-if="canCancelSale(sale)"
+                  @click="confirmCancelSale(sale)"
+                  class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                  title="Cancelar Venda"
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <button
+                  @click="viewSale(sale)"
+                  class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                  title="Ver Detalhes"
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      <div v-if="pagination.total > pagination.per_page" class="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
-        <div class="flex flex-1 justify-between sm:hidden">
-          <button
-            @click="goToPage(pagination.current_page - 1)"
-            :disabled="pagination.current_page === 1"
-            class="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Anterior
-          </button>
-          <button
-            @click="goToPage(pagination.current_page + 1)"
-            :disabled="pagination.current_page === pagination.last_page"
-            class="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Próxima
-          </button>
+    <!-- Paginação -->
+    <div v-if="pagination.total > pagination.per_page" class="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200">
+      <div class="flex-1 flex justify-between sm:hidden">
+        <button
+          @click="goToPage(pagination.current_page - 1)"
+          :disabled="pagination.current_page === 1"
+          class="relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Anterior
+        </button>
+        <button
+          @click="goToPage(pagination.current_page + 1)"
+          :disabled="pagination.current_page === pagination.last_page"
+          class="relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Próxima
+        </button>
+      </div>
+      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-slate-700">
+            Mostrando
+            <span class="font-medium">{{ pagination.from }}</span>
+            até
+            <span class="font-medium">{{ pagination.to }}</span>
+            de
+            <span class="font-medium">{{ pagination.total }}</span>
+            resultados
+          </p>
         </div>
-        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm text-slate-700">
-              Mostrando
-              <span class="font-medium">{{ pagination.from }}</span>
-              até
-              <span class="font-medium">{{ pagination.to }}</span>
-              de
-              <span class="font-medium">{{ pagination.total }}</span>
-              resultados
-            </p>
-          </div>
-          <div>
-            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-              <button
-                @click="goToPage(pagination.current_page - 1)"
-                :disabled="pagination.current_page === 1"
-                class="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span class="sr-only">Anterior</span>
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
-                </svg>
-              </button>
-              <button
-                v-for="page in visiblePages"
-                :key="page"
-                @click="goToPage(page)"
-                :class="[
-                  page === pagination.current_page
-                    ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                    : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:outline-offset-0',
-                  'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20'
-                ]"
-              >
-                {{ page }}
-              </button>
-              <button
-                @click="goToPage(pagination.current_page + 1)"
-                :disabled="pagination.current_page === pagination.last_page"
-                class="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span class="sr-only">Próxima</span>
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </nav>
-          </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Paginação">
+            <button
+              @click="goToPage(pagination.current_page - 1)"
+              :disabled="pagination.current_page === 1"
+              class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="sr-only">Anterior</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <button
+              v-for="page in visiblePages"
+              :key="page"
+              @click="goToPage(page)"
+              :disabled="page === '...'"
+              :class="[
+                page === pagination.current_page
+                  ? 'z-10 bg-blue-600 border-blue-600 text-white'
+                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50',
+                page === '...' ? 'cursor-default' : '',
+                'relative inline-flex items-center px-4 py-2 border text-sm font-medium'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <button
+              @click="goToPage(pagination.current_page + 1)"
+              :disabled="pagination.current_page === pagination.last_page"
+              class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="sr-only">Próxima</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </nav>
         </div>
       </div>
     </div>
