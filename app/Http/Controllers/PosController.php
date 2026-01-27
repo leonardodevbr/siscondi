@@ -1542,6 +1542,7 @@ class PosController extends Controller
                     'method' => $payment->method->value,
                     'amount' => (float) $payment->amount,
                     'installments' => $payment->installments,
+                    'transaction_id' => $payment->transaction_id,
                 ];
             }),
             'total_payments' => $totalPayments,

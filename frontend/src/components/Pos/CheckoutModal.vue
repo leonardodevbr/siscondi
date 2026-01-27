@@ -515,14 +515,6 @@ watch(() => props.isOpen, async (open) => {
         print_pix_receipt: cfg?.print_pix_receipt !== false,
         print_card_receipt: cfg?.print_card_receipt === true || cfg?.print_card_receipt === 'true' || cfg?.print_card_receipt === 1,
       };
-      // Garante config fresca: busca direta com cache-bust para evitar resposta antiga
-      const { data } = await api.get('/config', { params: { _t: Date.now() }, headers: { 'Cache-Control': 'no-cache' } });
-      if (data && (data.print_pix_receipt !== undefined || data.print_card_receipt !== undefined)) {
-        receiptConfig.value = {
-          print_pix_receipt: data.print_pix_receipt !== false,
-          print_card_receipt: data.print_card_receipt === true || data.print_card_receipt === 'true' || data.print_card_receipt === 1,
-        };
-      }
     } catch (_) {
       receiptConfig.value = { print_pix_receipt: true, print_card_receipt: false };
     }
@@ -668,14 +660,9 @@ async function handleFinish() {
         return;
       }
     }
-    // Exibe o cupom conforme configuração (PIX e cartão são opcionais)
+    // Cupom da venda (documento da compra: itens, totais, formas de pagamento) — abre ao finalizar (F10)
     if (result?.sale) {
-      const payments = result.sale.payments || result.sale.sale_payments || [];
-      const methods = payments.map((p) => String(p.method || '').toLowerCase());
-      const hasCard = methods.some((m) => ['credit_card', 'debit_card', 'point'].includes(m));
-      const hasPix = methods.includes('pix');
-      const shouldOpen = (!hasCard && !hasPix) || (hasCard && receiptConfig.value.print_card_receipt) || (hasPix && receiptConfig.value.print_pix_receipt);
-      if (shouldOpen) openReceiptWindow(result.sale);
+      openReceiptWindow(result.sale);
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -730,10 +717,14 @@ function startPixChargePolling() {
           const isCompleted = sale?.status === 'completed' || sale?.status === 'COMPLETED';
 
           if (sale?.id && receiptConfig.value.print_pix_receipt) {
-            openReceiptWindow(sale);
+            const pixPayments = (sale.payments || sale.sale_payments || []).filter((p) => String(p.method || '').toLowerCase() === 'pix');
+            const lastPix = pixPayments[pixPayments.length - 1];
+            openPaymentReceiptPix(lastPix?.amount ?? 0, lastPix?.transaction_id || '');
             await new Promise((r) => setTimeout(r, 800));
           }
           if (isCompleted) {
+            if (sale?.id) openReceiptWindow(sale);
+            await new Promise((r) => setTimeout(r, 600));
             emit('finish', { id: sid, status: 'completed' });
             emit('close');
           } else {
@@ -779,9 +770,13 @@ function startPixSaleStatusPolling() {
           const { data: saleData } = await api.get(`sales/${sid}`);
           const sale = saleData?.data ?? saleData?.sale ?? saleData;
           if (sale?.id && receiptConfig.value.print_pix_receipt) {
-            openReceiptWindow(sale);
-            await new Promise((r) => setTimeout(r, 1000));
+            const pixPayments = (sale.payments || sale.sale_payments || []).filter((p) => String(p.method || '').toLowerCase() === 'pix');
+            const lastPix = pixPayments[pixPayments.length - 1];
+            openPaymentReceiptPix(lastPix?.amount ?? 0, lastPix?.transaction_id || '');
+            await new Promise((r) => setTimeout(r, 600));
           }
+          if (sale?.id) openReceiptWindow(sale);
+          await new Promise((r) => setTimeout(r, 600));
         } catch (err) {
           console.error('Erro ao buscar venda para comprovante:', err);
         }
@@ -1318,6 +1313,66 @@ function openReceiptWindow(sale) {
   receiptWindow.document.close();
 }
 
+/** Comprovante de pagamento do cartão (estilo maquininha: valor, forma, autorização, data/hora). */
+function openPaymentReceiptCard(payment) {
+  const w = window.open('', '_blank', 'width=320,height=420');
+  if (!w) return;
+  const valor = parseFloat(payment?.amount || 0).toFixed(2).replace('.', ',');
+  const forma = (payment?.method === 'credit_card' || payment?.method === 'point') ? 'CARTÃO DE CRÉDITO' : 'CARTÃO DE DÉBITO';
+  const parcelas = payment?.installments > 1 ? `${payment.installments}x` : '';
+  const dataHora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const html = `
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Comprovante - Cartão</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:11px;line-height:1.3;padding:12px;background:#fff;max-width:80mm;margin:0 auto}
+.divider{border-top:1px dashed #000;margin:6px 0}.center{text-align:center}.bold{font-weight:bold}
+@media print{.actions{display:none}@page{size:80mm auto;margin:0}}</style></head><body>
+<div class="center bold" style="margin-bottom:6px">COMPROVANTE DE PAGAMENTO</div>
+<div class="divider"></div>
+<div class="center" style="margin-bottom:4px">${forma}${parcelas ? ' ' + parcelas : ''}</div>
+<div class="divider"></div>
+<div>VALOR<span style="float:right">R$ ${valor}</span></div>
+<div class="divider"></div>
+<div>DATA/HORA<span style="float:right">${dataHora}</span></div>
+<div class="divider"></div>
+<div class="center bold" style="margin:8px 0">TRANSACAO AUTORIZADA</div>
+<div class="center" style="font-size:10px;color:#666">Pagamento registrado</div>
+<div class="divider"></div>
+<div class="actions" style="margin-top:12px;text-align:center">
+<button onclick="window.print()" style="padding:6px 12px;margin:4px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer">Imprimir</button>
+<button onclick="window.close()" style="padding:6px 12px;margin:4px;background:#6b7280;color:#fff;border:none;border-radius:4px;cursor:pointer">Fechar</button>
+</div></body></html>`;
+  w.document.write(html);
+  w.document.close();
+}
+
+/** Comprovante de pagamento PIX (valor, data/hora, ID transação). */
+function openPaymentReceiptPix(amount, transactionId = '') {
+  const w = window.open('', '_blank', 'width=320,height=380');
+  if (!w) return;
+  const valor = parseFloat(amount || 0).toFixed(2).replace('.', ',');
+  const dataHora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const html = `
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Comprovante - PIX</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:11px;line-height:1.3;padding:12px;background:#fff;max-width:80mm;margin:0 auto}
+.divider{border-top:1px dashed #000;margin:6px 0}.center{text-align:center}.bold{font-weight:bold}
+@media print{.actions{display:none}@page{size:80mm auto;margin:0}}</style></head><body>
+<div class="center bold" style="margin-bottom:6px">COMPROVANTE PIX</div>
+<div class="divider"></div>
+<div>VALOR<span style="float:right">R$ ${valor}</span></div>
+<div class="divider"></div>
+<div>DATA/HORA<span style="float:right">${dataHora}</span></div>
+${transactionId ? `<div class="divider"></div><div style="word-break:break-all;font-size:10px">COMPROVANTE: ${transactionId}</div>` : ''}
+<div class="divider"></div>
+<div class="center bold" style="margin:8px 0">PAGAMENTO PIX CONFIRMADO</div>
+<div class="divider"></div>
+<div class="actions" style="margin-top:12px;text-align:center">
+<button onclick="window.print()" style="padding:6px 12px;margin:4px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer">Imprimir</button>
+<button onclick="window.close()" style="padding:6px 12px;margin:4px;background:#6b7280;color:#fff;border:none;border-radius:4px;cursor:pointer">Fechar</button>
+</div></body></html>`;
+  w.document.write(html);
+  w.document.close();
+}
+
 async function confirmAddPayment() {
   let finalAmount = newPayment.value.amount;
   
@@ -1389,13 +1444,16 @@ async function confirmAddPayment() {
           return;
         }
         
-        // Se não é Point, emite comprovante (respeitando config de impressão para cartão)
-        if (result?.sale && receiptConfig.value.print_card_receipt) {
+        // Se não é Point: comprovante do cartão (slip estilo maquininha) + cupom da venda ao completar
+        if (result?.sale) {
+          if (receiptConfig.value.print_card_receipt) {
+            const payments = result.sale.payments || result.sale.sale_payments || [];
+            const lastPayment = payments[payments.length - 1];
+            if (lastPayment) openPaymentReceiptCard(lastPayment);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
           openReceiptWindow(result.sale);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          emit('finish', result.sale);
-          emit('close');
-        } else if (result?.sale) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
           emit('finish', result.sale);
           emit('close');
         }
@@ -1423,12 +1481,15 @@ async function confirmAddPayment() {
           return;
         }
         
-        if (result?.sale && receiptConfig.value.print_card_receipt) {
+        if (result?.sale) {
+          if (receiptConfig.value.print_card_receipt) {
+            const payments = result.sale.payments || result.sale.sale_payments || [];
+            const lastPayment = payments[payments.length - 1];
+            if (lastPayment) openPaymentReceiptCard(lastPayment);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
           openReceiptWindow(result.sale);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          emit('finish', result.sale);
-          emit('close');
-        } else if (result?.sale) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
           emit('finish', result.sale);
           emit('close');
         }
