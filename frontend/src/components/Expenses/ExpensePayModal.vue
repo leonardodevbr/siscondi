@@ -126,10 +126,9 @@ const paymentMethod = ref('');
 const submitting = ref(false);
 
 const paymentMethods = [
-  { value: 'money', label: 'Dinheiro' },
-  { value: 'pix', label: 'PIX' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
+  { value: 'CASH', label: 'Dinheiro' },
+  { value: 'BANK_TRANSFER', label: 'Transferência/PIX' },
+  { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
 ];
 
 watch(() => props.isOpen, (isOpen) => {

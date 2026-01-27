@@ -199,10 +199,9 @@ const categoryOptions = computed(() => {
 });
 
 const paymentMethods = [
-  { value: 'money', label: 'Dinheiro' },
-  { value: 'pix', label: 'PIX' },
-  { value: 'debit_card', label: 'Débito' },
-  { value: 'credit_card', label: 'Crédito' },
+  { value: 'CASH', label: 'Dinheiro' },
+  { value: 'BANK_TRANSFER', label: 'Transferência/PIX' },
+  { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
 ];
 
 const handleAmountInput = (event) => {

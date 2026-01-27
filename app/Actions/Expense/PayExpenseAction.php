@@ -24,18 +24,20 @@ class PayExpenseAction
 
             $cashRegisterTransaction = null;
 
+            // Apenas pagamentos em DINHEIRO deduzem do caixa
             if ($paymentMethod === 'CASH') {
+                $user = auth()->user();
                 $cashRegister = CashRegister::query()
-                    ->where('user_id', $expense->user_id)
+                    ->where('user_id', $user?->id ?? $expense->user_id)
                     ->where('status', CashRegisterStatus::OPEN)
                     ->first();
 
                 if (! $cashRegister) {
-                    throw new NoOpenCashRegisterException('Cannot pay expense with cash without an open cash register.');
+                    throw new NoOpenCashRegisterException('Não há caixa aberto. Abra um caixa para pagar despesas em dinheiro.');
                 }
 
                 if ($cashRegister->getCurrentBalance() < (float) $expense->amount) {
-                    throw new \InvalidArgumentException('Insufficient balance in cash register.');
+                    throw new \InvalidArgumentException('Saldo insuficiente no caixa.');
                 }
 
                 $cashRegisterTransaction = $cashRegister->transactions()->create([
@@ -44,6 +46,8 @@ class PayExpenseAction
                     'description' => "Despesa: {$expense->description}",
                 ]);
             }
+            
+            // Pagamentos via BANK_TRANSFER (PIX) ou CREDIT_CARD não afetam o caixa
 
             $expense->update([
                 'paid_at' => Carbon::now(),
