@@ -31,7 +31,7 @@
             <tr>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">E-mail</th>
-              <th v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Filial</th>
+              <th v-if="showBranchColumn" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Filial Principal</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cargo</th>
               <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">Ações</th>
             </tr>
@@ -40,7 +40,7 @@
             <tr v-for="u in userStore.users" :key="u.id">
               <td class="px-4 sm:px-6 py-4 text-sm font-medium text-slate-900">{{ u.name }}</td>
               <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.email }}</td>
-              <td v-if="authStore.user?.is_super_admin" class="px-4 sm:px-6 py-4 text-sm text-slate-900">
+              <td v-if="showBranchColumn" class="px-4 sm:px-6 py-4 text-sm text-slate-900">
                 <div class="flex items-center gap-2">
                   <span>{{ u.branch?.name ?? '—' }}</span>
                   <span
@@ -98,6 +98,16 @@ const authStore = useAuthStore();
 const userStore = useUserStore();
 const searchQuery = ref('');
 let searchTimeout = null;
+
+// Verifica se deve mostrar coluna de filial (Super Admin, Owner ou Manager)
+const showBranchColumn = computed(() => {
+  if (!authStore.user) return false;
+  const roles = authStore.user.roles || [];
+  return roles.some((r) => {
+    const name = typeof r === 'string' ? r : r?.name;
+    return ['super-admin', 'owner', 'manager'].includes(name);
+  });
+});
 
 // Filtra para remover o próprio usuário logado
 const filteredUsers = computed(() => {

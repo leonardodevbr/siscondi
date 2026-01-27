@@ -50,6 +50,7 @@ class UserController extends Controller
     /**
      * Scope de usuários pela filial.
      * Sempre filtra pela filial do header (X-Branch-ID) quando disponível.
+     * Inclui usuários que têm vínculo direto (branch_id) OU através da tabela pivot (branch_user).
      * Caso contrário, usa a filial do usuário logado.
      */
     private function branchScope(): \Illuminate\Database\Eloquent\Builder
@@ -64,14 +65,25 @@ class UserController extends Controller
             // Verifica se o usuário tem acesso a essa filial
             if ($user && ($user->hasRole(['super-admin', 'owner']) || $user->hasAccessToBranch($branchId))) {
                 if (Branch::whereKey($branchId)->exists()) {
-                    return User::query()->where('branch_id', $branchId);
+                    // Retorna usuários que têm branch_id OU estão vinculados via pivot
+                    return User::query()->where(function ($query) use ($branchId): void {
+                        $query->where('branch_id', $branchId)
+                            ->orWhereHas('branches', function ($q) use ($branchId): void {
+                                $q->where('branches.id', $branchId);
+                            });
+                    });
                 }
             }
         }
         
         // Fallback: usa a filial do usuário logado
         $branchId = $this->getEffectiveBranchId('Filial não identificada para listar usuários.');
-        return User::query()->where('branch_id', $branchId);
+        return User::query()->where(function ($query) use ($branchId): void {
+            $query->where('branch_id', $branchId)
+                ->orWhereHas('branches', function ($q) use ($branchId): void {
+                    $q->where('branches.id', $branchId);
+                });
+        });
     }
 
     /**
@@ -171,13 +183,20 @@ class UserController extends Controller
     public function show(string $id): JsonResponse
     {
         $authUser = auth()->user();
+        $userId = (int) $id;
+        
+        // Usuário pode sempre ver o próprio perfil
+        if ($authUser && $authUser->id === $userId) {
+            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail($userId);
+            return response()->json(new UserResource($user));
+        }
         
         // Super Admin pode ver qualquer usuário
         if ($authUser && $authUser->hasRole('super-admin')) {
-            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail($userId);
         } else {
-            // Outros usuários: apenas da mesma filial
-            $user = $this->branchScope()->where('id', '!=', auth()->user()->id)->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+            // Outros usuários: apenas da mesma filial (exceto próprio)
+            $user = $this->branchScope()->where('id', '!=', $authUser->id)->with('roles', 'branch', 'branches')->findOrFail($userId);
         }
 
         return response()->json(new UserResource($user));
