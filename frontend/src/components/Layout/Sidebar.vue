@@ -38,6 +38,18 @@ function itemVisible(item) {
     return authStore.hasRole(item.role);
   }
   
+  // Exclui roles específicas (ex.: vendedor não vê movimentações)
+  if (item.excludeRoles && Array.isArray(item.excludeRoles)) {
+    const userRoles = authStore.user?.roles || [];
+    const hasExcludedRole = userRoles.some((r) => {
+      const roleName = typeof r === 'string' ? r : r?.name;
+      return item.excludeRoles.includes(roleName);
+    });
+    if (hasExcludedRole) {
+      return false;
+    }
+  }
+  
   // Verifica permissão
   if (item.permission == null || item.permission === '') return true;
   return authStore.can(item.permission);
@@ -58,7 +70,7 @@ const menuGroups = computed(() => {
         { name: 'Vendas Realizadas', to: { name: 'sales' }, icon: ShoppingBagIcon, permission: 'sales.view' },
         { name: 'Produtos & Estoque', to: { name: 'products.index' }, icon: TagIcon, permission: 'products.view' },
         { name: 'Gerar Etiquetas', to: { name: 'products.labels' }, icon: RectangleGroupIcon, permission: 'products.view' },
-        { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, permission: 'stock.view' },
+        { name: 'Movimentações', to: { name: 'inventory.movements' }, icon: ClipboardDocumentListIcon, permission: 'stock.view', excludeRoles: ['seller'] },
         { name: 'Clientes', to: { name: 'customers' }, icon: UserGroupIcon, permission: 'customers.view' },
         { name: 'Fornecedores', to: { name: 'suppliers' }, icon: TruckIcon, permission: 'suppliers.view' },
       ],
