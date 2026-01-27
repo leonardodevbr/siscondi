@@ -35,12 +35,34 @@ jobs:
             echo "Using production directory: ${{ secrets.DIRECTORY }}"
           fi
 
-      - name: Prepare deployment package 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > frontend/.env.production
+          cd frontend && npm ci && npm run build && cd ..
+
+      - name: Copiar conteúdo de dist para raiz do frontend
+        run: |
+          cp -r frontend/dist/* frontend/
+          rm -rf frontend/dist
+
+      - name: Remover arquivos do frontend não necessários em produção
+        run: |
+          rm -rf frontend/src frontend/public frontend/node_modules
+          rm -f frontend/package.json frontend/package-lock.json
+          rm -f frontend/vite.config.js frontend/tailwind.config.js frontend/postcss.config.js
+          rm -f frontend/.env.production.example frontend/.gitignore frontend/README.md
+
+      - name: Prepare deployment package
         run: |
           echo "Preparando pacote de implantação..."
-          # Exclui .git, node_modules e vendor locais para o upload ser mais rápido
-          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "frontend/node_modules/*" -x "vendor/*"
-          
+          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "frontend/.env.production" -x "vendor/*"
           echo "Arquivo de implantação criado com sucesso"
           ls -la deployment.zip
 
@@ -75,28 +97,13 @@ jobs:
             
             # 2. Composer (Backend)
             echo "Executando Composer Install..."
-            # Flags otimizadas para produção
             composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             
-            # 3. NPM (Frontend)
-            echo "Iniciando build do Frontend..."
-            if [ -d "frontend" ]; then
-              cd frontend
-              echo "Instalando dependências Node..."
-              npm install
-              
-              echo "Compilando assets (Build)..."
-              npm run build
-              
-              # Volta para a raiz do projeto para rodar o artisan
-              cd .. 
-            else
-              echo "AVISO: Diretório 'frontend' não encontrado. Pulando etapa de build."
-            fi
+            # 3. Frontend: dist já vem no zip (build feito no CI). Não roda npm no servidor.
             
-            # 4. Comandos Laravel e Permissões
+            # 4. Artisan e permissões
             echo "Executando comandos do Artisan..."
-            php artisan migrate:fresh --seed --force
+            php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
