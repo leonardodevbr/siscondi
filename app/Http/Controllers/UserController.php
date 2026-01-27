@@ -81,24 +81,46 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $user = auth()->user();
-        if ($user && $user->hasRole('super-admin') && $request->filled('branch_id')) {
-            $branchId = (int) $request->input('branch_id');
-            if (! Branch::whereKey($branchId)->exists()) {
-                throw ValidationException::withMessages(['branch_id' => ['Filial inválida.']]);
+        $authUser = auth()->user();
+        
+        // Determina as filiais a vincular
+        $branchIds = [];
+        $primaryBranchId = null;
+        $role = $request->input('role');
+        
+        // Owner sempre recebe TODAS as filiais automaticamente
+        if ($role === 'owner') {
+            $branchIds = Branch::query()->pluck('id')->toArray();
+            $primaryBranchId = $branchIds[0] ?? null;
+        } elseif ($authUser && $authUser->hasRole('super-admin')) {
+            // Super Admin pode definir múltiplas filiais para outros roles
+            if ($request->filled('branch_ids')) {
+                $branchIds = $request->input('branch_ids');
+                // Valida se todas as filiais existem
+                $validBranches = Branch::whereIn('id', $branchIds)->pluck('id')->toArray();
+                if (count($validBranches) !== count($branchIds)) {
+                    throw ValidationException::withMessages(['branch_ids' => ['Uma ou mais filiais são inválidas.']]);
+                }
             }
+            
+            // Define a filial primária
+            $primaryBranchId = $request->filled('primary_branch_id') 
+                ? (int) $request->input('primary_branch_id')
+                : ($branchIds[0] ?? null);
         } else {
-            $branchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
+            // Outros usuários: nova conta herda a filial do criador
+            $primaryBranchId = $this->getEffectiveBranchId('Filial não identificada para criar usuário.');
+            $branchIds = [$primaryBranchId];
         }
 
         $data = $request->safe()->only(['name', 'email', 'role', 'operation_pin']);
         $data['password'] = $request->validated('password');
-        $data['branch_id'] = $branchId;
+        $data['branch_id'] = $primaryBranchId; // Mantém para compatibilidade
         if ($request->filled('operation_password')) {
             $data['operation_password'] = $request->validated('operation_password');
         }
 
-        $user = DB::transaction(function () use ($data): User {
+        $user = DB::transaction(function () use ($data, $branchIds, $primaryBranchId): User {
             $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -107,9 +129,19 @@ class UserController extends Controller
                 'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
                 'branch_id' => $data['branch_id'],
             ]);
+            
             $user->assignRole($data['role']);
+            
+            // Vincula as filiais na tabela pivot
+            if (!empty($branchIds)) {
+                $pivotData = [];
+                foreach ($branchIds as $branchId) {
+                    $pivotData[$branchId] = ['is_primary' => $branchId === $primaryBranchId];
+                }
+                $user->branches()->attach($pivotData);
+            }
 
-            return $user->load('roles', 'branch');
+            return $user->load('roles', 'branch', 'branches');
         });
 
         return response()->json(new UserResource($user), 201);
@@ -120,7 +152,15 @@ class UserController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $user = $this->branchScope()->with('roles', 'branch')->findOrFail((int) $id);
+        $authUser = auth()->user();
+        
+        // Super Admin pode ver qualquer usuário
+        if ($authUser && $authUser->hasRole('super-admin')) {
+            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+        } else {
+            // Outros usuários: apenas da mesma filial
+            $user = $this->branchScope()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+        }
 
         return response()->json(new UserResource($user));
     }
@@ -130,7 +170,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $user = $this->branchScope()->with('roles', 'branch')->findOrFail((int) $id);
+        $user = $this->branchScope()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
 
         $data = $request->safe()->only(['name', 'email', 'role', 'branch_id', 'operation_pin']);
         if ($request->filled('password')) {
@@ -143,7 +183,7 @@ class UserController extends Controller
         }
 
         $authUser = auth()->user();
-        DB::transaction(function () use ($user, $data, $authUser): void {
+        DB::transaction(function () use ($user, $data, $authUser, $request): void {
             $payload = [
                 'name' => $data['name'] ?? $user->name,
                 'email' => $data['email'] ?? $user->email,
@@ -157,16 +197,40 @@ class UserController extends Controller
             if (array_key_exists('operation_pin', $data)) {
                 $payload['operation_pin'] = $data['operation_pin'] !== null && $data['operation_pin'] !== '' ? $data['operation_pin'] : null;
             }
-            if ($authUser && $authUser->hasRole('super-admin') && array_key_exists('branch_id', $data)) {
-                $payload['branch_id'] = $data['branch_id'];
+            
+            // Super Admin pode alterar filiais
+            if ($authUser && $authUser->hasRole('super-admin')) {
+                // Atualiza branch_id (compatibilidade)
+                if (array_key_exists('branch_id', $data)) {
+                    $payload['branch_id'] = $data['branch_id'];
+                }
+                
+                // Atualiza múltiplas filiais se enviado
+                if ($request->filled('branch_ids')) {
+                    $branchIds = $request->input('branch_ids');
+                    $primaryBranchId = $request->filled('primary_branch_id') 
+                        ? (int) $request->input('primary_branch_id')
+                        : ($branchIds[0] ?? null);
+                    
+                    // Sincroniza filiais na tabela pivot
+                    $pivotData = [];
+                    foreach ($branchIds as $branchId) {
+                        $pivotData[$branchId] = ['is_primary' => $branchId === $primaryBranchId];
+                    }
+                    $user->branches()->sync($pivotData);
+                    
+                    // Atualiza branch_id para a primária
+                    $payload['branch_id'] = $primaryBranchId;
+                }
             }
+            
             $user->update($payload);
             if (isset($data['role'])) {
                 $user->syncRoles([$data['role']]);
             }
         });
 
-        $user->refresh()->load('roles', 'branch');
+        $user->refresh()->load('roles', 'branch', 'branches');
 
         return response()->json(new UserResource($user));
     }
@@ -177,10 +241,18 @@ class UserController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $user = $this->branchScope()->findOrFail((int) $id);
+        $authUser = auth()->user();
 
-        if ($user->id === auth()->id()) {
+        if ($user->id === $authUser->id) {
             throw ValidationException::withMessages([
                 'user' => ['Não é permitido excluir o próprio usuário.'],
+            ]);
+        }
+
+        // Owner NÃO pode excluir Super-Admin
+        if ($authUser && $authUser->hasRole('owner') && $user->hasRole('super-admin')) {
+            throw ValidationException::withMessages([
+                'user' => ['Gestor(a) Geral não pode excluir Super Admin.'],
             ]);
         }
 

@@ -33,6 +33,13 @@ class UserResource extends JsonResource
                 'id' => $this->branch->id,
                 'name' => $this->branch->name,
             ] : null),
+            'branches' => $this->whenLoaded('branches', fn () => $this->branches->map(fn ($branch) => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'is_primary' => $branch->pivot->is_primary ?? false,
+            ])),
+            'branch_ids' => $this->whenLoaded('branches', fn () => $this->branches->pluck('id')->toArray()),
+            'primary_branch_id' => $this->whenLoaded('branches', fn () => $this->branches->where('pivot.is_primary', true)->first()?->id),
         ];
     }
 }

@@ -25,6 +25,20 @@ export const useUserStore = defineStore('user', {
         this.loading = false;
       }
     },
+    async fetchUser(id) {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const response = await api.get(`/users/${id}`);
+        return response.data.data ?? response.data;
+      } catch (err) {
+        this.error = err.response?.data?.message ?? 'Erro ao carregar usuário';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
     async createUser(payload) {
       this.loading = true;
       this.error = null;

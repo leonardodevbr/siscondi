@@ -210,6 +210,94 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         // ========================================
+        // ROLE: OWNER (Gestor Geral)
+        // Mesmo nível do Gerente, mas com acesso a TODAS as filiais
+        // NÃO pode excluir Super-Admin
+        // ========================================
+        $ownerRole = Role::firstOrCreate(['name' => 'owner']);
+        $ownerRole->syncPermissions([
+            // Usuários (completo, exceto super-admin)
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.delete',
+            
+            // Produtos (completo)
+            'products.view',
+            'products.create',
+            'products.edit',
+            'products.delete',
+            'products.import',
+            'products.update',
+            
+            // Estoque (completo)
+            'stock.view',
+            'stock.entry',
+            'stock.adjust',
+            
+            // PDV (completo)
+            'pos.access',
+            'pos.discount',
+            
+            // Financeiro (completo)
+            'financial.view',
+            'financial.manage',
+            
+            // Relatórios (completo)
+            'reports.view',
+            'reports.export',
+            
+            // Marketing (completo)
+            'marketing.manage',
+            'marketing.coupons',
+            
+            // Clientes (completo)
+            'customers.view',
+            'customers.create',
+            'customers.edit',
+            'customers.delete',
+            
+            // Fornecedores (completo)
+            'suppliers.view',
+            'suppliers.create',
+            'suppliers.edit',
+            'suppliers.delete',
+            
+            // Categorias (completo)
+            'categories.view',
+            'categories.create',
+            'categories.edit',
+            'categories.delete',
+            
+            // Filiais (completo)
+            'branches.view',
+            'branches.create',
+            'branches.edit',
+            'branches.delete',
+            
+            // Despesas (completo)
+            'expenses.view',
+            'expenses.create',
+            'expenses.edit',
+            'expenses.delete',
+            'expenses.pay',
+            
+            // Vendas (completo)
+            'sales.view',
+            'sales.create',
+            'sales.edit',
+            'sales.cancel',
+            
+            // Configurações básicas
+            'settings.manage',
+            
+            // ❌ NÃO TEM: Configurações críticas (apenas super-admin)
+            // 'settings.system',
+            // 'settings.integrations',
+            // 'settings.permissions',
+        ]);
+
+        // ========================================
         // ROLE: SUPER-ADMIN
         // Tem TODAS as permissões via Gate (bypass no AppServiceProvider)
         // ========================================

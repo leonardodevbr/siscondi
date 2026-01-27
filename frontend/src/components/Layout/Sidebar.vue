@@ -68,7 +68,7 @@ const menuGroups = computed(() => {
       title: 'Admin',
       items: [
         { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon, permission: 'branches.view' },
-        { name: 'Usuários', to: { name: 'users.index' }, icon: UsersIcon, permission: 'users.view' },
+        { name: 'Usuários', to: { name: 'users' }, icon: UsersIcon, permission: 'users.view' },
         { name: 'Cupons', to: { name: 'coupons' }, icon: TicketIcon, permission: 'marketing.coupons' },
         { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: 'settings.manage' },
       ],

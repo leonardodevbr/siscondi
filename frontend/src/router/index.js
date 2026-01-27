@@ -20,6 +20,7 @@ import CouponForm from '@/views/Coupons/Form.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import BranchesIndex from '@/views/Branches/Index.vue';
 import UsersIndex from '@/views/Users/Index.vue';
+import UserForm from '@/views/Users/UserForm.vue';
 import MovementsIndex from '@/views/Inventory/MovementsIndex.vue';
 
 const routes = [
@@ -137,8 +138,20 @@ const routes = [
       },
       {
         path: 'users',
-        name: 'users.index',
+        name: 'users',
         component: UsersIndex,
+        meta: { roles: ['super-admin', 'manager'] },
+      },
+      {
+        path: 'users/new',
+        name: 'users.form',
+        component: UserForm,
+        meta: { roles: ['super-admin', 'manager'] },
+      },
+      {
+        path: 'users/:id/edit',
+        name: 'users.form.edit',
+        component: UserForm,
         meta: { roles: ['super-admin', 'manager'] },
       },
       {
