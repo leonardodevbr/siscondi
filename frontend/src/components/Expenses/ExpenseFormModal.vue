@@ -4,10 +4,9 @@
       <div
         v-if="isOpen"
         class="fixed inset-0 z-50 overflow-y-auto"
-        @click.self="close"
       >
         <div class="flex min-h-screen items-center justify-center p-4">
-          <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
+          <div class="fixed inset-0 bg-black/50 transition-opacity" @click="close"></div>
           
           <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full">
             <!-- Header -->
@@ -41,6 +40,30 @@
                 >
               </div>
 
+              <!-- Toggle: Despesa Fixa/Futura -->
+              <div v-if="!expense" class="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg border border-slate-200">
+                <label class="text-sm font-medium text-slate-700">
+                  Despesa Fixa/Futura
+                </label>
+                <button
+                  type="button"
+                  @click.prevent="hasSchedule = !hasSchedule"
+                  :class="[
+                    'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                    hasSchedule ? 'bg-blue-600' : 'bg-slate-300'
+                  ]"
+                  role="switch"
+                  :aria-checked="hasSchedule"
+                >
+                  <span
+                    :class="[
+                      'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                      hasSchedule ? 'translate-x-4' : 'translate-x-0'
+                    ]"
+                  ></span>
+                </button>
+              </div>
+
               <!-- Categoria -->
               <div>
                 <SearchableSelect
@@ -56,19 +79,23 @@
                 <label class="block text-sm font-medium text-slate-700 mb-1">
                   Valor <span class="text-red-500">*</span>
                 </label>
-                <input
-                  v-model="form.amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  placeholder="0,00"
-                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
+                <div class="relative flex items-center">
+                  <span class="absolute left-3 text-sm text-slate-500 pointer-events-none">R$</span>
+                  <input
+                    v-model="displayAmount"
+                    type="text"
+                    inputmode="numeric"
+                    required
+                    placeholder="0,00"
+                    @input="handleAmountInput"
+                    @blur="formatAmountOnBlur"
+                    class="w-full rounded-md border border-slate-300 pl-11 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                </div>
               </div>
 
-              <!-- Data de Vencimento -->
-              <div>
+              <!-- Data de Vencimento (se toggle ativo) -->
+              <div v-if="hasSchedule || expense">
                 <label class="block text-sm font-medium text-slate-700 mb-1">
                   Data de Vencimento <span class="text-red-500">*</span>
                 </label>
@@ -78,6 +105,29 @@
                   required
                   class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
+              </div>
+
+              <!-- Forma de Pagamento (se toggle desativado) -->
+              <div v-if="!hasSchedule && !expense" class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">
+                  Forma de Pagamento <span class="text-red-500">*</span>
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label
+                    v-for="method in paymentMethods"
+                    :key="method.value"
+                    class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+                    :class="{ 'border-blue-500 bg-blue-50': paymentMethod === method.value }"
+                  >
+                    <input
+                      v-model="paymentMethod"
+                      type="radio"
+                      :value="method.value"
+                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                    >
+                    <span class="ml-2 text-sm font-medium text-slate-900">{{ method.label }}</span>
+                  </label>
+                </div>
               </div>
 
               <!-- Botões -->
@@ -136,6 +186,9 @@ const form = ref({
   expense_category_id: null,
 });
 
+const displayAmount = ref('');
+const hasSchedule = ref(false);
+const paymentMethod = ref('');
 const submitting = ref(false);
 
 const categoryOptions = computed(() => {
@@ -144,6 +197,42 @@ const categoryOptions = computed(() => {
     label: cat.name,
   }));
 });
+
+const paymentMethods = [
+  { value: 'money', label: 'Dinheiro' },
+  { value: 'pix', label: 'PIX' },
+  { value: 'debit_card', label: 'Débito' },
+  { value: 'credit_card', label: 'Crédito' },
+];
+
+const handleAmountInput = (event) => {
+  let value = event.target.value;
+  
+  // Remove tudo exceto dígitos
+  value = value.replace(/\D/g, '');
+  
+  // Converte para número e divide por 100 (centavos)
+  const numValue = parseInt(value || '0') / 100;
+  
+  // Atualiza o valor do form (para envio)
+  form.value.amount = numValue.toFixed(2);
+  
+  // Formata para exibição
+  displayAmount.value = numValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const formatAmountOnBlur = () => {
+  if (form.value.amount) {
+    const numValue = parseFloat(form.value.amount);
+    displayAmount.value = numValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+};
 
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
@@ -155,6 +244,12 @@ watch(() => props.isOpen, (isOpen) => {
         due_date: props.expense.due_date,
         expense_category_id: props.expense.category?.id || null,
       };
+      displayAmount.value = parseFloat(props.expense.amount).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      hasSchedule.value = false;
+      paymentMethod.value = '';
     } else {
       // Criação
       form.value = {
@@ -163,20 +258,45 @@ watch(() => props.isOpen, (isOpen) => {
         due_date: '',
         expense_category_id: null,
       };
+      displayAmount.value = '';
+      hasSchedule.value = false;
+      paymentMethod.value = '';
     }
   }
 });
 
 const handleSubmit = async () => {
   try {
+    // Validação: Se não tem agendamento, precisa escolher forma de pagamento
+    if (!hasSchedule.value && !paymentMethod.value && !props.expense) {
+      toast.warning('Selecione a forma de pagamento');
+      return;
+    }
+    
     submitting.value = true;
+    
+    const payload = { ...form.value };
+    
+    // Se não tem agendamento, usa a data de hoje
+    if (!hasSchedule.value && !props.expense) {
+      payload.due_date = new Date().toISOString().split('T')[0];
+    }
     
     if (props.expense) {
       // Editar
-      await api.put(`/expenses/${props.expense.id}`, form.value);
+      await api.put(`/expenses/${props.expense.id}`, payload);
     } else {
       // Criar
-      await api.post('/expenses', form.value);
+      const response = await api.post('/expenses', payload);
+      
+      // Se não tem agendamento, paga automaticamente
+      if (!hasSchedule.value) {
+        const expenseId = response.data.id;
+        await api.post(`/expenses/${expenseId}/pay`, {
+          payment_method: paymentMethod.value,
+        });
+        toast.success('Despesa criada e paga com sucesso!');
+      }
     }
     
     emit('success');
