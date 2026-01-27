@@ -635,10 +635,25 @@ function startPixPolling() {
         pixPendingSaleId.value = null;
         pixQrCode.value = '';
         pixQrCodeBase64.value = '';
+        
+        toast.success('Pagamento PIX confirmado!');
+        
+        // Busca os dados completos da venda para emitir o comprovante
+        try {
+          const { data: saleData } = await api.get(`sales/${sid}`);
+          const sale = saleData?.data ?? saleData;
+          
+          // Emite o comprovante
+          openReceiptWindow(sale);
+          
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (err) {
+          console.error('Erro ao buscar dados da venda para comprovante:', err);
+        }
+        
         cartStore.resetState();
         emit('finish', { id: sid, status: 'completed' });
         emit('close');
-        toast.success('Pagamento PIX confirmado!');
       }
     } catch (_) {}
   }, 3000);
@@ -825,42 +840,58 @@ function confirmAmountAndShowMethods() {
   selectedMethodIndex.value = 0;
 }
 
-function selectMethod(method) {
+async function selectMethod(method) {
   methodSelected.value = true;
   const gateway = settingsStore.activePaymentGateway;
+  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
 
-  if (method === 'cash' || method === 'pix') {
-    newPayment.value.method = method;
+  // DINHEIRO: Adiciona direto e permite continuar
+  if (method === 'cash') {
+    newPayment.value.method = 'money';
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
     return;
   }
 
+  // CRÉDITO: Busca parcelas imediatamente
   if (method === 'credit_card') {
-    if (gateway === 'mercadopago_point') {
-      newPayment.value.method = 'point';
-      newPayment.value.cardType = null;
-      cardTypeSelected.value = true;
-      installmentsSelected.value = true;
-    } else {
-      newPayment.value.method = 'credit_card';
-      newPayment.value.cardType = 'credit';
-      cardTypeSelected.value = true;
-      installmentsSelected.value = false;
-      nextTick(() => fetchInstallmentOptions());
+    newPayment.value.method = 'credit_card';
+    newPayment.value.cardType = 'credit';
+    cardTypeSelected.value = true;
+    installmentsSelected.value = false;
+    
+    // Busca opções de parcelamento imediatamente
+    loadingInstallments.value = true;
+    try {
+      const { data } = await api.get('payments/simulate-installments', { params: { amount } });
+      installmentsFromApi.value = data.installments || [];
+      
+      if (installmentsFromApi.value.length === 0) {
+        toast.error('Erro ao buscar opções de parcelamento');
+        goBackToMethodList();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Erro ao buscar parcelas.');
+      goBackToMethodList();
+    } finally {
+      loadingInstallments.value = false;
     }
     return;
   }
 
+  // DÉBITO e PIX: Vai direto para confirmação (vai para maquininha ou gera QR Code)
   if (method === 'debit_card') {
-    if (gateway === 'mercadopago_point') {
-      newPayment.value.method = 'point';
-      newPayment.value.cardType = null;
-    } else {
-      newPayment.value.method = 'debit_card';
-    }
+    newPayment.value.method = 'debit_card';
     cardTypeSelected.value = true;
     installmentsSelected.value = true;
+    return;
+  }
+
+  if (method === 'pix') {
+    newPayment.value.method = 'pix';
+    cardTypeSelected.value = true;
+    installmentsSelected.value = true;
+    return;
   }
 }
 
@@ -1129,47 +1160,129 @@ async function confirmAddPayment() {
   }
 
   try {
-    let method;
-    if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'debit') {
-      method = 'debit_card';
-    } else if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit') {
-      method = 'credit_card';
-    } else if (newPayment.value.method === 'pix') {
-      method = 'pix';
-    } else if (newPayment.value.method === 'cash') {
-      method = 'money';
-    } else if (newPayment.value.method === 'point') {
-      method = 'point';
-    } else {
-      method = newPayment.value.method;
-    }
+    const method = newPayment.value.method;
+    const installments = newPayment.value.method === 'credit_card' ? newPayment.value.installments : 1;
 
-    const addResult = await cartStore.addPayment(
-      method,
-      finalAmount,
-      newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' ? newPayment.value.installments : 1
-    );
+    // Adiciona o pagamento ao carrinho
+    const addResult = await cartStore.addPayment(method, finalAmount, installments);
 
-    if (method === 'pix' && addResult?.can_finish) {
-      resetPaymentForm();
-      const result = await cartStore.finish();
-      const sale = result?.sale;
-      const status = sale?.status ?? '';
-      const hadPix = (sale?.payments || []).some((p) => (String(p.method || '')).toLowerCase() === 'pix');
-      if (sale?.id && (status === 'pending_payment' || status === 'PENDING_PAYMENT') && hadPix) {
-        await runPixQrFlow(sale.id);
+    // FLUXO: DINHEIRO
+    if (method === 'money') {
+      toast.success('Pagamento em dinheiro adicionado');
+      
+      // Se completou o pagamento, finaliza e emite comprovante
+      if (addResult?.can_finish) {
+        resetPaymentForm();
+        const result = await cartStore.finish();
+        if (result?.sale) {
+          openReceiptWindow(result.sale);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          emit('finish', result.sale);
+          emit('close');
+        }
         return;
       }
-      toast.warning('PIX não disponível ou venda já finalizada.');
+      
+      // Se ainda falta pagar, volta para selecionar outro método
+      resetPaymentForm();
+      nextTick(() => checkAndShowPaymentInput());
       return;
     }
 
+    // FLUXO: CRÉDITO (com parcelas)
+    if (method === 'credit_card') {
+      toast.success(`Pagamento em ${installments}x adicionado`);
+      
+      // Se completou o pagamento, finaliza e aguarda confirmação na maquininha
+      if (addResult?.can_finish) {
+        resetPaymentForm();
+        const result = await cartStore.finish();
+        
+        // Verifica se tem Point pendente
+        if (result?.pending_point && result?.sale?.id) {
+          pointPendingSale.value = result.sale;
+          pointStep.value = 'select_device';
+          // ... lógica Point existente
+          return;
+        }
+        
+        // Se não é Point, emite comprovante
+        if (result?.sale) {
+          openReceiptWindow(result.sale);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          emit('finish', result.sale);
+          emit('close');
+        }
+        return;
+      }
+      
+      resetPaymentForm();
+      nextTick(() => checkAndShowPaymentInput());
+      return;
+    }
+
+    // FLUXO: DÉBITO
+    if (method === 'debit_card') {
+      toast.success('Pagamento em débito adicionado');
+      
+      if (addResult?.can_finish) {
+        resetPaymentForm();
+        const result = await cartStore.finish();
+        
+        // Verifica se tem Point pendente
+        if (result?.pending_point && result?.sale?.id) {
+          pointPendingSale.value = result.sale;
+          pointStep.value = 'select_device';
+          // ... lógica Point existente
+          return;
+        }
+        
+        if (result?.sale) {
+          openReceiptWindow(result.sale);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          emit('finish', result.sale);
+          emit('close');
+        }
+        return;
+      }
+      
+      resetPaymentForm();
+      nextTick(() => checkAndShowPaymentInput());
+      return;
+    }
+
+    // FLUXO: PIX
+    if (method === 'pix') {
+      if (addResult?.can_finish) {
+        resetPaymentForm();
+        const result = await cartStore.finish();
+        const sale = result?.sale;
+        const status = sale?.status ?? '';
+        const hadPix = (sale?.payments || sale?.sale_payments || []).some((p) => 
+          (String(p.method || '')).toLowerCase() === 'pix'
+        );
+        
+        // Gera QR Code e aguarda confirmação
+        if (sale?.id && (status === 'pending_payment' || status === 'PENDING_PAYMENT') && hadPix) {
+          await runPixQrFlow(sale.id);
+          // Após confirmar PIX, o comprovante será emitido no startPixPolling quando approved
+          return;
+        }
+        
+        toast.warning('PIX não disponível ou venda já finalizada.');
+        return;
+      }
+      
+      resetPaymentForm();
+      nextTick(() => checkAndShowPaymentInput());
+      return;
+    }
+
+    // Outros métodos
     resetPaymentForm();
     const stillRemaining = parseFloat(remainingAmount.value);
     if (stillRemaining > 0.01) {
-      nextTick(() => {
-        checkAndShowPaymentInput();
-      });
+      nextTick(() => checkAndShowPaymentInput());
     }
   } catch (error) {
     console.error('Erro ao adicionar pagamento:', error);
