@@ -49,7 +49,7 @@ jobs:
 
       - name: Copiar conteúdo de dist para raiz do frontend
         run: |
-          cp -r frontend/dist/* frontend/
+          cp -r frontend/dist/. frontend/
           rm -rf frontend/dist
 
       - name: Remover arquivos do frontend não necessários em produção
