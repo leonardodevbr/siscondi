@@ -12,7 +12,6 @@ class SettingSeeder extends Seeder
     public function run(): void
     {
         Settings::set('store_name', 'Adonai Boutique', 'string', 'general');
-        Settings::set('store_email', 'venda@loja.local', 'string', 'general');
         Settings::set('payment_gateway', 'pix_dev', 'string', 'payment');
         Settings::set('enable_cash_register', true, 'boolean', 'general');
         

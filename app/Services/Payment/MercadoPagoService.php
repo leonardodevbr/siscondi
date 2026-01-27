@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\Setting;
 use MercadoPago\Client\Common\RequestOptions;
 use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Exceptions\MPApiException;
 use MercadoPago\MercadoPagoConfig;
 
 /**
@@ -31,13 +32,15 @@ class MercadoPagoService
         MercadoPagoConfig::setAccessToken($token);
 
         $amount = (float) $sale->final_amount;
-        $payerEmail = $this->resolvePayerEmail($sale);
 
+        // Para PIX, o payer.email é obrigatório mas pode ser qualquer e-mail válido.
+        // O pagamento é creditado na conta autenticada (mp_access_token), não no e-mail do payer.
         $request = [
             'transaction_amount' => round($amount, 2),
             'payment_method_id' => 'pix',
+            'description' => 'Venda #' . $sale->id,
             'payer' => [
-                'email' => $payerEmail,
+                'email' => 'leo.nun.o@gmail.com',
             ],
             'external_reference' => (string) $sale->id,
         ];
@@ -48,7 +51,23 @@ class MercadoPagoService
         ]);
 
         $client = new PaymentClient();
-        $payment = $client->create($request, $requestOptions);
+
+        try {
+            $payment = $client->create($request, $requestOptions);
+        } catch (MPApiException $e) {
+            $response = $e->getApiResponse();
+            $content = $response->getContent();
+            $decoded = is_string($content) ? json_decode($content, true) : (is_array($content) ? $content : null);
+            $message = $decoded['message'] ?? null;
+            $cause = $decoded['cause'] ?? null;
+            $firstCause = is_array($cause) && isset($cause[0]) ? $cause[0] : null;
+            $detail = is_array($firstCause) ? ($firstCause['description'] ?? $firstCause['message'] ?? null) : null;
+            $userMsg = $detail ?? $message ?? $e->getMessage();
+            if (is_string($userMsg) && $userMsg !== '') {
+                throw new \RuntimeException($userMsg);
+            }
+            throw new \RuntimeException('Erro ao gerar PIX no Mercado Pago. Verifique o token e as credenciais em Configurações > Integrações.');
+        }
 
         $poi = $payment->point_of_interaction ?? null;
         $txData = is_object($poi) && isset($poi->transaction_data) ? $poi->transaction_data : null;
@@ -92,13 +111,9 @@ class MercadoPagoService
 
     private function resolvePayerEmail(Sale $sale): string
     {
-        $email = $sale->customer?->email ?? null;
-        if (is_string($email) && $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $email;
-        }
-
-        $store = (string) (Setting::get('store_email') ?? 'venda@loja.local');
-
-        return $store !== '' ? $store : 'venda@loja.local';
+        // Para PIX, o payer.email é apenas um campo obrigatório da API do MP.
+        // O pagamento é creditado na conta autenticada (mp_access_token), não no e-mail do payer.
+        // Usamos e-mail genérico válido para qualquer venda.
+        return 'pagamento@mercadopago.com';
     }
 }

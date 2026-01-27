@@ -1,5 +1,5 @@
 <template>
-  <Modal :is-open="isOpen" :title="pixStep === 'qr' ? 'Pagamento PIX' : 'Finalizar Venda'" @close="pixStep === 'qr' ? cancelPixFlow() : handleModalClose()">
+  <Modal :is-open="isOpen" :title="pixStep === 'qr' ? 'Pagamento PIX' : (pixStep === 'error' ? 'Erro ao Gerar PIX' : 'Finalizar Venda')" @close="(pixStep === 'qr' || pixStep === 'error') ? cancelPixFlow() : handleModalClose()">
     <div v-if="pixStep === 'qr'" class="space-y-4">
       <p class="text-sm text-slate-600">Escaneie o QR Code ou copie o código Pix Copia e Cola para pagar.</p>
       <div class="flex flex-col items-center gap-4">
@@ -23,6 +23,23 @@
         </div>
         <p class="text-xs text-slate-500">Aguardando confirmação do pagamento...</p>
         <Button variant="outline" @click="cancelPixFlow">Fechar</Button>
+      </div>
+    </div>
+    <div v-else-if="pixStep === 'error'" class="space-y-4">
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+        <p class="text-sm font-medium text-red-800">Não foi possível gerar o QR Code PIX.</p>
+        <p class="mt-2 text-xs text-red-700">A venda está aguardando pagamento. Você pode:</p>
+        <ul class="mt-2 ml-4 list-disc text-xs text-red-700">
+          <li>Tentar gerar o PIX novamente</li>
+          <li>Adicionar outro método de pagamento</li>
+          <li>Cancelar a venda manualmente no sistema</li>
+        </ul>
+      </div>
+      <div class="flex justify-end gap-2">
+        <Button variant="outline" @click="cancelPixFlow">Fechar</Button>
+        <Button variant="primary" @click="runPixQrFlow(pixPendingSaleId)" :disabled="!pixPendingSaleId || pixGenerating">
+          {{ pixGenerating ? 'Gerando...' : 'Tentar Novamente' }}
+        </Button>
       </div>
     </div>
     <div v-else class="space-y-4">
@@ -282,7 +299,7 @@
           :disabled="!canFinish"
           @click="onFinalizeClick"
         >
-          Finalizar Venda (F10)
+          {{ isPixOnlyAndFullyPaid ? 'Gerar QR Code PIX (F10)' : 'Finalizar Venda (F10)' }}
         </Button>
       </div>
     </div>
@@ -407,6 +424,12 @@ const remainingAmount = computed(() => {
 });
 const canFinish = computed(() => cartStore.canFinish);
 const payments = computed(() => cartStore.payments);
+
+const isPixOnlyAndFullyPaid = computed(() => {
+  if (!canFinish.value || !payments.value?.length) return false;
+  const onlyPix = payments.value.every((p) => (String(p.method || '')).toLowerCase() === 'pix');
+  return onlyPix && remainingAmount.value <= 0.01;
+});
 
 const change = computed(() => {
   if (newPayment.value.method === 'cash' && newPayment.value.amount > 0) {
@@ -572,10 +595,10 @@ async function handleFinish() {
           pixStep.value = 'qr';
           startPixPolling();
         } catch (e) {
-          toast.warning(e?.response?.data?.message || 'PIX não disponível. Venda registrada.');
-          cartStore.resetState();
-          emit('finish', result?.sale ?? null);
-          emit('close');
+          toast.error(e?.response?.data?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
+          // NÃO resetar nem fechar - venda está PENDING_PAYMENT
+          pixStep.value = 'error';
+          pixPendingSaleId.value = result?.sale?.id ?? null;
         } finally {
           pixGenerating.value = false;
           isFinishing.value = false;
@@ -938,6 +961,26 @@ function focusAmountInput() {
   });
 }
 
+async function runPixQrFlow(saleId) {
+  pixGenerating.value = true;
+  try {
+    const { data } = await api.post('pos/pix/generate', { sale_id: saleId });
+    pixPendingSaleId.value = saleId;
+    pixQrCode.value = data.qr_code || '';
+    pixQrCodeBase64.value = data.qr_code_base64 || '';
+    pixStep.value = 'qr';
+    startPixPolling();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || e?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
+    // NÃO resetar o cart nem fechar - a venda está em PENDING_PAYMENT e pode ser paga depois
+    // O usuário pode tentar gerar novamente ou adicionar outro pagamento
+    pixStep.value = 'error';
+    pixPendingSaleId.value = saleId;
+  } finally {
+    pixGenerating.value = false;
+  }
+}
+
 async function confirmAddPayment() {
   let finalAmount = newPayment.value.amount;
   
@@ -965,11 +1008,25 @@ async function confirmAddPayment() {
       method = newPayment.value.method;
     }
 
-    await cartStore.addPayment(
+    const addResult = await cartStore.addPayment(
       method,
       finalAmount,
       newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' ? newPayment.value.installments : 1
     );
+
+    if (method === 'pix' && addResult?.can_finish) {
+      resetPaymentForm();
+      const result = await cartStore.finish();
+      const sale = result?.sale;
+      const status = sale?.status ?? '';
+      const hadPix = (sale?.payments || []).some((p) => (String(p.method || '')).toLowerCase() === 'pix');
+      if (sale?.id && (status === 'pending_payment' || status === 'PENDING_PAYMENT') && hadPix) {
+        await runPixQrFlow(sale.id);
+        return;
+      }
+      toast.warning('PIX não disponível ou venda já finalizada.');
+      return;
+    }
 
     resetPaymentForm();
     const stillRemaining = parseFloat(remainingAmount.value);
@@ -980,6 +1037,7 @@ async function confirmAddPayment() {
     }
   } catch (error) {
     console.error('Erro ao adicionar pagamento:', error);
+    toast.error(error?.message ?? 'Erro ao adicionar pagamento.');
   }
 }
 
