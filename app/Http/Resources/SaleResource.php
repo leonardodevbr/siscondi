@@ -50,7 +50,7 @@ class SaleResource extends JsonResource
                     'product' => [
                         'id' => $item->product->id,
                         'name' => $item->product->name,
-                        'sku' => $item->product->sku,
+                        'sku' => $item->productVariant->sku,
                     ],
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
