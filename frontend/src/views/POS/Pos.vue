@@ -580,16 +580,18 @@ async function confirmCancellation(codeOrItem) {
         </div>
         <div style="margin-bottom: 0;">
           <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input type="text" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0;" tabindex="-1" />
           <input 
             type="password" 
             id="swal-op-password" 
             name="manager_auth_password"
             placeholder="Senha" 
-            autocomplete="new-password" 
+            autocomplete="off" 
+            readonly
+            onfocus="this.removeAttribute('readonly'); this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
             spellcheck="false"
             style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
-            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
           />
         </div>
       </div>`,
@@ -1027,16 +1029,18 @@ async function handleRemoveManualDiscount() {
         </div>
         <div style="margin-bottom: 0;">
           <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input type="text" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0;" tabindex="-1" />
           <input 
             type="password" 
             id="swal-op-password" 
             name="manager_auth_password"
             placeholder="Senha" 
-            autocomplete="new-password" 
+            autocomplete="off" 
+            readonly
+            onfocus="this.removeAttribute('readonly'); this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
             spellcheck="false"
             style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
-            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
           />
         </div>
       </div>`,
@@ -1325,16 +1329,18 @@ async function requestBalanceAccess() {
         </div>
         <div style="margin-bottom: 0;">
           <label for="swal-op-password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Senha de operação</label>
+          <input type="text" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0;" tabindex="-1" />
           <input 
             type="password" 
             id="swal-op-password" 
             name="manager_auth_password"
             placeholder="Senha" 
-            autocomplete="new-password" 
+            autocomplete="off" 
+            readonly
+            onfocus="this.removeAttribute('readonly'); this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
             spellcheck="false"
             style="width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-            onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
-            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';"
           />
         </div>
       </div>`,
