@@ -93,7 +93,12 @@
                         <tr v-for="item in sale.items" :key="item.id">
                           <td class="px-4 py-3 text-sm text-slate-900">
                             <div class="font-medium">{{ item.product.name }}</div>
-                            <div class="text-xs text-slate-500">SKU: {{ item.product.sku }}</div>
+                            <div class="flex items-center gap-2 mt-1">
+                              <span class="text-xs text-slate-500">SKU: {{ item.product.sku }}</span>
+                              <span v-if="item.variant?.size || item.variant?.color" class="text-xs text-slate-400">|</span>
+                              <span v-if="item.variant?.size" class="text-xs font-medium text-slate-600">{{ item.variant.size }}</span>
+                              <span v-if="item.variant?.color" class="text-xs font-medium text-slate-600">{{ item.variant.color }}</span>
+                            </div>
                           </td>
                           <td class="px-4 py-3 text-center text-sm text-slate-700">{{ item.quantity }}</td>
                           <td class="px-4 py-3 text-right text-sm text-slate-700">{{ formatCurrency(item.unit_price) }}</td>

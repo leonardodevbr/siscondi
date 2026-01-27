@@ -39,17 +39,13 @@
 
       <!-- Status -->
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-        <select
+        <SearchableSelect
           v-model="filters.status"
-          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          @change="applyFilters"
-        >
-          <option value="">Todos</option>
-          <option value="completed">Concluída</option>
-          <option value="pending_payment">Aguardando Pagamento</option>
-          <option value="canceled">Cancelada</option>
-        </select>
+          label="Status"
+          :options="statusOptions"
+          placeholder="Todos"
+          @update:model-value="applyFilters"
+        />
       </div>
 
       <!-- Data -->
@@ -263,6 +259,7 @@ import api from '@/services/api';
 import { useToast } from 'vue-toastification';
 import Swal from 'sweetalert2';
 import Button from '@/components/Common/Button.vue';
+import SearchableSelect from '@/components/Common/SearchableSelect.vue';
 import SaleDetailsDrawer from '@/components/Sales/SaleDetailsDrawer.vue';
 
 const toast = useToast();
@@ -289,6 +286,13 @@ const filters = ref({
 
 const selectedSale = ref(null);
 const showDetailsModal = ref(false);
+
+const statusOptions = [
+  { value: '', label: 'Todos' },
+  { value: 'completed', label: 'Concluída' },
+  { value: 'pending_payment', label: 'Aguardando Pagamento' },
+  { value: 'canceled', label: 'Cancelada' },
+];
 
 let searchTimeout = null;
 

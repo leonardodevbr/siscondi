@@ -45,12 +45,32 @@ class SaleResource extends JsonResource
             'status' => $this->status->value,
             'note' => $this->note,
             'items' => $this->items->map(function ($item) {
+                $variant = $item->productVariant;
+                $attributes = $variant->attributes ?? [];
+                
+                // Extrair tamanho e cor dos atributos
+                $size = null;
+                $color = null;
+                
+                foreach ($attributes as $key => $value) {
+                    $keyLower = strtolower(trim((string) $key));
+                    if (in_array($keyLower, ['tamanho', 'size', 'tam'])) {
+                        $size = $value;
+                    } elseif (in_array($keyLower, ['cor', 'color', 'colour'])) {
+                        $color = $value;
+                    }
+                }
+                
                 return [
                     'id' => $item->id,
                     'product' => [
                         'id' => $item->product->id,
                         'name' => $item->product->name,
-                        'sku' => $item->productVariant->sku,
+                        'sku' => $variant->sku,
+                    ],
+                    'variant' => [
+                        'size' => $size,
+                        'color' => $color,
                     ],
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
