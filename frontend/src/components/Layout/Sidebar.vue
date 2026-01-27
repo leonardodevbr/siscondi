@@ -33,6 +33,12 @@ const authStore = useAuthStore();
 
 /** Item visível se não tem permission (ex.: Dashboard) ou se user pode (can) a permissão. */
 function itemVisible(item) {
+  // Verifica role específica (ex.: apenas super-admin)
+  if (item.role) {
+    return authStore.hasRole(item.role);
+  }
+  
+  // Verifica permissão
   if (item.permission == null || item.permission === '') return true;
   return authStore.can(item.permission);
 }
@@ -67,10 +73,10 @@ const menuGroups = computed(() => {
     {
       title: 'Admin',
       items: [
-        { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon, permission: 'branches.view' },
+        { name: 'Filiais / Lojas', to: { name: 'branches.index' }, icon: BuildingStorefrontIcon, permission: null, role: 'super-admin' },
         { name: 'Usuários', to: { name: 'users' }, icon: UsersIcon, permission: 'users.view' },
         { name: 'Cupons', to: { name: 'coupons' }, icon: TicketIcon, permission: 'marketing.coupons' },
-        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: 'settings.manage' },
+        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: null, role: 'super-admin' },
       ],
     },
   ];
