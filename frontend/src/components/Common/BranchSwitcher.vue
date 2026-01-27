@@ -67,7 +67,7 @@ function toggleDropdown() {
 }
 
 function selectBranch(branch) {
-  auth.setBranch(branch);
+  appStore.setBranch(branch);
   isOpen.value = false;
 }
 

@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
     /**
-     * Branch ID efetivo: para super-admin usa X-Branch-ID do header; senão usa branch_id do usuário.
+     * Branch ID efetivo: para super-admin/owner usa X-Branch-ID do header; senão usa branch_id do usuário.
      *
      * @throws ValidationException quando não houver filial identificada
      */
@@ -28,7 +28,8 @@ class UserController extends Controller
             throw ValidationException::withMessages(['branch' => [$message]]);
         }
 
-        if ($user->hasRole('super-admin')) {
+        // Super Admin e Owner usam X-Branch-ID do header
+        if ($user->hasRole(['super-admin', 'owner'])) {
             $headerId = request()->header('X-Branch-ID');
             if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
                 $id = (int) $headerId;
@@ -47,12 +48,29 @@ class UserController extends Controller
     }
 
     /**
-     * Scope de usuários pela filial do logado. Super-admin usa filial do header X-Branch-ID.
+     * Scope de usuários pela filial.
+     * Sempre filtra pela filial do header (X-Branch-ID) quando disponível.
+     * Caso contrário, usa a filial do usuário logado.
      */
     private function branchScope(): \Illuminate\Database\Eloquent\Builder
     {
+        $user = auth()->user();
+        
+        // Tenta usar X-Branch-ID do header primeiro
+        $headerId = request()->header('X-Branch-ID');
+        if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
+            $branchId = (int) $headerId;
+            
+            // Verifica se o usuário tem acesso a essa filial
+            if ($user && ($user->hasRole(['super-admin', 'owner']) || $user->hasAccessToBranch($branchId))) {
+                if (Branch::whereKey($branchId)->exists()) {
+                    return User::query()->where('branch_id', $branchId);
+                }
+            }
+        }
+        
+        // Fallback: usa a filial do usuário logado
         $branchId = $this->getEffectiveBranchId('Filial não identificada para listar usuários.');
-
         return User::query()->where('branch_id', $branchId);
     }
 
@@ -71,7 +89,7 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->orderBy('name')->paginate(15);
+        $users = $query->where('id', '!=', auth()->user()->id)->orderBy('name')->paginate(15);
 
         return response()->json(UserResource::collection($users));
     }
@@ -159,7 +177,7 @@ class UserController extends Controller
             $user = User::query()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
         } else {
             // Outros usuários: apenas da mesma filial
-            $user = $this->branchScope()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+            $user = $this->branchScope()->where('id', '!=', auth()->user()->id)->with('roles', 'branch', 'branches')->findOrFail((int) $id);
         }
 
         return response()->json(new UserResource($user));
