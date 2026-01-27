@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import { useToast } from 'vue-toastification';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const toast = useToast();
+const authStore = useAuthStore();
 
 const metrics = ref({
   sales_today: 0,
@@ -23,6 +25,23 @@ const loading = ref(true);
 const averageTicket = computed(() => {
   if (metrics.value.total_sales_count_today === 0) return 0;
   return metrics.value.sales_today / metrics.value.total_sales_count_today;
+});
+
+// Visibilidade por role
+const canViewFinancial = computed(() => {
+  return authStore.hasRole(['super-admin', 'owner', 'manager']);
+});
+
+const canViewExpenses = computed(() => {
+  return authStore.can('expenses.view');
+});
+
+const canViewInventory = computed(() => {
+  return authStore.can('stock.view') && !authStore.hasRole('seller');
+});
+
+const canViewTopProducts = computed(() => {
+  return authStore.hasRole(['super-admin', 'owner', 'manager']);
 });
 
 const fetchMetrics = async () => {
@@ -185,7 +204,7 @@ onMounted(() => {
       </div>
 
       <!-- Grid de 2 Colunas: Vendas + Estoque -->
-      <div class="grid gap-6 lg:grid-cols-2">
+      <div class="grid gap-6" :class="canViewInventory ? 'lg:grid-cols-2' : 'lg:grid-cols-1'">
         <!-- 🛒 VENDAS -->
         <div>
           <div class="flex items-center gap-2 mb-3">
@@ -222,7 +241,7 @@ onMounted(() => {
         </div>
 
         <!-- 📦 ESTOQUE - Produtos em Baixo Estoque -->
-        <div>
+        <div v-if="canViewInventory">
           <div class="flex items-center gap-2 mb-3">
             <svg class="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -277,7 +296,7 @@ onMounted(() => {
       </div>
 
       <!-- 🏆 TOP 5 PRODUTOS MAIS VENDIDOS -->
-      <div>
+      <div v-if="canViewTopProducts">
         <div class="flex items-center gap-2 mb-3">
           <svg class="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -336,7 +355,11 @@ onMounted(() => {
       </div>
 
       <!-- Ações Rápidas Adicionais -->
-      <div class="grid gap-3 sm:grid-cols-3">
+      <div class="grid gap-3" :class="{
+        'sm:grid-cols-1': !canViewExpenses && !canViewInventory,
+        'sm:grid-cols-2': (canViewExpenses || canViewInventory) && !(canViewExpenses && canViewInventory),
+        'sm:grid-cols-3': canViewExpenses && canViewInventory
+      }">
         <button
           @click="goToProducts"
           class="card p-4 text-left hover:shadow-md transition-shadow"
@@ -355,6 +378,7 @@ onMounted(() => {
         </button>
 
         <button
+          v-if="canViewExpenses"
           @click="goToExpenses"
           class="card p-4 text-left hover:shadow-md transition-shadow"
         >
@@ -372,6 +396,7 @@ onMounted(() => {
         </button>
 
         <button
+          v-if="canViewInventory"
           @click="goToInventory"
           class="card p-4 text-left hover:shadow-md transition-shadow"
         >
