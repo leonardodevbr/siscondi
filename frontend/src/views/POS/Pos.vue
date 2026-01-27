@@ -1211,6 +1211,7 @@ function handleOperationsMenuKeydown(e) {
   if (key === 'Escape') {
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation(); // Previne que ESC saia do fullscreen
     showOperationsMenu.value = false;
     return;
   }
@@ -1540,12 +1541,36 @@ function handleKeydown(e) {
   // Deixar SweetAlert2 tratar Enter (confirmar) e Escape (cancelar) quando um modal Swal estiver aberto
   if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) {
     if (key === 'Enter' || key === 'Escape') {
+      if (key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
       return;
     }
   }
 
   if (key === 'Escape') {
-    e.preventDefault();
+    // Verifica se há alguma operação ativa que deve ser fechada
+    const hasActiveOperation = 
+      showOperationsMenu.value ||
+      showBalanceModal.value ||
+      feedbackMessage.value ||
+      showHelpModal.value ||
+      showPriceCheckModal.value ||
+      showCustomerModal.value ||
+      showDiscountModal.value ||
+      showCloseRegisterModal.value ||
+      showCheckoutModal.value ||
+      (cartStore.saleStarted && (isCancellationMode.value || isSearchMode.value || searchQuery.value.trim()));
+    
+    // Se há operação ativa, sempre previne sair do fullscreen
+    if (hasActiveOperation) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }
+    
     if (showOperationsMenu.value) {
       showOperationsMenu.value = false;
       return;
@@ -1604,6 +1629,7 @@ function handleKeydown(e) {
         focusSearch();
       }
     }
+    // Se não há operação ativa, permite comportamento padrão (sair do fullscreen se quiser)
     return;
   }
 
@@ -1951,7 +1977,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState);
   document.removeEventListener('click', handleClickOutsideOperationsMenu);
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener('keydown', handleKeydown, true);
   window.removeEventListener('keydown', handleScanBufferKeydown, true);
   window.removeEventListener('keydown', handleReloadBlock, true);
   if (balanceVisibilityTimeout.value) clearTimeout(balanceVisibilityTimeout.value);
