@@ -8,12 +8,15 @@ use App\Actions\Sales\CreateSaleAction;
 use App\Enums\SaleStatus;
 use App\Exceptions\InvalidCouponException;
 use App\Exceptions\NoOpenCashRegisterException;
+use App\Exports\SalesExport;
 use App\Http\Requests\StoreSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SaleController extends Controller
 {
@@ -59,9 +62,78 @@ class SaleController extends Controller
             $query->where('user_id', $request->integer('user_id'));
         }
 
+        // Busca por ID
+        if ($request->has('id')) {
+            $query->where('id', $request->integer('id'));
+        }
+
+        // Busca por nome do cliente
+        if ($request->has('customer_name')) {
+            $searchTerm = $request->string('customer_name')->trim();
+            $query->whereHas('customer', function ($q) use ($searchTerm): void {
+                $q->where('name', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Filtro por data
+        if ($request->has('date')) {
+            $date = $request->string('date');
+            $query->whereDate('created_at', $date);
+        }
+
         $sales = $query->latest('created_at')->paginate(15);
 
         return SaleResource::collection($sales)->response();
+    }
+
+    /**
+     * Export sales to Excel.
+     */
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->authorize('pos.access');
+
+        $user = $request->user();
+
+        if (! $user->hasRole(['super-admin', 'manager'])) {
+            abort(403, 'Você não tem permissão para exportar vendas.');
+        }
+
+        $query = Sale::query()->with(['user', 'customer', 'branch', 'payments']);
+
+        // Aplicar mesmas regras de visibilidade
+        if ($user->hasRole('super-admin')) {
+            if ($request->has('branch_id')) {
+                $query->where('branch_id', $request->integer('branch_id'));
+            }
+        } elseif ($user->hasRole('manager')) {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        // Aplicar mesmos filtros
+        if ($request->has('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->has('id')) {
+            $query->where('id', $request->integer('id'));
+        }
+
+        if ($request->has('customer_name')) {
+            $searchTerm = $request->string('customer_name')->trim();
+            $query->whereHas('customer', function ($q) use ($searchTerm): void {
+                $q->where('name', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        if ($request->has('date')) {
+            $date = $request->string('date');
+            $query->whereDate('created_at', $date);
+        }
+
+        $sales = $query->latest('created_at')->get();
+
+        return Excel::download(new SalesExport($sales), 'vendas.xlsx');
     }
 
     /**

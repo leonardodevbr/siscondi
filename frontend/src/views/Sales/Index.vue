@@ -4,6 +4,62 @@
       <h1 class="text-2xl font-semibold text-slate-800">
         Vendas Realizadas
       </h1>
+      <Button v-if="authStore.hasRole(['super-admin', 'manager'])" variant="primary" @click="exportToExcel" :disabled="exporting">
+        {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
+      </Button>
+    </div>
+
+    <!-- Filtros e Busca -->
+    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <!-- Busca -->
+        <div class="lg:col-span-2">
+          <label class="block text-xs font-medium text-slate-700 mb-1">Buscar</label>
+          <input
+            v-model="filters.search"
+            type="text"
+            placeholder="ID da venda ou nome do cliente..."
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            @input="debouncedSearch"
+          >
+        </div>
+
+        <!-- Status -->
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Status</label>
+          <select
+            v-model="filters.status"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            @change="applyFilters"
+          >
+            <option value="">Todos</option>
+            <option value="completed">Concluída</option>
+            <option value="pending_payment">Aguardando Pagamento</option>
+            <option value="canceled">Cancelada</option>
+          </select>
+        </div>
+
+        <!-- Data -->
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Data</label>
+          <input
+            v-model="filters.date"
+            type="date"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            @change="applyFilters"
+          >
+        </div>
+      </div>
+
+      <!-- Botões de Ação -->
+      <div class="mt-4 flex items-center gap-2">
+        <Button variant="outline" size="sm" @click="clearFilters">
+          Limpar Filtros
+        </Button>
+        <span v-if="hasActiveFilters" class="text-xs text-slate-600">
+          {{ filteredCount }} resultado(s) encontrado(s)
+        </span>
+      </div>
     </div>
 
     <div v-if="loading && !sales.length" class="flex items-center justify-center py-12">
@@ -80,12 +136,21 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <button
-                    @click="viewSale(sale)"
-                    class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                  >
-                    Ver Detalhes
-                  </button>
+                  <div class="flex items-center justify-center gap-2">
+                    <button
+                      @click="viewSale(sale)"
+                      class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                    >
+                      Ver Detalhes
+                    </button>
+                    <button
+                      v-if="canCancelSale(sale)"
+                      @click="confirmCancelSale(sale)"
+                      class="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -162,6 +227,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Detalhes -->
+    <SaleDetailsModal
+      :is-open="showDetailsModal"
+      :sale-id="selectedSale"
+      @close="handleModalClose"
+      @cancel="handleCancelFromModal"
+    />
   </div>
 </template>
 
@@ -170,6 +243,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/services/api';
 import { useToast } from 'vue-toastification';
+import Swal from 'sweetalert2';
+import Button from '@/components/Common/Button.vue';
+import SaleDetailsModal from '@/components/Sales/SaleDetailsModal.vue';
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -177,6 +253,7 @@ const authStore = useAuthStore();
 const sales = ref([]);
 const loading = ref(false);
 const error = ref(null);
+const exporting = ref(false);
 const pagination = ref({
   current_page: 1,
   last_page: 1,
@@ -185,6 +262,17 @@ const pagination = ref({
   from: 0,
   to: 0,
 });
+
+const filters = ref({
+  search: '',
+  status: '',
+  date: '',
+});
+
+const selectedSale = ref(null);
+const showDetailsModal = ref(false);
+
+let searchTimeout = null;
 
 const visiblePages = computed(() => {
   const current = pagination.value.current_page;
@@ -221,11 +309,36 @@ function getColspan() {
   return cols;
 }
 
+const hasActiveFilters = computed(() => {
+  return filters.value.search || filters.value.status || filters.value.date;
+});
+
+const filteredCount = computed(() => pagination.value.total);
+
 async function fetchSales(page = 1) {
   loading.value = true;
   error.value = null;
   try {
-    const { data } = await api.get('/sales', { params: { page } });
+    const params = { page };
+    
+    if (filters.value.search) {
+      const searchValue = filters.value.search.trim();
+      if (/^\d+$/.test(searchValue)) {
+        params.id = searchValue;
+      } else {
+        params.customer_name = searchValue;
+      }
+    }
+    
+    if (filters.value.status) {
+      params.status = filters.value.status;
+    }
+    
+    if (filters.value.date) {
+      params.date = filters.value.date;
+    }
+    
+    const { data } = await api.get('/sales', { params });
     sales.value = data.data || [];
     pagination.value = {
       current_page: data.current_page || 1,
@@ -241,6 +354,26 @@ async function fetchSales(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+function debouncedSearch() {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    applyFilters();
+  }, 500);
+}
+
+function applyFilters() {
+  fetchSales(1);
+}
+
+function clearFilters() {
+  filters.value = {
+    search: '',
+    status: '',
+    date: '',
+  };
+  fetchSales(1);
 }
 
 function goToPage(page) {
@@ -286,8 +419,95 @@ function getStatusBadgeClass(status) {
 }
 
 function viewSale(sale) {
-  toast.info(`Visualizar detalhes da venda #${sale.id} (em desenvolvimento)`);
-  // TODO: Implementar modal ou navegação para detalhes da venda
+  selectedSale.value = sale.id;
+  showDetailsModal.value = true;
+}
+
+function canCancelSale(sale) {
+  if (sale.status === 'canceled') return false;
+  return authStore.hasRole(['super-admin', 'manager']);
+}
+
+async function confirmCancelSale(sale) {
+  const result = await Swal.fire({
+    title: 'Cancelar Venda?',
+    html: `Tem certeza que deseja cancelar a venda <strong>#${sale.id}</strong>?<br><small class="text-slate-600">Esta ação não pode ser desfeita.</small>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Sim, Cancelar',
+    cancelButtonText: 'Não',
+  });
+
+  if (result.isConfirmed) {
+    await cancelSale(sale);
+  }
+}
+
+async function cancelSale(sale) {
+  try {
+    await api.delete(`/sales/${sale.id}`);
+    toast.success('Venda cancelada com sucesso!');
+    fetchSales(pagination.value.current_page);
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'Erro ao cancelar venda.');
+  }
+}
+
+async function exportToExcel() {
+  exporting.value = true;
+  try {
+    const params = {};
+    
+    if (filters.value.search) {
+      const searchValue = filters.value.search.trim();
+      if (/^\d+$/.test(searchValue)) {
+        params.id = searchValue;
+      } else {
+        params.customer_name = searchValue;
+      }
+    }
+    
+    if (filters.value.status) {
+      params.status = filters.value.status;
+    }
+    
+    if (filters.value.date) {
+      params.date = filters.value.date;
+    }
+    
+    const response = await api.get('/sales/export', {
+      params,
+      responseType: 'blob',
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `vendas-${new Date().toISOString().split('T')[0]}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Exportação concluída!');
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'Erro ao exportar vendas.');
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function handleModalClose() {
+  showDetailsModal.value = false;
+  selectedSale.value = null;
+}
+
+function handleCancelFromModal(sale) {
+  showDetailsModal.value = false;
+  selectedSale.value = null;
+  confirmCancelSale(sale);
 }
 
 onMounted(() => {
