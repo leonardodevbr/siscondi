@@ -19,8 +19,8 @@ use App\Models\SaleItem;
 use App\Models\SalePayment;
 use App\Models\StockMovement;
 use App\Models\User;
-use App\Services\InstallmentService;
-use App\Services\Payment\MercadoPagoService;
+use App\Services\Payment\DTOs\PaymentData;
+use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\Settings;
@@ -30,6 +30,11 @@ use Illuminate\Support\Facades\Validator;
 
 class PosController extends Controller
 {
+    public function __construct(
+        private readonly PaymentGatewayFactory $gatewayFactory
+    ) {
+    }
+
     /**
      * Busca a venda ativa do usuário atual: OPEN ou PENDING_PAYMENT com pagamento Point
      * (aguardando maquininha ou falta pagar após Point parcial).
@@ -803,8 +808,10 @@ class PosController extends Controller
     /**
      * Simula parcelas para cartão de crédito (manual).
      * GET /api/sales/simulate-installments?amount=...
+     * 
+     * @deprecated Use PaymentController::simulateInstallments em /api/payments/simulate-installments
      */
-    public function simulateInstallments(Request $request, InstallmentService $installmentService): JsonResponse
+    public function simulateInstallments(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -817,17 +824,34 @@ class PosController extends Controller
             ], 422);
         }
 
+        $user = $request->user();
         $amount = (float) $request->input('amount');
-        $options = $installmentService->calculate($amount);
+        $branchId = $user->branch_id;
 
-        return response()->json(['installments' => $options], 200);
+        try {
+            $gateway = $this->gatewayFactory->getGateway($branchId);
+            $options = $gateway->calculateInstallments($amount);
+
+            return response()->json(['installments' => $options], 200);
+        } catch (\Throwable $e) {
+            Log::error('PosController::simulateInstallments failed', [
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Erro ao simular parcelas: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
      * Gera PIX (QR Code) para venda em PENDING_PAYMENT com pagamento PIX.
      * POST pos/pix/generate { sale_id }
+     * 
+     * Usa o gateway configurado (Mercado Pago ou PagBank) automaticamente.
      */
-    public function generatePix(Request $request, MercadoPagoService $mpService): JsonResponse
+    public function generatePix(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'sale_id' => ['required', 'integer', 'exists:sales,id'],
@@ -864,16 +888,32 @@ class PosController extends Controller
         }
 
         try {
-            $data = $mpService->createPixPayment($sale);
-            $pixPayment->update(['transaction_id' => (string) $data['payment_id']]);
+            $gateway = $this->gatewayFactory->getGateway($sale->branch_id);
+            
+            $paymentData = new PaymentData(
+                saleId: $sale->id,
+                amount: (float) $pixPayment->amount,
+                method: PaymentMethod::PIX,
+                installments: 1,
+                description: "Venda #{$sale->id}",
+                payerEmail: $sale->customer?->email ?? 'cliente@pdv.com.br',
+            );
+
+            $paymentResponse = $gateway->createPayment($paymentData);
+            
+            $pixPayment->update(['transaction_id' => $paymentResponse->transactionId]);
 
             return response()->json([
-                'qr_code' => $data['qr_code'],
-                'qr_code_base64' => $data['qr_code_base64'],
-                'payment_id' => $data['payment_id'],
+                'qr_code' => $paymentResponse->qrCode,
+                'qr_code_base64' => $paymentResponse->qrCodeBase64,
+                'payment_id' => $paymentResponse->transactionId,
             ], 200);
         } catch (\Throwable $e) {
-            Log::error('PosController::generatePix', ['sale_id' => $sale->id, 'error' => $e->getMessage()]);
+            Log::error('PosController::generatePix', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'message' => $e->getMessage(),

@@ -161,16 +161,51 @@
 
         <!-- Integrações de Pagamento -->
         <template v-else-if="activeTab === 'integrations'">
+          <!-- Seleção de Gateway -->
           <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
             <div class="mb-2">
               <h2 class="text-base font-semibold text-slate-800">
-                Integrações de Pagamento
+                Gateway de Pagamento Ativo
               </h2>
               <p class="text-sm text-slate-600 mt-1">
-                Credenciais por cliente, salvas no banco. Informe Client ID e Client Secret para o sistema gerar e renovar o token automaticamente.
+                Selecione qual gateway será utilizado para processar pagamentos PIX e cartões no PDV.
               </p>
             </div>
-            <div class="flex items-center gap-2 mb-4">
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                Gateway Ativo
+              </label>
+              <select
+                v-model="form.paymentGateway"
+                class="input-base w-full max-w-md"
+              >
+                <option value="mercadopago">Mercado Pago (PIX Online + Point)</option>
+                <option value="pagbank">PagBank (PIX Online)</option>
+              </select>
+              <p class="mt-1 text-xs text-slate-500">
+                Configure as credenciais do gateway selecionado abaixo.
+              </p>
+            </div>
+          </div>
+
+          <!-- Mercado Pago -->
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                  Mercado Pago
+                  <span
+                    v-if="form.paymentGateway === 'mercadopago'"
+                    class="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                  >
+                    Ativo
+                  </span>
+                </h2>
+                <p class="text-sm text-slate-600 mt-1">
+                  Credenciais por cliente, salvas no banco. Informe Client ID e Client Secret para o sistema gerar e renovar o token automaticamente.
+                </p>
+              </div>
               <span
                 class="inline-flex items-center gap-1.5 text-sm font-medium"
                 :class="mercadopagoConnected ? 'text-emerald-600' : 'text-slate-500'"
@@ -225,6 +260,122 @@
               </div>
             </form>
           </div>
+
+          <!-- PagBank -->
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="mb-2">
+              <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                PagBank (PagSeguro)
+                <span
+                  v-if="form.paymentGateway === 'pagbank'"
+                  class="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                >
+                  Ativo
+                </span>
+              </h2>
+              <p class="text-sm text-slate-600 mt-1">
+                Configure o token de acesso do PagBank para processar pagamentos PIX.
+              </p>
+            </div>
+            <form autocomplete="off" class="space-y-4" @submit.prevent>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Token de Acesso
+                </label>
+                <input
+                  v-model="form.pagbankToken"
+                  type="password"
+                  name="pagbank_token"
+                  autocomplete="new-password"
+                  class="input-base w-full max-w-md"
+                  placeholder="Cole seu token do PagBank aqui"
+                />
+                <p class="mt-1 text-xs text-slate-500">
+                  Obtenha em <strong>Integrações</strong> &gt; <strong>Tokens</strong> no painel do PagBank.
+                </p>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-sm font-medium text-slate-700">
+                    Modo Sandbox (Teste)
+                  </label>
+                  <Toggle
+                    v-model="form.pagbankSandbox"
+                    label=""
+                  />
+                </div>
+                <p class="text-xs text-slate-500">
+                  Ative para usar o ambiente de testes do PagBank.
+                </p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Taxas de Parcelamento -->
+          <div class="border border-slate-200 rounded-lg p-6 mb-6 space-y-6">
+            <div class="mb-2">
+              <h2 class="text-base font-semibold text-slate-800">
+                Taxas de Parcelamento
+              </h2>
+              <p class="text-sm text-slate-600 mt-1">
+                Configure as taxas e limites para parcelamento de cartão de crédito.
+              </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Máximo de Parcelas
+                </label>
+                <input
+                  v-model.number="form.ccMaxInstallments"
+                  type="number"
+                  min="1"
+                  max="12"
+                  class="input-base w-full"
+                  placeholder="12"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Parcelas Sem Juros
+                </label>
+                <input
+                  v-model.number="form.ccNoInterestInstallments"
+                  type="number"
+                  min="1"
+                  max="12"
+                  class="input-base w-full"
+                  placeholder="3"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Taxa de Juros (%)
+                </label>
+                <input
+                  v-model.number="form.ccInterestRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="input-base w-full"
+                  placeholder="2.99"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Valor Mínimo da Parcela (R$)
+                </label>
+                <input
+                  v-model.number="form.ccMinInstallmentValue"
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  class="input-base w-full"
+                  placeholder="10.00"
+                />
+              </div>
+            </div>
+          </div>
         </template>
 
         <div class="mt-2 flex justify-end">
@@ -273,8 +424,15 @@ export default {
       skuAutoGeneration: false,
       skuPattern: '{CATEGORY}-{NAME}-{SEQ}',
       enableGlobalStockSearch: false,
+      paymentGateway: 'mercadopago',
       mpClientId: '',
       mpClientSecret: '',
+      pagbankToken: '',
+      pagbankSandbox: false,
+      ccMaxInstallments: 12,
+      ccNoInterestInstallments: 3,
+      ccInterestRate: 2.99,
+      ccMinInstallmentValue: 10.0,
     });
     const connecting = ref(false);
     const mercadopagoConnected = computed(() => settingsStore.mercadopagoConnected);
@@ -287,8 +445,19 @@ export default {
         form.value.skuPattern = settingsStore.skuPattern;
         const stockSearchSetting = settingsStore.getSetting('enable_global_stock_search');
         form.value.enableGlobalStockSearch = stockSearchSetting !== undefined ? stockSearchSetting : settingsStore.enableGlobalStockSearch;
+        
+        // Gateway e credenciais
+        form.value.paymentGateway = settingsStore.getSetting('payment_gateway') ?? 'mercadopago';
         form.value.mpClientId = settingsStore.getSetting('mp_client_id') ?? '';
         form.value.mpClientSecret = '';
+        form.value.pagbankToken = '';
+        form.value.pagbankSandbox = settingsStore.getSetting('pagbank_sandbox') ?? false;
+        
+        // Taxas de parcelamento
+        form.value.ccMaxInstallments = settingsStore.getSetting('cc_max_installments') ?? 12;
+        form.value.ccNoInterestInstallments = settingsStore.getSetting('cc_no_interest_installments') ?? 3;
+        form.value.ccInterestRate = settingsStore.getSetting('cc_interest_rate') ?? 2.99;
+        form.value.ccMinInstallmentValue = settingsStore.getSetting('cc_min_installment_value') ?? 10.0;
       } catch (error) {
         toast.error('Erro ao carregar configurações');
       } finally {
@@ -338,7 +507,53 @@ export default {
             type: 'boolean',
             group: 'products',
           },
+          {
+            key: 'payment_gateway',
+            value: form.value.paymentGateway,
+            type: 'string',
+            group: 'payments',
+          },
+          {
+            key: 'pagbank_sandbox',
+            value: form.value.pagbankSandbox,
+            type: 'boolean',
+            group: 'payments',
+          },
+          {
+            key: 'cc_max_installments',
+            value: form.value.ccMaxInstallments,
+            type: 'integer',
+            group: 'payments',
+          },
+          {
+            key: 'cc_no_interest_installments',
+            value: form.value.ccNoInterestInstallments,
+            type: 'integer',
+            group: 'payments',
+          },
+          {
+            key: 'cc_interest_rate',
+            value: form.value.ccInterestRate,
+            type: 'string',
+            group: 'payments',
+          },
+          {
+            key: 'cc_min_installment_value',
+            value: form.value.ccMinInstallmentValue,
+            type: 'string',
+            group: 'payments',
+          },
         ];
+
+        // Adiciona token do PagBank se preenchido
+        if (form.value.pagbankToken && form.value.pagbankToken.trim() !== '') {
+          settingsArray.push({
+            key: 'pagbank_token',
+            value: form.value.pagbankToken.trim(),
+            type: 'string',
+            group: 'payments',
+          });
+        }
 
         await settingsStore.updateSettings(settingsArray);
         await settingsStore.fetchPublicConfig();

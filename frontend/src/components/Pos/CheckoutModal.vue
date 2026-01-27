@@ -588,6 +588,7 @@ async function handleFinish() {
       if (hadPix) {
         pixGenerating.value = true;
         try {
+          // Usa a rota do POS que agora utiliza o gateway unificado
           const { data } = await api.post('pos/pix/generate', { sale_id: result.sale.id });
           pixPendingSaleId.value = result.sale.id;
           pixQrCode.value = data.qr_code || '';
@@ -596,7 +597,6 @@ async function handleFinish() {
           startPixPolling();
         } catch (e) {
           toast.error(e?.response?.data?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
-          // NÃO resetar nem fechar - venda está PENDING_PAYMENT
           pixStep.value = 'error';
           pixPendingSaleId.value = result?.sale?.id ?? null;
         } finally {
@@ -606,6 +606,11 @@ async function handleFinish() {
         return;
       }
     }
+    // Exibe o cupom em uma nova janela (simulação de impressora térmica)
+    if (result?.sale) {
+      openReceiptWindow(result.sale);
+    }
+    
     await new Promise((resolve) => setTimeout(resolve, 2000));
     emit('finish', result?.sale ?? null);
     emit('close');
@@ -906,7 +911,8 @@ async function fetchInstallmentOptions() {
   loadingInstallments.value = true;
   installmentsFromApi.value = [];
   try {
-    const { data } = await api.get('sales/simulate-installments', { params: { amount } });
+    // Usa a nova rota unificada de pagamentos
+    const { data } = await api.get('payments/simulate-installments', { params: { amount } });
     installmentsFromApi.value = data.installments || [];
   } catch (err) {
     toast.error(err?.response?.data?.message || err?.message || 'Erro ao buscar parcelas.');
@@ -964,6 +970,7 @@ function focusAmountInput() {
 async function runPixQrFlow(saleId) {
   pixGenerating.value = true;
   try {
+    // Usa a rota do POS que agora utiliza o gateway unificado
     const { data } = await api.post('pos/pix/generate', { sale_id: saleId });
     pixPendingSaleId.value = saleId;
     pixQrCode.value = data.qr_code || '';
@@ -972,13 +979,142 @@ async function runPixQrFlow(saleId) {
     startPixPolling();
   } catch (e) {
     toast.error(e?.response?.data?.message || e?.message || 'Erro ao gerar PIX. A venda permanece aguardando pagamento.');
-    // NÃO resetar o cart nem fechar - a venda está em PENDING_PAYMENT e pode ser paga depois
-    // O usuário pode tentar gerar novamente ou adicionar outro pagamento
     pixStep.value = 'error';
     pixPendingSaleId.value = saleId;
   } finally {
     pixGenerating.value = false;
   }
+}
+
+function openReceiptWindow(sale) {
+  // Cria uma nova janela com o template do cupom
+  const receiptWindow = window.open('', '_blank', 'width=350,height=600');
+  
+  if (!receiptWindow) {
+    toast.warning('Popup bloqueado. Habilite popups para visualizar o cupom.');
+    return;
+  }
+  
+  // Constrói o HTML do cupom
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Cupom - Venda #${sale.id}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'Courier New', monospace; 
+          font-size: 12px; 
+          line-height: 1.4; 
+          padding: 1rem;
+          background: white;
+        }
+        .receipt { width: 80mm; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 1rem; }
+        .header h1 { font-size: 16px; font-weight: bold; margin-bottom: 0.5rem; }
+        .divider { border-top: 1px dashed #000; margin: 0.75rem 0; }
+        .info p, .totals .row, .payments .row { margin: 0.25rem 0; }
+        .items table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+        .items th, .items td { padding: 0.25rem 0; font-size: 11px; }
+        .items thead th { border-bottom: 1px solid #000; font-weight: bold; }
+        .text-left { text-align: left; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .totals .row, .payments .row { display: flex; justify-content: space-between; }
+        .totals .row.total { font-size: 14px; margin-top: 0.5rem; border-top: 1px solid #000; padding-top: 0.5rem; }
+        .footer { text-align: center; margin-top: 1rem; }
+        .footer .barcode { font-size: 16px; font-weight: bold; letter-spacing: 2px; margin-top: 0.5rem; }
+        .actions { margin-top: 2rem; text-align: center; }
+        .btn { padding: 0.75rem 2rem; font-size: 14px; margin: 0.5rem; border: none; border-radius: 0.375rem; cursor: pointer; }
+        .btn-print { background: #3b82f6; color: white; }
+        .btn-close { background: #6b7280; color: white; }
+        @media print {
+          .actions { display: none; }
+          @page { size: 80mm auto; margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt">
+        <div class="header">
+          <h1>ADONAI PDV</h1>
+          <p>Cupom Não Fiscal</p>
+        </div>
+        <div class="divider"></div>
+        <div class="info">
+          <p><strong>Venda #${sale.id}</strong></p>
+          <p>Data: ${new Date(sale.created_at || new Date()).toLocaleString('pt-BR')}</p>
+          ${sale.customer ? `<p>Cliente: ${sale.customer.name}</p>` : ''}
+          <p>Operador: ${authStore.user?.name || 'Operador'}</p>
+        </div>
+        <div class="divider"></div>
+        <div class="items">
+          <table>
+            <thead>
+              <tr>
+                <th class="text-left">Item</th>
+                <th class="text-center">Qtd</th>
+                <th class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(sale.items || []).map(item => `
+                <tr>
+                  <td class="text-left">${item.product_name}</td>
+                  <td class="text-center">${item.quantity}</td>
+                  <td class="text-right">R$ ${parseFloat(item.total_price).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="divider"></div>
+        <div class="totals">
+          <div class="row">
+            <span>Subtotal:</span>
+            <span>R$ ${parseFloat(sale.total_amount).toFixed(2)}</span>
+          </div>
+          ${sale.discount_amount > 0 ? `
+            <div class="row">
+              <span>Desconto:</span>
+              <span>- R$ ${parseFloat(sale.discount_amount).toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div class="row total">
+            <span><strong>TOTAL:</strong></span>
+            <span><strong>R$ ${parseFloat(sale.final_amount).toFixed(2)}</strong></span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="payments">
+          <p><strong>Formas de Pagamento:</strong></p>
+          ${(sale.payments || []).map(p => `
+            <div class="row">
+              <span>${formatPaymentMethod(p.method)}</span>
+              <span>R$ ${parseFloat(p.amount).toFixed(2)}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="divider"></div>
+        <div class="footer">
+          <p>Obrigado pela preferência!</p>
+          <p>Volte sempre!</p>
+          <p class="barcode">*${sale.id}*</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-print" onclick="window.print()">Imprimir (Ctrl+P)</button>
+        <button class="btn btn-close" onclick="window.close()">Fechar</button>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  receiptWindow.document.write(html);
+  receiptWindow.document.close();
 }
 
 async function confirmAddPayment() {
