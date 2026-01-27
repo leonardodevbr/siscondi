@@ -129,116 +129,125 @@
         </div>
       </div>
 
-      <div v-if="showAddPayment" class="rounded-lg border border-blue-200 bg-blue-50 p-4" @keydown.esc.stop.prevent="cancelAddPayment">
+      <!-- Novo Fluxo: Método PRIMEIRO -->
+      <div v-if="showAddPayment" class="rounded-lg border border-blue-200 bg-blue-50 p-4">
         <h4 class="mb-3 text-sm font-semibold text-slate-800">Adicionar Pagamento</h4>
         
-        <div v-if="!amountConfirmed" class="space-y-3">
-          <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Valor</label>
-            <input
-              ref="amountInputRef"
-              v-model="amountFormatted"
-              type="text"
-              class="h-10 w-full rounded border border-slate-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0,00"
-              @input="handleAmountInput"
-              @keydown.enter="confirmAmountAndShowMethods"
-              @keydown.esc.stop="cancelAddPayment"
-            >
-            <p class="mt-1 text-xs text-slate-500">Pressione ENTER para continuar</p>
+        <!-- PASSO 1: Selecionar Método -->
+        <div v-if="!methodSelected" class="space-y-3">
+          <div class="rounded-lg border border-slate-200 bg-white p-3 mb-3">
+            <p class="text-sm font-medium text-slate-700">Falta pagar:</p>
+            <p class="text-2xl font-bold text-slate-900">{{ formatCurrency(remainingAmount) }}</p>
           </div>
-        </div>
-
-        <div v-else-if="!methodSelected" class="space-y-2">
-          <p class="text-xs text-slate-600 mb-2">Selecione o método de pagamento:</p>
+          
+          <p class="text-xs text-slate-600 mb-2">Selecione a forma de pagamento:</p>
           <p v-if="couponPaymentRestriction" class="mb-2 text-xs text-amber-700">
             Este cupom aceita apenas: {{ couponPaymentRestriction }}
           </p>
+          
           <div v-if="effectivePaymentMethods.length === 0" class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Nenhum método de pagamento compatível com o cupom. Remova o cupom acima para continuar.
           </div>
-          <div v-else class="space-y-1">
+          
+          <div v-else class="grid grid-cols-2 gap-2">
             <button
               v-for="(method, index) in effectivePaymentMethods"
               :key="method.value"
               type="button"
               :class="[
-                'w-full rounded border px-3 py-2 text-left text-sm transition',
+                'rounded border px-4 py-3 text-sm font-medium transition relative',
                 selectedMethodIndex === index
-                  ? 'border-blue-500 bg-blue-100 font-medium'
-                  : 'border-slate-300 bg-white hover:border-blue-300'
+                  ? 'border-blue-500 bg-blue-100 text-blue-700 ring-2 ring-blue-300'
+                  : 'border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
               ]"
               @click="selectMethod(method.value)"
             >
-              {{ index + 1 }} - {{ method.label }}
+              <span class="absolute top-1 left-2 text-xs font-bold opacity-50">{{ index + 1 }}</span>
+              <span>{{ method.label }}</span>
             </button>
           </div>
         </div>
 
-        <div v-else class="space-y-3">
-          <div v-if="newPayment.method === 'credit_card' && !cardTypeSelected" @keydown.esc.stop="goBackToMethodList">
-            <p class="text-xs text-slate-600 mb-2">Tipo de cartão:</p>
-            <div class="space-y-1">
-              <button
-                type="button"
-                :class="[
-                  'w-full rounded border px-3 py-2 text-left text-sm transition',
-                  selectedCardTypeIndex === 0
-                    ? 'border-blue-500 bg-blue-100 font-medium'
-                    : 'border-slate-300 bg-white hover:border-blue-300'
-                ]"
-                @click="selectCardType('debit')"
-              >
-                1 - Débito
-              </button>
-              <button
-                type="button"
-                :class="[
-                  'w-full rounded border px-3 py-2 text-left text-sm transition',
-                  selectedCardTypeIndex === 1
-                    ? 'border-blue-500 bg-blue-100 font-medium'
-                    : 'border-slate-300 bg-white hover:border-blue-300'
-                ]"
-                @click="selectCardType('credit')"
-              >
-                2 - Crédito
-              </button>
-            </div>
+        <!-- PASSO 2: Confirmar Valor (editável para pagamento parcial) -->
+        <div v-else-if="methodSelected && !isProcessingPayment" class="space-y-3">
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-sm font-semibold text-slate-700">{{ formatPaymentMethod(newPayment.method) }}</h5>
+            <button
+              type="button"
+              @click="goBackToMethodList"
+              class="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Mudar método (ESC)
+            </button>
           </div>
 
-          <div v-if="newPayment.method === 'credit_card' && newPayment.cardType === 'credit' && cardTypeSelected && !installmentsSelected" @keydown.esc.stop="goBackToMethodList">
-            <label class="mb-1 block text-xs font-medium text-slate-700">Parcelas</label>
-            <div v-if="loadingInstallments" class="flex items-center justify-center py-8">
-              <div class="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
-            </div>
-            <div v-else ref="installmentsListRef" class="space-y-1 max-h-60 overflow-y-auto">
-              <button
-                v-for="(opt, index) in installmentsFromApi"
-                :key="opt.installment"
-                type="button"
-                :class="[
-                  'w-full rounded border px-3 py-2 text-left text-sm transition',
-                  selectedInstallmentIndex === index
-                    ? 'border-blue-500 bg-blue-100 font-medium'
-                    : 'border-slate-300 bg-white hover:border-blue-300'
-                ]"
-                @click="selectInstallmentFromApi(opt)"
-              >
-                {{ opt.installment }}x de {{ formatCurrency(opt.amount) }} {{ opt.interest_free ? '(sem juros)' : '' }}
-              </button>
-            </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Valor a pagar</label>
+            <input
+              ref="amountInputRef"
+              v-model="amountFormatted"
+              type="text"
+              class="h-12 w-full rounded border border-slate-300 px-3 text-lg font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0,00"
+              @input="handleAmountInput"
+              @keydown.enter="confirmAmountAndProcess"
+              @keydown.esc.stop.prevent="goBackToMethodList"
+            >
+            <p class="mt-1 text-xs text-slate-500">
+              Pressione ENTER para confirmar ou edite para pagamento parcial
+            </p>
           </div>
 
-          <div v-if="installmentsSelected || (newPayment.method === 'cash' || newPayment.method === 'pix' || newPayment.method === 'point') || (newPayment.method === 'debit_card')" class="space-y-3">
-            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p class="text-sm font-medium text-slate-700">Resumo:</p>
-              <p class="mt-1 text-base font-semibold text-slate-900">{{ paymentSummary }}</p>
-            </div>
-            <div class="flex justify-end gap-2">
-              <Button variant="outline" size="sm" @click="goBackToMethodList">Voltar (ESC)</Button>
-              <Button variant="primary" size="sm" @click="confirmAddPayment">Adicionar (ENTER)</Button>
-            </div>
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" size="sm" @click="goBackToMethodList">Voltar (ESC)</Button>
+            <Button variant="primary" size="sm" @click="confirmAmountAndProcess">Confirmar (ENTER)</Button>
           </div>
+        </div>
+
+        <!-- PASSO 3: Parcelamento (apenas CRÉDITO) -->
+        <div v-else-if="methodSelected && newPayment.method === 'credit_card' && !installmentsSelected" class="space-y-3">
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-sm font-semibold text-slate-700">Cartão de Crédito - {{ formatCurrency(newPayment.amount) }}</h5>
+            <button
+              type="button"
+              @click="goBackToMethodList"
+              class="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Voltar (ESC)
+            </button>
+          </div>
+
+          <label class="mb-1 block text-xs font-medium text-slate-700">Selecione as parcelas:</label>
+          
+          <div v-if="loadingInstallments" class="flex items-center justify-center py-8">
+            <div class="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+          </div>
+          
+          <div v-else ref="installmentsListRef" class="space-y-2 max-h-60 overflow-y-auto">
+            <button
+              v-for="(opt, index) in installmentsFromApi"
+              :key="opt.installment"
+              type="button"
+              :class="[
+                'w-full rounded border px-3 py-2 text-left text-sm transition relative',
+                selectedInstallmentIndex === index
+                  ? 'border-blue-500 bg-blue-100 font-medium text-blue-700 ring-2 ring-blue-300'
+                  : 'border-slate-300 bg-white hover:border-blue-300'
+              ]"
+              @click="selectInstallmentFromApi(opt)"
+            >
+              <span v-if="index < 9" class="absolute top-1 left-2 text-xs font-bold opacity-50">{{ index + 1 }}</span>
+              <span class="font-semibold ml-6">{{ opt.installment }}x de {{ formatCurrency(opt.amount) }}</span>
+              <span v-if="opt.interest_free" class="ml-2 text-xs text-green-600">(sem juros)</span>
+              <span v-else class="ml-2 text-xs text-slate-500">(total: {{ formatCurrency(opt.total) }})</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Estado de Processamento -->
+        <div v-else-if="isProcessingPayment" class="flex flex-col items-center justify-center py-8">
+          <div class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mb-3"></div>
+          <p class="text-sm font-medium text-slate-700">Processando pagamento...</p>
         </div>
       </div>
 
@@ -344,6 +353,7 @@ const selectedCardTypeIndex = ref(0);
 const selectedInstallmentIndex = ref(0);
 const selectedPaymentIndex = ref(-1);
 const isFinishing = ref(false);
+const isProcessingPayment = ref(false);
 const paymentRemovalAuthorized = ref(false);
 const authorizedByUserIdForRemoval = ref(null);
 const paymentsSnapshotForFinishing = ref([]);
@@ -533,6 +543,7 @@ function resetPaymentForm() {
   loadingInstallments.value = false;
   amountFormatted.value = '';
   isFinishing.value = false;
+  isProcessingPayment.value = false;
   paymentsSnapshotForFinishing.value = [];
   newPayment.value = {
     method: 'cash',
@@ -828,39 +839,22 @@ function handleAmountInput(e) {
   newPayment.value.amount = parseAmount(formatted);
 }
 
-function confirmAmountAndShowMethods() {
+async function confirmAmountAndProcess() {
   const amount = parseAmount(amountFormatted.value);
   if (!amount || amount <= 0) {
+    toast.error('Informe um valor válido');
+    return;
+  }
+  
+  if (amount > remainingAmount.value + 0.01) {
+    toast.error('Valor maior que o restante a pagar');
     return;
   }
   
   newPayment.value.amount = amount;
-  amountConfirmed.value = true;
-  methodSelected.value = false;
-  selectedMethodIndex.value = 0;
-}
-
-async function selectMethod(method) {
-  methodSelected.value = true;
-  const gateway = settingsStore.activePaymentGateway;
-  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
-
-  // DINHEIRO: Adiciona direto e permite continuar
-  if (method === 'cash') {
-    newPayment.value.method = 'money';
-    cardTypeSelected.value = true;
-    installmentsSelected.value = true;
-    return;
-  }
-
-  // CRÉDITO: Busca parcelas imediatamente
-  if (method === 'credit_card') {
-    newPayment.value.method = 'credit_card';
-    newPayment.value.cardType = 'credit';
-    cardTypeSelected.value = true;
-    installmentsSelected.value = false;
-    
-    // Busca opções de parcelamento imediatamente
+  
+  // Se for CRÉDITO, busca parcelas antes de processar
+  if (newPayment.value.method === 'credit_card') {
     loadingInstallments.value = true;
     try {
       const { data } = await api.get('payments/simulate-installments', { params: { amount } });
@@ -869,7 +863,11 @@ async function selectMethod(method) {
       if (installmentsFromApi.value.length === 0) {
         toast.error('Erro ao buscar opções de parcelamento');
         goBackToMethodList();
+        return;
       }
+      
+      // Mostra seleção de parcelas
+      installmentsSelected.value = false;
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Erro ao buscar parcelas.');
       goBackToMethodList();
@@ -878,21 +876,30 @@ async function selectMethod(method) {
     }
     return;
   }
+  
+  // Para outros métodos (Dinheiro, PIX, Débito), executa imediatamente
+  await confirmAddPayment();
+}
 
-  // DÉBITO e PIX: Vai direto para confirmação (vai para maquininha ou gera QR Code)
-  if (method === 'debit_card') {
-    newPayment.value.method = 'debit_card';
-    cardTypeSelected.value = true;
-    installmentsSelected.value = true;
-    return;
+async function selectMethod(method) {
+  methodSelected.value = true;
+  newPayment.value.method = method === 'cash' ? 'money' : method;
+  
+  // Preenche valor sugerido (restante)
+  const remainingVal = parseFloat(remainingAmount.value);
+  newPayment.value.amount = remainingVal;
+  amountFormatted.value = formatAmountInput(remainingVal);
+  
+  // CRÉDITO: Busca parcelas após confirmar valor
+  if (method === 'credit_card') {
+    newPayment.value.cardType = 'credit';
+    // Mostra input de valor primeiro, parcelas vem depois
   }
-
-  if (method === 'pix') {
-    newPayment.value.method = 'pix';
-    cardTypeSelected.value = true;
-    installmentsSelected.value = true;
-    return;
-  }
+  
+  // Foca no input de valor para permitir edição
+  nextTick(() => {
+    focusAmountInput();
+  });
 }
 
 function selectCardType(type) {
@@ -953,13 +960,13 @@ async function fetchInstallmentOptions() {
   }
 }
 
-function selectInstallmentFromApi(option) {
+async function selectInstallmentFromApi(option) {
   newPayment.value.installments = option.installment;
   installmentsSelected.value = true;
   selectedInstallmentIndex.value = option.installment - 1;
-  nextTick(() => {
-    confirmAddPayment();
-  });
+  
+  // Executa imediatamente sem esperar
+  await confirmAddPayment();
 }
 
 function selectInstallments(n) {
@@ -1159,6 +1166,8 @@ async function confirmAddPayment() {
     return;
   }
 
+  isProcessingPayment.value = true;
+  
   try {
     const method = newPayment.value.method;
     const installments = newPayment.value.method === 'credit_card' ? newPayment.value.installments : 1;
@@ -1287,10 +1296,21 @@ async function confirmAddPayment() {
   } catch (error) {
     console.error('Erro ao adicionar pagamento:', error);
     toast.error(error?.message ?? 'Erro ao adicionar pagamento.');
+  } finally {
+    isProcessingPayment.value = false;
   }
 }
 
 function goBackToMethodList() {
+  // Se está nas parcelas, volta para valor
+  if (installmentsFromApi.value.length > 0 && !installmentsSelected.value) {
+    installmentsFromApi.value = [];
+    loadingInstallments.value = false;
+    nextTick(() => focusAmountInput());
+    return;
+  }
+  
+  // Se está no valor, volta para métodos
   methodSelected.value = false;
   cardTypeSelected.value = false;
   installmentsSelected.value = false;
@@ -1299,10 +1319,11 @@ function goBackToMethodList() {
   selectedInstallmentIndex.value = 0;
   installmentsFromApi.value = [];
   loadingInstallments.value = false;
-  const amount = newPayment.value.amount || parseFloat(remainingAmount.value);
+  amountFormatted.value = '';
+  
   newPayment.value = {
     method: 'cash',
-    amount: Number(amount) || 0,
+    amount: 0,
     installments: 1,
     cardType: null,
   };
@@ -1472,30 +1493,48 @@ async function handleKeydown(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
+    
+    // ESC durante processo de Point
+    if (pointStep.value) {
+      cancelPointFlow();
+      return;
+    }
+    
+    // ESC durante adição de pagamento
     if (showAddPayment.value) {
+      // Se está nas parcelas, volta para valor
+      if (installmentsFromApi.value.length > 0 && !installmentsSelected.value) {
+        goBackToMethodList();
+        return;
+      }
+      
+      // Se está no valor (método selecionado), volta para métodos
       if (methodSelected.value) {
         goBackToMethodList();
         return;
       }
+      
+      // Se está nos métodos mas já tem pagamentos adicionados, só fecha o form
       if (payments.value.length > 0) {
-        cancelAddPayment(e);
+        showAddPayment.value = false;
+        resetPaymentForm();
         return;
       }
-      if (pointStep.value) {
-        cancelPointFlow();
-      }
+      
+      // Se não tem nada, fecha o modal
       emit('close');
       return;
     }
+    
+    // ESC durante seleção de pagamento para remoção
     if (selectedPaymentIndex.value >= 0 && payments.value.length > 0) {
       selectedPaymentIndex.value = -1;
       paymentRemovalAuthorized.value = false;
       authorizedByUserIdForRemoval.value = null;
       return;
     }
-    if (pointStep.value) {
-      cancelPointFlow();
-    }
+    
+    // ESC sem nenhum passo executado - fecha o modal
     emit('close');
     return;
   }
@@ -1544,108 +1583,89 @@ async function handleKeydown(e) {
 
   if (!showAddPayment.value) return;
 
-  if (!amountConfirmed.value) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      confirmAmountAndShowMethods();
-      return;
-    }
-    return;
-  }
-
-  if (!methodSelected.value) {
+  // PASSO 1: Navegação nos MÉTODOS (grid 2 colunas: ↑↓ muda linha, ←→ muda coluna)
+  if (!methodSelected.value && effectivePaymentMethods.value.length > 0) {
+    const cols = 2;
+    const len = effectivePaymentMethods.value.length;
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      selectedMethodIndex.value = Math.max(0, selectedMethodIndex.value - 1);
+      selectedMethodIndex.value = Math.max(0, selectedMethodIndex.value - cols);
       return;
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      selectedMethodIndex.value = Math.min(effectivePaymentMethods.value.length - 1, selectedMethodIndex.value + 1);
+      selectedMethodIndex.value = Math.min(len - 1, selectedMethodIndex.value + cols);
       return;
     }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      selectedMethodIndex.value = Math.max(0, selectedMethodIndex.value - 1);
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      selectedMethodIndex.value = Math.min(len - 1, selectedMethodIndex.value + 1);
+      return;
+    }
+    
+    // ENTER: Selecionar método atual
     if (e.key === 'Enter') {
       e.preventDefault();
       selectMethod(effectivePaymentMethods.value[selectedMethodIndex.value].value);
       return;
     }
+    
+    // Teclas 1-9: Atalho direto
     const num = parseInt(e.key);
     if (num >= 1 && num <= effectivePaymentMethods.value.length) {
       e.preventDefault();
+      selectedMethodIndex.value = num - 1;
       selectMethod(effectivePaymentMethods.value[num - 1].value);
       return;
     }
     return;
   }
 
-  if (newPayment.value.method === 'credit_card' && !cardTypeSelected.value) {
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      selectedCardTypeIndex.value = Math.max(0, selectedCardTypeIndex.value - 1);
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      selectedCardTypeIndex.value = Math.min(1, selectedCardTypeIndex.value + 1);
-      return;
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (selectedCardTypeIndex.value === 0) {
-        selectCardType('debit');
-      } else {
-        selectCardType('credit');
-      }
-      return;
-    }
-    if (e.key === '1') {
-      e.preventDefault();
-      selectCardType('debit');
-      return;
-    }
-    if (e.key === '2') {
-      e.preventDefault();
-      selectCardType('credit');
-      return;
-    }
-    return;
-  }
+  // PASSO 2: Confirmar VALOR (já tem ENTER no input)
+  // Sem navegação aqui, apenas digitação
 
-  if (newPayment.value.method === 'credit_card' && newPayment.value.cardType === 'credit' && cardTypeSelected.value && !installmentsSelected.value) {
+  // PASSO 3: Navegação nas PARCELAS (crédito)
+  if (methodSelected.value && newPayment.value.method === 'credit_card' && installmentsFromApi.value.length > 0 && !installmentsSelected.value) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       selectedInstallmentIndex.value = Math.max(0, selectedInstallmentIndex.value - 1);
-      newPayment.value.installments = selectedInstallmentIndex.value + 1;
-      nextTick(() => scrollSelectedInstallmentIntoView());
+      nextTick(() => {
+        const el = installmentsListRef.value?.children[selectedInstallmentIndex.value];
+        el?.scrollIntoView({ block: 'nearest' });
+      });
       return;
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      selectedInstallmentIndex.value = Math.min(11, selectedInstallmentIndex.value + 1);
-      newPayment.value.installments = selectedInstallmentIndex.value + 1;
-      nextTick(() => scrollSelectedInstallmentIntoView());
+      selectedInstallmentIndex.value = Math.min(installmentsFromApi.value.length - 1, selectedInstallmentIndex.value + 1);
+      nextTick(() => {
+        const el = installmentsListRef.value?.children[selectedInstallmentIndex.value];
+        el?.scrollIntoView({ block: 'nearest' });
+      });
       return;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      selectInstallments(selectedInstallmentIndex.value + 1);
+      const opt = installmentsFromApi.value[selectedInstallmentIndex.value];
+      selectInstallmentFromApi(opt);
       return;
     }
+    
+    // Teclas 1-9: Atalho direto para parcelas
     const num = parseInt(e.key);
-    if (num >= 1 && num <= 12) {
+    if (num >= 1 && num <= Math.min(9, installmentsFromApi.value.length)) {
       e.preventDefault();
-      selectInstallments(num);
+      selectedInstallmentIndex.value = num - 1;
+      const opt = installmentsFromApi.value[num - 1];
+      selectInstallmentFromApi(opt);
       return;
     }
     return;
-  }
-
-  if (installmentsSelected.value || (newPayment.value.method === 'cash' || newPayment.value.method === 'pix') || (newPayment.value.method === 'debit_card')) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      confirmAddPayment();
-      return;
-    }
   }
 }
 
