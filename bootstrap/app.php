@@ -28,7 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('login');
         });
 
-        $middleware->appendToGroup('api', [\App\Http\Middleware\SetTenantBranch::class]);
+        $middleware->group('api', [
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\SetTenantBranch::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request): bool {
