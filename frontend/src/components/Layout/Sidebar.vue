@@ -127,7 +127,7 @@ function handleClick() {
     }"
   >
     <div class="flex h-16 items-center gap-2 border-b border-slate-800 px-4">
-      <AppLogo icon-class="h-9 w-9" text-class="text-lg" light />
+      <AppLogo icon-class="h-6 w-6" text-class="text-lg" light />
     </div>
 
     <nav class="flex-1 space-y-1 py-4 text-sm">

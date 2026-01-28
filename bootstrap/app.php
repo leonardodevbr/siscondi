@@ -15,12 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
+        apiPrefix: 'v1',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function ($request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
+            if ($request->is('v1/*') || $request->expectsJson()) {
                 return null;
             }
 
@@ -31,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request): bool {
-            if ($request->is('api/*')) {
+            if ($request->is('v1/*')) {
                 return true;
             }
 
@@ -39,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (NotFoundHttpException $e, $request) {
-            if (! $request->is('api/*') && ! $request->expectsJson()) {
+            if (! $request->is('v1/*') && ! $request->expectsJson()) {
                 return null;
             }
 
@@ -57,7 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (ValidationException $e, $request) {
-            if (! $request->is('api/*') && ! $request->expectsJson()) {
+            if (! $request->is('v1/*') && ! $request->expectsJson()) {
                 return null;
             }
 
@@ -68,7 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Throwable $e, $request) {
-            if (! $request->is('api/*') && ! $request->expectsJson()) {
+            if (! $request->is('v1/*') && ! $request->expectsJson()) {
                 return null;
             }
 

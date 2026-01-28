@@ -72,7 +72,7 @@ class PagBankGateway implements PaymentGatewayInterface
                 ],
             ],
             'notification_urls' => [
-                url('/api/webhooks/pagbank'),
+                url('/v1/webhooks/pagbank'),
             ],
         ]);
 

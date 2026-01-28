@@ -44,7 +44,6 @@ jobs:
 
       - name: Build frontend
         run: |
-          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > frontend/.env.production
           cd frontend && npm ci && npm run build && cd ..
 
       - name: Copiar conteúdo de dist para raiz do frontend
@@ -62,7 +61,7 @@ jobs:
       - name: Prepare deployment package
         run: |
           echo "Preparando pacote de implantação..."
-          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "frontend/.env.production" -x "vendor/*"
+          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "vendor/*"
           echo "Arquivo de implantação criado com sucesso"
           ls -la deployment.zip
 
