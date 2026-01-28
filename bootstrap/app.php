@@ -28,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('login');
         });
 
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
         $middleware->appendToGroup('api', [\App\Http\Middleware\SetTenantBranch::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
