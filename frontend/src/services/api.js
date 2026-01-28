@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAppStore } from '@/stores/app';
 
 // TEMPORÁRIO: URL de produção hardcoded. Altere aqui quando mudar o domínio.
-const baseURL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '') || 'https://api.pazmental.app.br/v1';
+const baseURL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '') || 'https://api.sivis.pro/v1';
 
 const api = axios.create({
   baseURL,

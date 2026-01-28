@@ -25,7 +25,7 @@ return [
         'http://localhost:5173',
         'http://localhost:3000',
         'https://adonai-app.dev.local',
-        'https://app.pazmental.app.br',
+        'https://sivis.pro',
     ],
 
     'allowed_origins_patterns' => [],
