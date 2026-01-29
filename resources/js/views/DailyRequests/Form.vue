@@ -14,16 +14,12 @@
         </select>
       </div>
 
-      <!-- Tipo de Destino (define o valor da diária) -->
+      <!-- Tipo de Destino (define o valor da diária; opções vêm da lei do servidor) -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Destino *</label>
         <select v-model="form.destination_type" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
           <option value="">Selecione...</option>
-          <option value="up_to_200km">Cidades até 200 km da sede</option>
-          <option value="above_200km">Cidades acima de 200 km</option>
-          <option value="state_capital">Capital do estado</option>
-          <option value="other_capitals_df">Demais capitais e DF</option>
-          <option value="exterior">Exterior</option>
+          <option v-for="label in destinationLabels" :key="label" :value="label">{{ label }}</option>
         </select>
         <p v-if="selectedServant && form.destination_type" class="mt-2 text-sm text-gray-600">
           Valor da diária para este destino: <span class="font-semibold">{{ formatCurrency(unitValueForDestination) }}</span>
@@ -106,25 +102,25 @@ const form = ref({
   reason: ''
 })
 
-const DESTINATION_VALUES = {
-  up_to_200km: 'value_up_to_200km',
-  above_200km: 'value_above_200km',
-  state_capital: 'value_state_capital',
-  other_capitals_df: 'value_other_capitals_df',
-  exterior: 'value_exterior'
-}
-
 const servants = ref([])
 const selectedServant = computed(() =>
   servants.value.find(s => s.id === form.value.servant_id)
 )
 
+/** Labels de destino definidos na legislação do servidor selecionado */
+const destinationLabels = computed(() => {
+  const servant = selectedServant.value
+  const values = servant?.legislation_item?.values
+  if (!values || typeof values !== 'object') return []
+  return Object.keys(values)
+})
+
+/** Valor unitário da diária para o destino selecionado (em centavos) */
 const unitValueForDestination = computed(() => {
   const servant = selectedServant.value
-  const type = form.value.destination_type
-  if (!servant?.legislation_item || !type) return 0
-  const key = DESTINATION_VALUES[type]
-  return servant.legislation_item[key] ?? 0
+  const label = form.value.destination_type
+  if (!servant?.legislation_item?.values || !label) return 0
+  return Number(servant.legislation_item.values[label]) || 0
 })
 
 const calculatedTotal = computed(() => {
@@ -142,6 +138,7 @@ const fetchServants = async () => {
 }
 
 const onServantChange = () => {
+  form.value.destination_type = ''
   calculateDays()
 }
 

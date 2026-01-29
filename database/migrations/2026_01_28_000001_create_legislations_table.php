@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('title')->comment('Título da lei / anexo');
             $table->string('law_number')->comment('Número da lei');
             $table->boolean('is_active')->default(true);
+            $table->json('destinations')->comment('Lista de destinos desta lei (ex: Até 200 km, Capital Estado)');
             $table->timestamps();
         });
 
@@ -23,11 +24,7 @@ return new class extends Migration
             $table->foreignId('legislation_id')->constrained('legislations')->cascadeOnDelete();
             $table->string('functional_category')->comment('Categoria funcional / cargo a que se aplica');
             $table->string('daily_class')->comment('Classe da diária (ex: Classe A, CC-01)');
-            $table->decimal('value_up_to_200km', 10, 2)->default(0)->comment('Cidades até 200km da sede');
-            $table->decimal('value_above_200km', 10, 2)->default(0)->comment('Cidades acima de 200km');
-            $table->decimal('value_state_capital', 10, 2)->default(0)->comment('Capital do estado');
-            $table->decimal('value_other_capitals_df', 10, 2)->default(0)->comment('Demais capitais e DF');
-            $table->decimal('value_exterior', 10, 2)->default(0)->comment('Exterior');
+            $table->json('values')->comment('Valores por destino em centavos: { "Até 200 km": 20000, "Capital Estado": 65000, ... }');
             $table->timestamps();
         });
     }

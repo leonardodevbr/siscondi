@@ -15,7 +15,7 @@ return new class extends Migration
             
             // Relacionamentos principais
             $table->foreignId('servant_id')->constrained('servants')->cascadeOnDelete();
-            $table->string('destination_type', 30)->comment('up_to_200km, above_200km, state_capital, other_capitals_df, exterior');
+            $table->string('destination_type', 255)->comment('Label do destino conforme a legislação (ex: Até 200 km, Capital Estado)');
             $table->foreignId('legislation_item_snapshot_id')->nullable()->constrained('legislation_items')->nullOnDelete()->comment('Item da legislação no momento da solicitação');
             
             // Informações da Viagem
@@ -25,10 +25,10 @@ return new class extends Migration
             $table->date('return_date');
             $table->text('reason')->comment('Motivo da viagem');
             
-            // Cálculo Financeiro
+            // Cálculo Financeiro (valores em centavos)
             $table->decimal('quantity_days', 8, 1)->comment('Quantidade de diárias (aceita meia diária)');
-            $table->decimal('unit_value', 10, 2)->comment('Valor unitário da diária');
-            $table->decimal('total_value', 10, 2)->comment('Valor total calculado');
+            $table->unsignedBigInteger('unit_value')->comment('Valor unitário da diária em centavos');
+            $table->unsignedBigInteger('total_value')->comment('Valor total calculado em centavos');
             
             // Fluxo de Aprovação
             $table->enum('status', [

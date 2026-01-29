@@ -50,7 +50,11 @@ class LegislationController extends Controller
         $legislation = Legislation::create($data);
 
         foreach ($items as $item) {
-            $legislation->items()->create($item);
+            $legislation->items()->create([
+                'functional_category' => $item['functional_category'],
+                'daily_class' => $item['daily_class'],
+                'values' => $item['values'] ?? [],
+            ]);
         }
 
         $legislation->load('items');
@@ -76,7 +80,11 @@ class LegislationController extends Controller
 
         $legislation->items()->delete();
         foreach ($items as $item) {
-            $legislation->items()->create($item);
+            $legislation->items()->create([
+                'functional_category' => $item['functional_category'],
+                'daily_class' => $item['daily_class'],
+                'values' => $item['values'] ?? [],
+            ]);
         }
 
         $legislation->load('items');

@@ -19,11 +19,7 @@ class LegislationItemResource extends JsonResource
             'legislation_id' => $this->legislation_id,
             'functional_category' => $this->functional_category,
             'daily_class' => $this->daily_class,
-            'value_up_to_200km' => $this->value_up_to_200km,
-            'value_above_200km' => $this->value_above_200km,
-            'value_state_capital' => $this->value_state_capital,
-            'value_other_capitals_df' => $this->value_other_capitals_df,
-            'value_exterior' => $this->value_exterior,
+            'values' => $this->values ?? [],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -7,35 +7,66 @@
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Título da Lei *</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Título da Lei *</label>
           <input
             v-model="form.title"
             type="text"
             required
             placeholder="Ex: ANEXO ÚNICO - Diárias"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            class="input-base w-full"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Lei Nº *</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Lei Nº *</label>
           <input
             v-model="form.law_number"
             type="text"
             required
             placeholder="Ex: Lei 001/2024"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            class="input-base w-full"
           />
         </div>
       </div>
 
       <Toggle v-model="form.is_active" label="Ativo" />
 
+      <!-- Destinos desta lei (cada lei pode ter seus próprios destinos) -->
+      <div class="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Destinos desta lei</h2>
+          <button type="button" @click="addDestination" class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 shrink-0">
+            Adicionar destino
+          </button>
+        </div>
+        <p class="text-sm text-gray-500 mb-3">Defina as colunas de valor por destino (ex.: Até 200 km, Capital Estado). Cada lei pode ter destinos únicos.</p>
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="(dest, idx) in form.destinations"
+            :key="idx"
+            class="flex w-48 min-w-[10rem] rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-100"
+          >
+            <input
+              v-model="form.destinations[idx]"
+              type="text"
+              required
+              placeholder="Ex: Até 200 km"
+              class="flex-1 min-w-0 border-0 bg-transparent px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0"
+            />
+            <button
+              type="button"
+              @click="removeDestination(idx)"
+              class="flex items-center justify-center shrink-0 w-9 border-l border-slate-300 text-red-600 hover:bg-red-50 hover:text-red-800 transition-colors"
+              title="Remover destino"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div>
         <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">Itens da tabela de valores (por categoria e destino)</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Valores em R$ (reais). Ex.: 650,01 para R$ 650,01.</p>
-          </div>
+          <h2 class="text-lg font-semibold text-gray-900">Itens da tabela de valores (por categoria e destino)</h2>
           <button type="button" @click="addItem" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shrink-0">
             Adicionar item
           </button>
@@ -46,36 +77,29 @@
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria Funcional</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Classe da Diária</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Até 200 km</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acima 200 km</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capital Estado</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Demais Capitais/DF</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exterior</th>
+                <th v-for="(dest, idx) in form.destinations" :key="idx" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                  {{ dest || `Destino ${idx + 1}` }}
+                </th>
                 <th class="px-4 py-3 w-12"></th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="(item, idx) in form.items" :key="idx">
                 <td class="px-4 py-3 align-top">
-                  <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full min-w-[12rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
+                  <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full min-w-[12rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
                 </td>
                 <td class="px-4 py-3 align-top">
-                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="block w-full min-w-[6rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
+                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="input-table block w-full min-w-[6rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
                 </td>
-                <td class="px-4 py-3 align-top">
-                  <input v-model.number="item.value_up_to_200km" type="number" step="0.01" min="0" placeholder="0" title="Valor em R$ (reais)" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
-                </td>
-                <td class="px-4 py-3 align-top">
-                  <input v-model.number="item.value_above_200km" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
-                </td>
-                <td class="px-4 py-3 align-top">
-                  <input v-model.number="item.value_state_capital" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
-                </td>
-                <td class="px-4 py-3 align-top">
-                  <input v-model.number="item.value_other_capitals_df" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
-                </td>
-                <td class="px-4 py-3 align-top">
-                  <input v-model.number="item.value_exterior" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
+                <td v-for="(dest, dIdx) in form.destinations" :key="dIdx" class="px-4 py-3 align-top">
+                  <input
+                    v-model.number="item.valueByIndex[dIdx]"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0"
+                    class="block w-full min-w-[5.5rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
+                  />
                 </td>
                 <td class="px-4 py-3 align-top">
                   <button type="button" @click="removeItem(idx)" class="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50" title="Remover">×</button>
@@ -106,6 +130,8 @@ import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import Toggle from '@/components/Common/Toggle.vue'
 
+const DEFAULT_DESTINATIONS = ['Até 200 km', 'Acima 200 km', 'Capital Estado', 'Demais Capitais/DF', 'Exterior']
+
 const route = useRoute()
 const router = useRouter()
 const { success, error: showError } = useAlert()
@@ -115,8 +141,27 @@ const form = ref({
   title: '',
   law_number: '',
   is_active: true,
+  destinations: [...DEFAULT_DESTINATIONS],
   items: []
 })
+
+function valueArrayForDestinations(destinations) {
+  return (destinations || []).map(() => '')
+}
+
+function addDestination() {
+  form.value.destinations.push(`Novo destino ${form.value.destinations.length + 1}`)
+  form.value.items.forEach((item) => {
+    item.valueByIndex.push('')
+  })
+}
+
+function removeDestination(idx) {
+  form.value.destinations.splice(idx, 1)
+  form.value.items.forEach((item) => {
+    item.valueByIndex.splice(idx, 1)
+  })
+}
 
 const fetchLegislation = async () => {
   const id = route.params.id
@@ -128,22 +173,25 @@ const fetchLegislation = async () => {
       showError('Erro', 'Dados da legislação não encontrados.')
       return
     }
-    form.value = {
-      title: payload.title ?? '',
-      law_number: payload.law_number ?? '',
-      is_active: payload.is_active ?? true,
-      items: Array.isArray(payload.items)
-        ? payload.items.map((it) => ({
+    const destinations = Array.isArray(payload.destinations) && payload.destinations.length
+      ? payload.destinations
+      : [...DEFAULT_DESTINATIONS]
+
+    form.value.title = payload.title ?? ''
+    form.value.law_number = payload.law_number ?? ''
+    form.value.is_active = payload.is_active ?? true
+    form.value.destinations = [...destinations]
+    form.value.items = Array.isArray(payload.items)
+      ? payload.items.map((it) => {
+          const rawValues = it.values ?? {}
+          const valueByIndex = destinations.map((d) => (Number(rawValues[d]) || 0) / 100)
+          return {
             functional_category: it.functional_category ?? '',
             daily_class: it.daily_class ?? '',
-            value_up_to_200km: (Number(it.value_up_to_200km) || 0) / 100,
-            value_above_200km: (Number(it.value_above_200km) || 0) / 100,
-            value_state_capital: (Number(it.value_state_capital) || 0) / 100,
-            value_other_capitals_df: (Number(it.value_other_capitals_df) || 0) / 100,
-            value_exterior: (Number(it.value_exterior) || 0) / 100
-          }))
-        : []
-    }
+            valueByIndex
+          }
+        })
+      : []
   } catch (err) {
     console.error('Erro ao carregar legislação:', err)
     showError('Erro', 'Não foi possível carregar a legislação.')
@@ -154,11 +202,7 @@ const addItem = () => {
   form.value.items.push({
     functional_category: '',
     daily_class: '',
-    value_up_to_200km: '',
-    value_above_200km: '',
-    value_state_capital: '',
-    value_other_capitals_df: '',
-    value_exterior: ''
+    valueByIndex: valueArrayForDestinations(form.value.destinations)
   })
 }
 
@@ -166,23 +210,35 @@ const removeItem = (index) => {
   form.value.items.splice(index, 1)
 }
 
-/** Converte valor em reais (formulário) para centavos (inteiro) para a API. */
 const reaisToCents = (val) => Math.round(100 * (Number(val) || 0))
 
 const toPayload = () => {
-  const items = (form.value.items || []).map((it) => ({
-    functional_category: it.functional_category || '',
-    daily_class: it.daily_class || '',
-    value_up_to_200km: reaisToCents(it.value_up_to_200km),
-    value_above_200km: reaisToCents(it.value_above_200km),
-    value_state_capital: reaisToCents(it.value_state_capital),
-    value_other_capitals_df: reaisToCents(it.value_other_capitals_df),
-    value_exterior: reaisToCents(it.value_exterior)
-  }))
-  return { title: form.value.title, law_number: form.value.law_number, is_active: form.value.is_active, items }
+  const destinations = form.value.destinations.filter(Boolean)
+  const items = (form.value.items || []).map((it) => {
+    const values = {}
+    destinations.forEach((d, i) => {
+      values[d] = reaisToCents(it.valueByIndex?.[i])
+    })
+    return {
+      functional_category: it.functional_category || '',
+      daily_class: it.daily_class || '',
+      values
+    }
+  })
+  return {
+    title: form.value.title,
+    law_number: form.value.law_number,
+    is_active: form.value.is_active,
+    destinations,
+    items
+  }
 }
 
 const handleSubmit = async () => {
+  if (!form.value.destinations.length || form.value.destinations.every((d) => !d)) {
+    showError('Erro', 'Adicione ao menos um destino à lei.')
+    return
+  }
   try {
     const payload = toPayload()
     if (isEdit.value) {

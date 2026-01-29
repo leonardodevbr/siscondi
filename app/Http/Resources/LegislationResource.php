@@ -19,6 +19,7 @@ class LegislationResource extends JsonResource
             'title' => $this->title,
             'law_number' => $this->law_number,
             'is_active' => $this->is_active,
+            'destinations' => $this->destinations ?? [],
             'items' => LegislationItemResource::collection($this->whenLoaded('items')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

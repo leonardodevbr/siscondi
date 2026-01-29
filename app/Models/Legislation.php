@@ -19,6 +19,7 @@ class Legislation extends Model
         'title',
         'law_number',
         'is_active',
+        'destinations',
     ];
 
     /**
@@ -26,6 +27,7 @@ class Legislation extends Model
      */
     protected $casts = [
         'is_active' => 'boolean',
+        'destinations' => 'array',
     ];
 
     /**

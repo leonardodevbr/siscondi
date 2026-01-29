@@ -17,24 +17,16 @@ class LegislationItem extends Model
         'legislation_id',
         'functional_category',
         'daily_class',
-        'value_up_to_200km',
-        'value_above_200km',
-        'value_state_capital',
-        'value_other_capitals_df',
-        'value_exterior',
+        'values',
     ];
 
     /**
-     * Valores em centavos (integer).
+     * Valores por destino: chave = label do destino, valor = centavos (int).
      *
      * @var array<string, string>
      */
     protected $casts = [
-        'value_up_to_200km' => 'integer',
-        'value_above_200km' => 'integer',
-        'value_state_capital' => 'integer',
-        'value_other_capitals_df' => 'integer',
-        'value_exterior' => 'integer',
+        'values' => 'array',
     ];
 
     /**
@@ -58,17 +50,12 @@ class LegislationItem extends Model
     }
 
     /**
-     * Retorna o valor da diária para um tipo de destino (em centavos).
+     * Retorna o valor da diária para um destino (label definido na legislação), em centavos.
      */
-    public function getValueForDestination(string $destinationType): int
+    public function getValueForDestination(string $destinationLabel): int
     {
-        return match ($destinationType) {
-            'up_to_200km' => (int) $this->value_up_to_200km,
-            'above_200km' => (int) $this->value_above_200km,
-            'state_capital' => (int) $this->value_state_capital,
-            'other_capitals_df' => (int) $this->value_other_capitals_df,
-            'exterior' => (int) $this->value_exterior,
-            default => 0,
-        };
+        $values = $this->values ?? [];
+
+        return (int) ($values[$destinationLabel] ?? 0);
     }
 }
