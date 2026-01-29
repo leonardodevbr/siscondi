@@ -68,22 +68,24 @@
 
         <div>
           <SelectInput
-            v-model="form.legislation_item_id"
-            label="Cargo (item da legislação) *"
-            :options="legislationItemOptions"
-            placeholder="Selecione..."
-            :searchable="legislationItemOptions.length > 10"
-          />
-        </div>
-
-        <div>
-          <SelectInput
             v-model="form.department_id"
             label="Secretaria (Lotação) *"
             :options="departmentOptions"
             placeholder="Selecione..."
             :searchable="departmentOptions.length > 10"
           />
+        </div>
+
+        <div class="lg:col-span-2">
+          <SelectInput
+            v-model="form.cargo_ids"
+            label="Cargo(s) *"
+            :options="cargoOptions"
+            placeholder="Selecione um ou mais cargos"
+            mode="multiple"
+            :searchable="cargoOptions.length > 10"
+          />
+          <p class="mt-1 text-xs text-slate-500">Vincule um ou mais cargos ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
         </div>
 
         <!-- Dados Bancários -->
@@ -135,6 +137,57 @@
         <div class="lg:col-span-2 pt-2">
           <Toggle v-model="form.is_active" label="Servidor Ativo" />
         </div>
+
+        <!-- Dados de acesso ao sistema (usuário vinculado) -->
+        <div v-if="linkedUser" class="lg:col-span-2 border-t border-slate-200 pt-6">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <KeyIcon class="h-5 w-5 text-slate-500" />
+              Dados de acesso ao sistema
+            </h3>
+            <router-link
+              :to="{ name: 'users.edit', params: { id: linkedUser.id } }"
+              class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+            >
+              <PencilSquareIcon class="h-4 w-4" />
+              Editar usuário
+            </router-link>
+          </div>
+          <p class="text-xs text-slate-500 mb-4">Este servidor está vinculado a um usuário e pode acessar o sistema.</p>
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">E-mail (login)</span>
+              <span class="block text-sm text-slate-900 mt-0.5">{{ linkedUser.email }}</span>
+            </div>
+            <div>
+              <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">Perfil</span>
+              <span class="block text-sm text-slate-900 mt-0.5">{{ roleLabel(linkedUser.role) }}</span>
+            </div>
+            <div v-if="linkedUser.department" class="md:col-span-2">
+              <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">Secretaria principal</span>
+              <span class="block text-sm text-slate-900 mt-0.5">{{ linkedUser.department.name }}</span>
+            </div>
+            <div v-if="linkedUser.departments && linkedUser.departments.length" class="md:col-span-2">
+              <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">Secretarias com acesso</span>
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <span
+                  v-for="d in linkedUser.departments"
+                  :key="d.id"
+                  class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-700"
+                >
+                  {{ d.name }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="isEdit" class="lg:col-span-2 border-t border-slate-200 pt-6">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <KeyIcon class="h-5 w-5 text-slate-500" />
+            Dados de acesso ao sistema
+          </h3>
+          <p class="text-sm text-slate-500">Este servidor não está vinculado a nenhum usuário. Não possui acesso ao sistema.</p>
+        </div>
       </div>
 
       <!-- Actions (padrão do form de usuários) -->
@@ -166,6 +219,8 @@ import {
   BriefcaseIcon,
   BanknotesIcon,
   EnvelopeIcon,
+  KeyIcon,
+  PencilSquareIcon,
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -173,6 +228,7 @@ const router = useRouter()
 const { success, error: showError } = useAlert()
 const isEdit = ref(false)
 const saving = ref(false)
+const linkedUser = ref(null)
 
 const form = ref({
   name: '',
@@ -182,6 +238,7 @@ const form = ref({
   matricula: '',
   legislation_item_id: null,
   department_id: null,
+  cargo_ids: [],
   bank_name: '',
   agency_number: '',
   account_number: '',
@@ -196,38 +253,41 @@ const accountTypeOptions = [
   { value: 'poupanca', label: 'Poupança' },
 ]
 
-const legislations = ref([])
 const departments = ref([])
-
-const legislationItemOptions = computed(() => {
-  const list = []
-  for (const leg of legislations.value) {
-    const items = leg.items || []
-    for (const item of items) {
-      list.push({
-        value: item.id,
-        label: `${item.functional_category} (${item.daily_class})`
-      })
-    }
-  }
-  return list
-})
+const cargos = ref([])
 
 const departmentOptions = computed(() =>
   (departments.value || []).map((d) => ({ value: d.id, label: d.name }))
 )
 
+const cargoOptions = computed(() =>
+  (cargos.value || []).map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
+)
+
 const fetchData = async () => {
   try {
-    const [legData, deptData] = await Promise.all([
-      api.get('/legislations?all=1'),
-      api.get('/departments?all=1')
+    const [deptData, cargosData] = await Promise.all([
+      api.get('/departments?all=1'),
+      api.get('/cargos?all=1')
     ])
-    legislations.value = legData.data.data || legData.data
-    departments.value = deptData.data.data || deptData.data
+    departments.value = deptData.data?.data ?? deptData.data ?? []
+    cargos.value = cargosData.data?.data ?? cargosData.data ?? []
   } catch (error) {
     console.error('Erro ao carregar dados:', error)
   }
+}
+
+const roleLabels = {
+  admin: 'Administrador',
+  requester: 'Requerente',
+  validator: 'Validador',
+  authorizer: 'Concedente',
+  payer: 'Pagador',
+  'super-admin': 'Super Admin',
+}
+
+function roleLabel(role) {
+  return role ? (roleLabels[role] || role) : '–'
 }
 
 const fetchServant = async () => {
@@ -240,17 +300,24 @@ const fetchServant = async () => {
       legislation_item_id: payload.legislation_item_id ?? null,
       department_id: payload.department_id ?? null,
       account_type: payload.account_type ?? null,
+      cargo_ids: Array.isArray(payload.cargo_ids) ? payload.cargo_ids : []
     }
+    linkedUser.value = payload.user || null
   } catch (error) {
     console.error('Erro ao carregar servidor:', error)
   }
 }
 
 const handleSubmit = async () => {
+  if (!form.value.cargo_ids?.length) {
+    showError('Erro', 'Selecione pelo menos um cargo.')
+    return
+  }
   saving.value = true
   try {
     const payload = { ...form.value }
     payload.cpf = (form.value.cpf || '').replace(/\D/g, '').slice(0, 11)
+    payload.cargo_ids = form.value.cargo_ids || []
     if (isEdit.value) {
       await api.put(`/servants/${route.params.id}`, payload)
     } else {

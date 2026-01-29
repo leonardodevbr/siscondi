@@ -31,7 +31,7 @@ class UpdateUserRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'password' => ['sometimes', 'nullable', 'string', 'confirmed', Password::defaults()],
-            'role' => ['sometimes', 'required', 'string', Rule::in(['admin', 'requester', 'validator', 'authorizer', 'payer', 'super-admin'])],
+            'cargo_id' => ['sometimes', 'required', 'integer', 'exists:cargos,id'],
             'department_ids' => ['sometimes', 'array'],
             'department_ids.*' => ['integer', 'exists:departments,id'],
             'primary_department_id' => ['sometimes', 'nullable', 'integer', 'exists:departments,id'],

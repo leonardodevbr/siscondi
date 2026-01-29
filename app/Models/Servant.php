@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Servant extends Model
@@ -79,6 +80,17 @@ class Servant extends Model
     public function dailyRequests(): HasMany
     {
         return $this->hasMany(DailyRequest::class);
+    }
+
+    /**
+     * Cargos ocupados pelo servidor (1 ou mais)
+     *
+     * @return BelongsToMany<Cargo>
+     */
+    public function cargos(): BelongsToMany
+    {
+        return $this->belongsToMany(Cargo::class, 'servant_cargo')
+            ->withTimestamps();
     }
 
     /**

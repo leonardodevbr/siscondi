@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Cargo;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -69,7 +70,7 @@ class UserController extends Controller
             ? User::query()
             : $this->departmentScope();
 
-        $query->with('roles', 'departments');
+        $query->with('roles', 'departments', 'cargo');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -89,7 +90,12 @@ class UserController extends Controller
         $authUser = auth()->user();
         $departmentIds = [];
         $primaryDepartmentId = null;
-        $role = $request->input('role');
+        $cargoId = $request->validated('cargo_id');
+        $cargo = Cargo::find($cargoId);
+        if (! $cargo || ! $cargo->role) {
+            throw ValidationException::withMessages(['cargo_id' => ['O cargo selecionado não possui perfil (role) configurado. Configure no cadastro de Cargos.']]);
+        }
+        $role = $cargo->role;
 
         if ($role === 'owner') {
             $departmentIds = Department::query()->pluck('id')->toArray();
@@ -118,24 +124,26 @@ class UserController extends Controller
             }
         }
 
-        $data = $request->safe()->only(['name', 'email', 'role', 'operation_pin']);
+        $data = $request->safe()->only(['name', 'email', 'operation_pin']);
         $data['password'] = $request->validated('password');
         $data['municipality_id'] = $municipalityId;
+        $data['cargo_id'] = $cargoId;
         if ($request->filled('operation_password')) {
             $data['operation_password'] = $request->validated('operation_password');
         }
 
-        $user = DB::transaction(function () use ($data, $departmentIds, $primaryDepartmentId): User {
+        $user = DB::transaction(function () use ($data, $role, $departmentIds, $primaryDepartmentId): User {
             $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'municipality_id' => $data['municipality_id'] ?? null,
+                'cargo_id' => $data['cargo_id'],
                 'operation_password' => $data['operation_password'] ?? null,
                 'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
             ]);
 
-            $user->assignRole($data['role']);
+            $user->assignRole($role);
 
             if (! empty($departmentIds)) {
                 $pivotData = [];
@@ -145,7 +153,7 @@ class UserController extends Controller
                 $user->departments()->attach($pivotData);
             }
 
-            return $user->load('roles', 'departments');
+            return $user->load('roles', 'departments', 'cargo');
         });
 
         return response()->json(new UserResource($user), 201);
@@ -174,7 +182,7 @@ class UserController extends Controller
     {
         $user = $this->departmentScope()->with('roles', 'departments')->findOrFail((int) $id);
 
-        $data = $request->safe()->only(['name', 'email', 'role', 'department_id', 'operation_pin']);
+        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -216,13 +224,17 @@ class UserController extends Controller
                 $user->departments()->sync($pivotData);
             }
 
-            $user->update($payload);
-            if (isset($data['role'])) {
-                $user->syncRoles([$data['role']]);
+            if (isset($data['cargo_id'])) {
+                $cargo = Cargo::find($data['cargo_id']);
+                $payload['cargo_id'] = $data['cargo_id'];
+                if ($cargo && $cargo->role) {
+                    $user->syncRoles([$cargo->role]);
+                }
             }
+            $user->update($payload);
         });
 
-        $user->refresh()->load('roles', 'departments');
+        $user->refresh()->load('roles', 'departments', 'cargo');
 
         return response()->json(new UserResource($user));
     }

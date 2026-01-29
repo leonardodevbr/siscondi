@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LegislationItem extends Model
@@ -47,6 +48,17 @@ class LegislationItem extends Model
     public function servants(): HasMany
     {
         return $this->hasMany(Servant::class, 'legislation_item_id');
+    }
+
+    /**
+     * Cargos vinculados a este item da legislação
+     *
+     * @return BelongsToMany<Cargo>
+     */
+    public function cargos(): BelongsToMany
+    {
+        return $this->belongsToMany(Cargo::class, 'cargo_legislation_item')
+            ->withTimestamps();
     }
 
     /**

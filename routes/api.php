@@ -21,7 +21,8 @@ require __DIR__.'/api/municipalities.php';
 require __DIR__.'/api/departments.php';
 
 // Módulo de Diárias
-require __DIR__.'/api/legislations.php'; // Cargos e Valores
+require __DIR__.'/api/legislations.php'; // Legislações e Valores
+require __DIR__.'/api/cargos.php'; // Cargos (símbolo + pivot com itens da lei)
 require __DIR__.'/api/servants.php'; // Servidores Públicos
 require __DIR__.'/api/daily-requests.php'; // Solicitações de Diárias
 

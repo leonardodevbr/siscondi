@@ -15,7 +15,7 @@ return new class extends Migration
             
             // Relacionamentos
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('legislation_item_id')->constrained('legislation_items')->cascadeOnDelete()->comment('Item da legislação (categoria/classe/valores)');
+            $table->foreignId('legislation_item_id')->nullable()->constrained('legislation_items')->nullOnDelete()->comment('Item da legislação (opcional; vínculo principal é por cargos)');
             $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete()->comment('Secretaria/Lotação');
             
             // Informações Pessoais

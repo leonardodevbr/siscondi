@@ -21,7 +21,7 @@ class UpdateServantRequest extends FormRequest
     {
         return [
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
-            'legislation_item_id' => ['sometimes', 'exists:legislation_items,id'],
+            'legislation_item_id' => ['sometimes', 'nullable', 'exists:legislation_items,id'],
             'department_id' => ['sometimes', 'exists:departments,id'],
             'name' => ['sometimes', 'string', 'max:255'],
             'cpf' => ['sometimes', 'string', 'size:11', Rule::unique('servants', 'cpf')->ignore($this->servant)],
@@ -35,6 +35,8 @@ class UpdateServantRequest extends FormRequest
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'is_active' => ['sometimes', 'boolean'],
+            'cargo_ids' => ['sometimes', 'array', 'min:1'],
+            'cargo_ids.*' => ['integer', 'exists:cargos,id'],
         ];
     }
 }

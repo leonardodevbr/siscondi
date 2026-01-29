@@ -50,20 +50,22 @@ class LegislationController extends Controller
         $legislation = Legislation::create($data);
 
         foreach ($items as $item) {
-            $legislation->items()->create([
+            $legislationItem = $legislation->items()->create([
                 'functional_category' => $item['functional_category'],
                 'daily_class' => $item['daily_class'],
                 'values' => $item['values'] ?? [],
             ]);
+            $cargoIds = $item['cargo_ids'] ?? [];
+            $legislationItem->cargos()->sync($cargoIds);
         }
 
-        $legislation->load('items');
+        $legislation->load(['items', 'items.cargos']);
         return response()->json(new LegislationResource($legislation), 201);
     }
 
     public function show(string|int $legislation): JsonResponse
     {
-        $legislation = Legislation::query()->with('items')->findOrFail((int) $legislation);
+        $legislation = Legislation::query()->with(['items', 'items.cargos'])->findOrFail((int) $legislation);
         $this->authorize('legislations.view');
 
         return response()->json(new LegislationResource($legislation));
@@ -73,21 +75,34 @@ class LegislationController extends Controller
     {
         $legislation = Legislation::query()->findOrFail((int) $legislation);
         $data = $request->validated();
-        $items = $data['items'] ?? [];
+        $itemsPayload = $data['items'] ?? [];
         unset($data['items']);
 
         $legislation->update($data);
 
-        $legislation->items()->delete();
-        foreach ($items as $item) {
-            $legislation->items()->create([
-                'functional_category' => $item['functional_category'],
-                'daily_class' => $item['daily_class'],
+        $existingIds = collect($itemsPayload)->pluck('id')->filter()->values()->all();
+        $legislation->items()->whereNotIn('id', $existingIds)->delete();
+
+        foreach ($itemsPayload as $item) {
+            $cargoIds = $item['cargo_ids'] ?? [];
+            $attrs = [
+                'functional_category' => $item['functional_category'] ?? '',
+                'daily_class' => $item['daily_class'] ?? '',
                 'values' => $item['values'] ?? [],
-            ]);
+            ];
+            if (! empty($item['id'])) {
+                $legislationItem = $legislation->items()->find((int) $item['id']);
+                if ($legislationItem) {
+                    $legislationItem->update($attrs);
+                    $legislationItem->cargos()->sync($cargoIds);
+                    continue;
+                }
+            }
+            $legislationItem = $legislation->items()->create($attrs);
+            $legislationItem->cargos()->sync($cargoIds);
         }
 
-        $legislation->load('items');
+        $legislation->load(['items', 'items.cargos']);
         return response()->json(new LegislationResource($legislation));
     }
 

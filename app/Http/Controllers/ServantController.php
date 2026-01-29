@@ -17,7 +17,7 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $query = Servant::with(['legislationItem', 'department', 'user']);
+        $query = Servant::with(['legislationItem', 'department', 'user', 'cargos']);
 
         if ($request->has('search')) {
             $search = $request->string('search')->toString();
@@ -52,15 +52,21 @@ class ServantController extends Controller
 
     public function store(StoreServantRequest $request): JsonResponse
     {
-        $servant = Servant::create($request->validated());
-        $servant->load(['legislationItem', 'department', 'user']);
+        $data = $request->validated();
+        $cargoIds = $data['cargo_ids'] ?? [];
+        unset($data['cargo_ids']);
+        $servant = Servant::create($data);
+        $servant->cargos()->sync($cargoIds);
+        $servant->load(['legislationItem', 'department', 'user', 'cargos']);
 
         return response()->json(new ServantResource($servant), 201);
     }
 
     public function show(string|int $servant): JsonResponse
     {
-        $servant = Servant::query()->with(['legislationItem', 'department', 'user'])->findOrFail((int) $servant);
+        $servant = Servant::query()
+            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'cargos'])
+            ->findOrFail((int) $servant);
         $this->authorize('servants.view');
 
         return response()->json(new ServantResource($servant));
@@ -69,8 +75,14 @@ class ServantController extends Controller
     public function update(UpdateServantRequest $request, string|int $servant): JsonResponse
     {
         $servant = Servant::query()->findOrFail((int) $servant);
-        $servant->update($request->validated());
-        $servant->load(['legislationItem', 'department', 'user']);
+        $data = $request->validated();
+        $cargoIds = $data['cargo_ids'] ?? null;
+        unset($data['cargo_ids']);
+        $servant->update($data);
+        if ($cargoIds !== null) {
+            $servant->cargos()->sync($cargoIds);
+        }
+        $servant->load(['legislationItem', 'department', 'user', 'cargos']);
 
         return response()->json(new ServantResource($servant));
     }

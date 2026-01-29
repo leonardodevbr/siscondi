@@ -93,6 +93,7 @@
                 <th v-for="(dest, idx) in form.destinations" :key="idx" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                   {{ dest || `Destino ${idx + 1}` }}
                 </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[20rem]">Cargos vinculados</th>
                 <th class="px-4 py-3 w-12"></th>
               </tr>
             </thead>
@@ -112,6 +113,15 @@
                     min="0"
                     placeholder="0"
                     class="block w-full min-w-[5.5rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
+                  />
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <SelectInput
+                    v-model="item.cargo_ids"
+                    :options="cargoOptions"
+                    placeholder="Selecione os cargos"
+                    mode="multiple"
+                    :searchable="cargoOptions.length > 10"
                   />
                 </td>
                 <td class="px-4 py-3 align-top">
@@ -143,6 +153,7 @@ import { Bars3Icon } from '@heroicons/vue/24/outline'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import Toggle from '@/components/Common/Toggle.vue'
+import SelectInput from '@/components/Common/SelectInput.vue'
 
 const DEFAULT_DESTINATIONS = ['Até 200 km', 'Acima 200 km', 'Capital Estado', 'Demais Capitais/DF', 'Exterior']
 
@@ -150,6 +161,8 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: showError } = useAlert()
 const isEdit = ref(false)
+const cargos = ref([])
+const cargoOptions = ref([])
 
 const form = ref({
   title: '',
@@ -270,7 +283,8 @@ const addItem = () => {
   form.value.items.push({
     functional_category: '',
     daily_class: '',
-    valueByIndex: valueArrayForDestinations(form.value.destinations)
+    valueByIndex: valueArrayForDestinations(form.value.destinations),
+    cargo_ids: []
   })
 }
 
@@ -322,7 +336,18 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => {
+const fetchCargos = async () => {
+  try {
+    const { data } = await api.get('/cargos?all=1')
+    const list = data.data ?? data ?? []
+    cargoOptions.value = list.map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+onMounted(async () => {
+  await fetchCargos()
   const id = route.params.id
   if (id && id !== 'create' && String(Number(id)) === String(id)) {
     isEdit.value = true

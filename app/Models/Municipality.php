@@ -33,4 +33,14 @@ class Municipality extends Model
     {
         return $this->hasMany(Department::class, 'municipality_id');
     }
+
+    /**
+     * Cargos do município
+     *
+     * @return HasMany<Cargo>
+     */
+    public function cargos(): HasMany
+    {
+        return $this->hasMany(Cargo::class, 'municipality_id');
+    }
 }

@@ -25,6 +25,13 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $role,
+            'cargo_id' => $this->cargo_id,
+            'cargo' => $this->whenLoaded('cargo', fn () => $this->cargo ? [
+                'id' => $this->cargo->id,
+                'name' => $this->cargo->name,
+                'symbol' => $this->cargo->symbol,
+                'role' => $this->cargo->role,
+            ] : null),
             'roles' => $this->getRoleNames()->values()->all(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values()->all(),
             'is_super_admin' => $this->hasRole('super-admin'),

@@ -35,6 +35,7 @@ class ServantResource extends JsonResource
             'legislation_item' => new LegislationItemResource($this->whenLoaded('legislationItem')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'user' => new UserResource($this->whenLoaded('user')),
+            'cargo_ids' => $this->whenLoaded('cargos', fn () => $this->cargos->pluck('id')->values()->all()),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

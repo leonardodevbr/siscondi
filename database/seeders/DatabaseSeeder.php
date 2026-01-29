@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             UserSeeder::class,
             LegislationSeeder::class,
+            CargoSeeder::class,
             ServantSeeder::class,
         ]);
     }

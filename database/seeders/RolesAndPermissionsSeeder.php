@@ -37,6 +37,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'legislations.edit',
             'legislations.delete',
             
+            // Cargos (símbolo + pivot com itens da lei)
+            'cargos.view',
+            'cargos.create',
+            'cargos.edit',
+            'cargos.delete',
+            
             // Servidores
             'servants.view',
             'servants.create',
@@ -84,6 +90,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'daily-requests.edit',
             'servants.view',
             'legislations.view',
+            'cargos.view',
             'departments.view',
         ]);
 
@@ -99,6 +106,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'servants.create',
             'servants.edit',
             'legislations.view',
+            'cargos.view',
+            'cargos.create',
+            'cargos.edit',
             'departments.view',
             'reports.view',
         ]);
@@ -115,6 +125,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'legislations.view',
             'legislations.create',
             'legislations.edit',
+            'cargos.view',
+            'cargos.create',
+            'cargos.edit',
             'departments.view',
             'departments.create',
             'departments.edit',
@@ -132,6 +145,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'daily-requests.pay',
             'servants.view',
             'legislations.view',
+            'cargos.view',
             'departments.view',
             'reports.view',
             'reports.export',

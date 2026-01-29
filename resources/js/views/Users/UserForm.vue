@@ -109,18 +109,14 @@
         </div>
 
         <div class="lg:col-span-2">
-          <label class="block text-sm font-medium text-slate-700 mb-1">Cargo *</label>
-          <select
-            v-model="form.role"
-            required
-            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecione o cargo</option>
-            <option v-for="option in roleOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-
+          <SelectInput
+            v-model="form.cargo_id"
+            label="Cargo *"
+            :options="cargoOptions"
+            placeholder="Selecione o cargo"
+            :searchable="cargoOptions.length > 10"
+          />
+          <p class="mt-1 text-xs text-slate-500">O perfil (permissões) do usuário é definido pelo cargo. Vincule o cargo no cadastro de Cargos.</p>
         </div>
 
         <!-- Secretarias (apenas Super Admin) -->
@@ -237,7 +233,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import api from '@/services/api';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '@/stores/user';
@@ -245,6 +242,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
 import Input from '@/components/Common/Input.vue';
 import Button from '@/components/Common/Button.vue';
+import SelectInput from '@/components/Common/SelectInput.vue';
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -254,15 +252,6 @@ import {
   InformationCircleIcon,
   CheckCircleIcon,
 } from '@heroicons/vue/24/outline';
-
-const roleOptions = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'requester', label: 'Requerente' },
-  { value: 'validator', label: 'Validador' },
-  { value: 'authorizer', label: 'Concedente' },
-  { value: 'payer', label: 'Pagador' },
-  { value: 'super-admin', label: 'Super Admin' },
-];
 
 const route = useRoute();
 const router = useRouter();
@@ -278,6 +267,14 @@ const departmentSearchQuery = ref('');
 
 const departmentOptions = computed(() =>
   (appStore.departments || []).map((d) => ({ value: d.id, label: d.name }))
+);
+
+const cargos = ref([]);
+const cargoOptions = computed(() =>
+  (cargos.value || []).map((c) => ({
+    value: c.id,
+    label: c.name ? `${c.name} (${c.symbol})` : c.symbol,
+  }))
 );
 
 const filteredDepartmentOptions = computed(() => {
@@ -301,10 +298,25 @@ const form = ref({
   operation_pin: '',
   department_ids: [],
   primary_department_id: null,
+  cargo_id: null,
   role: null,
 });
 
+watch(
+  () => form.value.cargo_id,
+  (cargoId) => {
+    const cargo = cargos.value.find((c) => c.id === cargoId);
+    form.value.role = cargo?.role ?? null;
+  }
+);
+
 onMounted(async () => {
+  try {
+    const { data } = await api.get('/cargos?all=1');
+    cargos.value = data?.data ?? data ?? [];
+  } catch (e) {
+    console.error(e);
+  }
   if (authStore.user?.is_super_admin) {
     await appStore.fetchDepartments();
   }
@@ -339,6 +351,7 @@ async function loadUser() {
       operation_pin: '',
       department_ids: user.department_ids ?? [],
       primary_department_id: user.primary_department_id ?? user.department_id ?? null,
+      cargo_id: user.cargo_id ?? null,
       role: user.role ?? null,
     };
   } catch (error) {
@@ -388,7 +401,7 @@ async function submit() {
     toast.error('Nova senha e confirmação devem ser iguais.');
     return;
   }
-  if (!form.value.role) {
+  if (!form.value.cargo_id) {
     toast.error('Selecione o cargo.');
     return;
   }
@@ -402,7 +415,7 @@ async function submit() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      role: form.value.role,
+      cargo_id: form.value.cargo_id,
     };
 
     if (authStore.user?.is_super_admin) {

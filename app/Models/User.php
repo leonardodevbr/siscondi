@@ -27,6 +27,7 @@ class User extends Authenticatable
         'password',
         'municipality_id',
         'primary_department_id',
+        'cargo_id',
     ];
 
     /**
@@ -66,6 +67,16 @@ class User extends Authenticatable
     public function primaryDepartment(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'primary_department_id');
+    }
+
+    /**
+     * Cargo do usuário (define o perfil/role no sistema).
+     *
+     * @return BelongsTo<Cargo, $this>
+     */
+    public function cargo(): BelongsTo
+    {
+        return $this->belongsTo(Cargo::class);
     }
 
     /**

@@ -20,6 +20,7 @@ class LegislationItemResource extends JsonResource
             'functional_category' => $this->functional_category,
             'daily_class' => $this->daily_class,
             'values' => $this->values ?? [],
+            'cargo_ids' => $this->whenLoaded('cargos', fn () => $this->cargos->pluck('id')->values()->all()),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="select-input-wrap w-full min-w-0">
     <label v-if="label" class="block text-sm font-medium text-slate-700 mb-1">
       {{ label }}
     </label>
@@ -7,13 +7,28 @@
       :model-value="modelValue"
       :options="options"
       :mode="mode"
+      :value-prop="valueProp"
+      :label="labelProp"
       :searchable="searchable"
       :placeholder="placeholder"
       :disabled="disabled"
       :close-on-select="closeOnSelect"
       :can-clear="true"
+      :multiple-label="multipleLabelFn"
       @update:model-value="handleUpdate"
-    />
+    >
+      <template #multiplelabel="{ values }">
+        <span class="multiselect-tags-inline flex flex-wrap gap-1.5 items-center">
+          <span
+            v-for="val in values"
+            :key="val"
+            class="multiselect-tag inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+          >
+            {{ getOptionLabel(val) }}
+          </span>
+        </span>
+      </template>
+    </Multiselect>
   </div>
 </template>
 
@@ -59,6 +74,14 @@ export default defineComponent({
       type: Boolean,
       default: true,
     },
+    valueProp: {
+      type: String,
+      default: 'value',
+    },
+    labelProp: {
+      type: String,
+      default: 'label',
+    },
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -66,16 +89,33 @@ export default defineComponent({
       emit('update:modelValue', value);
     };
 
+    const multipleLabelFn = (values) => {
+      if (!values || !values.length) return '';
+      const opts = props.options || [];
+      const labels = values.map((v) => {
+        const opt = opts.find((o) => o[props.valueProp] === v);
+        return opt ? opt[props.labelProp] : String(v);
+      });
+      return labels.join(', ');
+    };
+
+    const getOptionLabel = (val) => {
+      const opt = (props.options || []).find((o) => o[props.valueProp] === val);
+      return opt ? opt[props.labelProp] : String(val);
+    };
+
     return {
       handleUpdate,
+      multipleLabelFn,
+      getOptionLabel,
     };
   },
 });
 </script>
 
 <style scoped>
-:deep(.multiselect-container) {
-  @apply relative;
+.select-input-wrap :deep(.multiselect-container) {
+  @apply relative min-w-[18rem] w-full;
 }
 
 :deep(.multiselect-single-label),
@@ -148,10 +188,19 @@ export default defineComponent({
 }
 
 :deep(.multiselect-tag) {
-  @apply bg-blue-600 text-white rounded px-2 py-1 text-xs;
+  @apply bg-blue-100 text-blue-900 rounded px-2 py-1 text-xs font-medium;
 }
 
 :deep(.multiselect-tag-remove) {
-  @apply text-white hover:bg-blue-700 rounded;
+  @apply text-blue-700 hover:text-blue-900 hover:bg-blue-200 rounded;
+}
+
+:deep(.multiselect-multiple-label) {
+  min-height: 2.5rem;
+  @apply flex flex-wrap items-center gap-1.5 py-1.5;
+}
+
+:deep(.multiselect-tags-inline) {
+  flex-wrap: wrap;
 }
 </style>
