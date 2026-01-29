@@ -18,11 +18,11 @@
       @update:model-value="handleUpdate"
     >
       <template #multiplelabel="{ values }">
-        <span class="multiselect-tags-inline flex flex-wrap gap-1.5 items-center">
+        <span class="multiselect-tags-inline flex flex-wrap gap-1.5 items-center py-1 px-0.5">
           <span
-            v-for="val in values"
-            :key="val"
-            class="multiselect-tag inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+            v-for="(val, i) in values"
+            :key="typeof val === 'object' && val && (val.id ?? val.value) !== undefined ? (val.id ?? val.value) : i"
+            class="multiselect-tag select-input-tag inline-flex items-center rounded-md bg-blue-100 text-blue-900 px-2.5 py-1 text-xs font-medium"
           >
             {{ getOptionLabel(val) }}
           </span>
@@ -86,6 +86,9 @@ export default defineComponent({
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     const handleUpdate = (value) => {
+      if (props.mode === 'multiple' && Array.isArray(value)) {
+        value = value.map((v) => (v != null && typeof v === 'object' && props.valueProp in v ? v[props.valueProp] : v));
+      }
       emit('update:modelValue', value);
     };
 
@@ -93,6 +96,9 @@ export default defineComponent({
       if (!values || !values.length) return '';
       const opts = props.options || [];
       const labels = values.map((v) => {
+        if (v != null && typeof v === 'object') {
+          return v[props.labelProp] ?? v.label ?? v.name ?? v.symbol ?? '';
+        }
         const opt = opts.find((o) => o[props.valueProp] === v);
         return opt ? opt[props.labelProp] : String(v);
       });
@@ -100,6 +106,9 @@ export default defineComponent({
     };
 
     const getOptionLabel = (val) => {
+      if (val != null && typeof val === 'object') {
+        return val[props.labelProp] ?? val.label ?? val.name ?? val.symbol ?? String(val);
+      }
       const opt = (props.options || []).find((o) => o[props.valueProp] === val);
       return opt ? opt[props.labelProp] : String(val);
     };
@@ -166,12 +175,10 @@ export default defineComponent({
   @apply bg-blue-50 text-slate-900;
 }
 
-:deep(.multiselect-option-selected) {
-  @apply bg-blue-100 text-blue-900;
-}
-
-:deep(.multiselect-option-selected-pointed) {
-  @apply bg-blue-100 text-blue-900;
+:deep(.multiselect-option.is-pointed),
+:deep(.multiselect-option-pointed) {
+  background-color: rgb(239 246 255) !important;
+  color: rgb(15 23 42) !important;
 }
 
 :deep(.multiselect-container-active .multiselect-single-label),
@@ -197,10 +204,25 @@ export default defineComponent({
 
 :deep(.multiselect-multiple-label) {
   min-height: 2.5rem;
-  @apply flex flex-wrap items-center gap-1.5 py-1.5;
+  padding: 0.5rem 0.75rem;
+  @apply flex flex-wrap items-center gap-1.5;
 }
 
 :deep(.multiselect-tags-inline) {
   flex-wrap: wrap;
+  padding: 0.125rem;
+}
+
+:deep(.multiselect-tag),
+:deep(.select-input-tag) {
+  background-color: rgb(219 234 254) !important;
+  color: rgb(30 58 138) !important;
+}
+
+:deep(.multiselect-option.is-selected),
+:deep(.multiselect-option-selected),
+:deep(.multiselect-option-selected-pointed) {
+  background-color: rgb(219 234 254) !important;
+  color: rgb(30 58 138) !important;
 }
 </style>

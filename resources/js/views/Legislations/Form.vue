@@ -262,14 +262,20 @@ const fetchLegislation = async () => {
     form.value.law_number = payload.law_number ?? ''
     form.value.is_active = payload.is_active ?? true
     form.value.destinations = [...destinations]
+    const normalizeCargoIds = (arr) => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((c) => (c != null && typeof c === 'object' && 'id' in c ? c.id : c))
+    }
     form.value.items = Array.isArray(payload.items)
       ? payload.items.map((it) => {
           const rawValues = it.values ?? {}
           const valueByIndex = destinations.map((d) => (Number(rawValues[d]) || 0) / 100)
           return {
+            id: it.id ?? null,
             functional_category: it.functional_category ?? '',
             daily_class: it.daily_class ?? '',
-            valueByIndex
+            valueByIndex,
+            cargo_ids: normalizeCargoIds(it.cargo_ids)
           }
         })
       : []
@@ -281,6 +287,7 @@ const fetchLegislation = async () => {
 
 const addItem = () => {
   form.value.items.push({
+    id: null,
     functional_category: '',
     daily_class: '',
     valueByIndex: valueArrayForDestinations(form.value.destinations),

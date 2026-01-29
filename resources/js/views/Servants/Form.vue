@@ -76,7 +76,7 @@
           />
         </div>
 
-        <div class="lg:col-span-2">
+        <div>
           <SelectInput
             v-model="form.cargo_ids"
             label="Cargo(s) *"
@@ -85,7 +85,10 @@
             mode="multiple"
             :searchable="cargoOptions.length > 10"
           />
-          <p class="mt-1 text-xs text-slate-500">Vincule um ou mais cargos ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
+        </div>
+
+        <div class="lg:col-span-2">
+          <p class="text-xs text-slate-500 -mt-2">Vincule um ou mais cargos ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
         </div>
 
         <!-- Dados Bancários -->
@@ -294,13 +297,16 @@ const fetchServant = async () => {
   try {
     const { data } = await api.get(`/servants/${route.params.id}`)
     const payload = data.data || data
+    const normalizeCargoIds = (arr) => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((c) => (c != null && typeof c === 'object' && 'id' in c ? c.id : c))
+    }
     form.value = {
       ...form.value,
       ...payload,
-      legislation_item_id: payload.legislation_item_id ?? null,
       department_id: payload.department_id ?? null,
       account_type: payload.account_type ?? null,
-      cargo_ids: Array.isArray(payload.cargo_ids) ? payload.cargo_ids : []
+      cargo_ids: normalizeCargoIds(payload.cargo_ids)
     }
     linkedUser.value = payload.user || null
   } catch (error) {
