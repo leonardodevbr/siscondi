@@ -37,7 +37,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Criado em
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="sticky right-0 z-10 bg-slate-50 px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">
                 Ações
               </th>
             </tr>
@@ -64,7 +64,7 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                 {{ formatDate(dept.created_at) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-1">
                   <button
                     v-if="!dept.is_main"
@@ -149,13 +149,12 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Brasão / Logo</label>
-            <p class="text-xs text-slate-500 mb-2">Caminho do arquivo ou URL (upload em versão futura)</p>
-            <input
+            <LogoUpload
               v-model="form.logo_path"
-              type="text"
-              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex: departments/1/logo.png"
+              type="department"
+              :entity-id="editingDepartment ? editingDepartment.id : ''"
+              label="Brasão / Logo"
+              size-class="h-32 w-32 min-h-[120px]"
             />
           </div>
 
@@ -198,9 +197,10 @@
 import api from '@/services/api';
 import { useAlert } from '@/composables/useAlert';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import LogoUpload from '@/components/Common/LogoUpload.vue';
 
 export default {
-  components: { PencilSquareIcon, TrashIcon },
+  components: { PencilSquareIcon, TrashIcon, LogoUpload },
   name: 'DepartmentsIndex',
   data() {
     return {
@@ -249,12 +249,25 @@ export default {
         if (this.editingDepartment) {
           await api.put(`/departments/${this.editingDepartment.id}`, this.form);
           this.$toast?.success('Secretaria atualizada com sucesso.');
+          this.closeModal();
         } else {
-          await api.post('/departments', this.form);
+          const { data } = await api.post('/departments', this.form);
           this.$toast?.success('Secretaria criada com sucesso.');
+          const created = data?.data ?? data;
+          if (created?.id) {
+            this.editingDepartment = created;
+            this.form = {
+              name: created.name ?? this.form.name,
+              is_main: created.is_main ?? false,
+              cnpj: created.cnpj ?? '',
+              fund_name: created.fund_name ?? '',
+              fund_code: created.fund_code ?? '',
+              logo_path: created.logo_path ?? '',
+            };
+          } else {
+            this.closeModal();
+          }
         }
-
-        this.closeModal();
         this.loadDepartments();
       } catch (error) {
         console.error('Erro ao salvar secretaria:', error);

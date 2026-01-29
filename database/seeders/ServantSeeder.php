@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Department;
-use App\Models\Legislation;
+use App\Models\LegislationItem;
 use App\Models\Servant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -15,10 +15,10 @@ class ServantSeeder extends Seeder
     public function run(): void
     {
         $mainDepartment = Department::where('is_main', true)->first();
-        $legislation = Legislation::where('code', 'CC-01')->first();
+        $legislationItem = LegislationItem::where('functional_category', 'like', '%Secretário%')->first();
 
-        if (! $mainDepartment || ! $legislation) {
-            $this->command->warn('ServantSeeder: secretaria principal ou legislação CC-01 não encontrada. Execute DepartmentSeeder e LegislationSeeder antes.');
+        if (! $mainDepartment || ! $legislationItem) {
+            $this->command->warn('ServantSeeder: secretaria principal ou item de legislação (Secretário) não encontrado. Execute DepartmentSeeder e LegislationSeeder antes.');
 
             return;
         }
@@ -29,7 +29,7 @@ class ServantSeeder extends Seeder
                 ['cpf' => '00593959582'],
                 [
                     'user_id' => $requerente->id,
-                    'legislation_id' => $legislation->id,
+                    'legislation_item_id' => $legislationItem->id,
                     'department_id' => $mainDepartment->id,
                     'name' => 'Maria Requerente',
                     'rg' => '0991836685',

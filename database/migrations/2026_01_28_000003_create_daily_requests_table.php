@@ -15,7 +15,8 @@ return new class extends Migration
             
             // Relacionamentos principais
             $table->foreignId('servant_id')->constrained('servants')->cascadeOnDelete();
-            $table->foreignId('legislation_snapshot_id')->constrained('legislations')->comment('Snapshot do cargo/valor no momento da solicitação');
+            $table->string('destination_type', 30)->comment('up_to_200km, above_200km, state_capital, other_capitals_df, exterior');
+            $table->foreignId('legislation_item_snapshot_id')->nullable()->constrained('legislation_items')->nullOnDelete()->comment('Item da legislação no momento da solicitação');
             
             // Informações da Viagem
             $table->string('destination_city');

@@ -38,23 +38,30 @@ class MunicipalityController extends Controller
             abort(401);
         }
         $municipality = $user->getMunicipality();
-        if (! $municipality) {
+        if (! $municipality || ! $municipality->getAttribute('id')) {
             return response()->json(['message' => 'Usuário sem município vinculado (secretaria principal).'], 404);
         }
 
-        return response()->json(new MunicipalityResource($municipality->load('departments')));
+        $municipality = Municipality::query()->with('departments')->find($municipality->getAttribute('id'));
+        if (! $municipality) {
+            return response()->json(['message' => 'Município não encontrado.'], 404);
+        }
+
+        return response()->json(new MunicipalityResource($municipality));
     }
 
     /**
      * Exibe um município por ID (apenas SuperAdmin).
      */
-    public function show(Municipality $municipality): JsonResponse
+    public function show(string|int $id): JsonResponse
     {
         if (! auth()->user()?->hasRole('super-admin')) {
             abort(403, 'Apenas Super Admin pode visualizar município por ID.');
         }
 
-        return response()->json(new MunicipalityResource($municipality->load('departments')));
+        $municipality = Municipality::query()->with('departments')->findOrFail((int) $id);
+
+        return response()->json(new MunicipalityResource($municipality));
     }
 
     /**
@@ -72,37 +79,47 @@ class MunicipalityController extends Controller
         }
         $municipality->update($request->validated());
 
-        return response()->json(new MunicipalityResource($municipality->fresh()));
+        $fresh = Municipality::query()->with('departments')->find($municipality->getAttribute('id'));
+
+        return response()->json(new MunicipalityResource($fresh));
     }
 
     /**
      * Atualiza um município por ID (apenas SuperAdmin).
      */
-    public function update(UpdateMunicipalityRequest $request, Municipality $municipality): JsonResponse
+    public function update(UpdateMunicipalityRequest $request, string|int $id): JsonResponse
     {
         if (! auth()->user()?->hasRole('super-admin')) {
             abort(403, 'Apenas Super Admin pode editar município por ID.');
         }
+
+        $municipality = Municipality::query()->findOrFail((int) $id);
         $municipality->update($request->validated());
 
-        return response()->json(new MunicipalityResource($municipality->fresh()));
+        $fresh = Municipality::query()->with('departments')->findOrFail($municipality->id);
+
+        return response()->json(new MunicipalityResource($fresh));
     }
 
     /**
      * Lista secretarias do município (SuperAdmin por ID; admin usa current com departments).
      */
-    public function departments(Municipality $municipality): JsonResponse
+    public function departments(string|int $id): JsonResponse
     {
         $user = auth()->user();
         if (! $user) {
             abort(401);
         }
+
+        $municipality = Municipality::query()->findOrFail((int) $id);
+
         if (! $user->hasRole('super-admin')) {
             $mine = $user->getMunicipality();
             if (! $mine || $mine->id !== $municipality->id) {
                 abort(403, 'Acesso negado a este município.');
             }
         }
+
         $departments = $municipality->departments()->orderBy('is_main', 'desc')->orderBy('name')->get();
 
         return response()->json(DepartmentResource::collection($departments));

@@ -31,8 +31,13 @@
           <input v-model="form.email" type="email" class="input-base w-full" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Brasão / Logo (caminho)</label>
-          <input v-model="form.logo_path" type="text" class="input-base w-full" />
+          <LogoUpload
+            v-model="form.logo_path"
+            type="municipality"
+            :entity-id="municipality?.id ?? ''"
+            label="Brasão / Logo"
+            size-class="h-32 w-32 min-h-[120px]"
+          />
         </div>
         <div class="pt-4 flex justify-end">
           <button type="submit" :disabled="saving" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
@@ -48,6 +53,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '@/services/api';
+import LogoUpload from '@/components/Common/LogoUpload.vue';
 const toast = useToast();
 const loading = ref(true);
 const saving = ref(false);
@@ -57,14 +63,15 @@ const load = async () => {
   loading.value = true;
   try {
     const { data } = await api.get('/municipalities/current');
-    municipality.value = data;
-    if (data) {
-      form.name = data.name ?? '';
-      form.cnpj = data.cnpj ?? '';
-      form.state = data.state ?? '';
-      form.address = data.address ?? '';
-      form.email = data.email ?? '';
-      form.logo_path = data.logo_path ?? '';
+    const payload = data?.data ?? data ?? null;
+    municipality.value = payload;
+    if (payload) {
+      form.name = payload.name ?? '';
+      form.cnpj = payload.cnpj ?? '';
+      form.state = payload.state ?? '';
+      form.address = payload.address ?? '';
+      form.email = payload.email ?? '';
+      form.logo_path = payload.logo_path ?? '';
     }
   } catch (e) {
     if (e.response?.status === 404) municipality.value = null;

@@ -72,16 +72,18 @@ class DepartmentController extends Controller
         }
     }
 
-    public function show(Department $department): JsonResponse
+    public function show(string|int $department): JsonResponse
     {
+        $department = Department::query()->findOrFail((int) $department);
         $this->authorize('departments.view');
         $this->ensureDepartmentScope($department);
 
         return response()->json(new DepartmentResource($department));
     }
 
-    public function update(UpdateDepartmentRequest $request, Department $department): JsonResponse
+    public function update(UpdateDepartmentRequest $request, string|int $department): JsonResponse
     {
+        $department = Department::query()->findOrFail((int) $department);
         $this->ensureDepartmentScope($department);
         $data = $request->validated();
         $user = auth()->user();
@@ -90,11 +92,12 @@ class DepartmentController extends Controller
         }
         $department->update($data);
 
-        return response()->json(new DepartmentResource($department));
+        return response()->json(new DepartmentResource($department->fresh()));
     }
 
-    public function destroy(Department $department): JsonResponse
+    public function destroy(string|int $department): JsonResponse
     {
+        $department = Department::query()->findOrFail((int) $department);
         $this->authorize('departments.delete');
         $this->ensureDepartmentScope($department);
 

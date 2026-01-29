@@ -18,7 +18,7 @@ class Servant extends Model
      */
     protected $fillable = [
         'user_id',
-        'legislation_id',
+        'legislation_item_id',
         'department_id',
         'name',
         'cpf',
@@ -52,13 +52,13 @@ class Servant extends Model
     }
 
     /**
-     * Cargo/Legislação do servidor
-     * 
-     * @return BelongsTo<Legislation, Servant>
+     * Item da legislação (categoria/classe/valores de diária)
+     *
+     * @return BelongsTo<LegislationItem, Servant>
      */
-    public function legislation(): BelongsTo
+    public function legislationItem(): BelongsTo
     {
-        return $this->belongsTo(Legislation::class);
+        return $this->belongsTo(LegislationItem::class, 'legislation_item_id');
     }
 
     /**

@@ -13,14 +13,14 @@
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nome</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">CNPJ</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Ações</th>
+              <th class="sticky right-0 z-10 bg-slate-50 px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase border-l border-slate-200">Ações</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="m in municipalities" :key="m.id">
               <td class="px-6 py-4 text-sm font-medium text-slate-900">{{ m.name }}</td>
               <td class="px-6 py-4 text-sm text-slate-500">{{ m.cnpj || '—' }}</td>
-              <td class="px-6 py-4 text-right">
+              <td class="sticky right-0 z-10 bg-white px-6 py-4 text-right border-l border-slate-200">
                 <router-link :to="{ name: 'municipalities.edit', params: { id: m.id } }" class="inline-flex p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Editar">
                   <PencilSquareIcon class="h-5 w-5" />
                 </router-link>

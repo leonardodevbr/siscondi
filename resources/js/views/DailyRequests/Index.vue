@@ -23,7 +23,7 @@
       </select>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -33,7 +33,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            <th class="sticky right-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border-l border-gray-200">Ações</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -46,13 +46,13 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ formatDate(request.departure_date) }} - {{ formatDate(request.return_date) }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">R$ {{ formatCurrency(request.total_value) }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatCurrency(request.total_value) }}</td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span :class="getStatusClass(request.status)" class="px-2 py-1 text-xs rounded-full">
                 {{ request.status_label }}
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right">
+            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right border-l border-gray-200">
               <router-link
                 :to="`/daily-requests/${request.id}/edit`"
                 class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
@@ -73,6 +73,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { formatCurrency } from '@/utils/format'
 
 const router = useRouter()
 const requests = ref([])
@@ -101,10 +102,6 @@ const getStatusClass = (status) => {
     cancelled: 'bg-red-100 text-red-800'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
-}
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(value)
 }
 
 const formatDate = (date) => {

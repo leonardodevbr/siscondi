@@ -14,6 +14,7 @@ require __DIR__.'/api/auth.php';
 require __DIR__.'/api/users.php';
 require __DIR__.'/api/config.php';
 require __DIR__.'/api/settings.php';
+require __DIR__.'/api/upload.php';
 
 // Estrutura Organizacional (Municípios e Secretarias)
 require __DIR__.'/api/municipalities.php';

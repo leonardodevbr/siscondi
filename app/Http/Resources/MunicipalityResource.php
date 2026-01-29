@@ -14,17 +14,33 @@ class MunicipalityResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $m = $this->resource;
+        if ($m === null) {
+            return [
+                'id' => null,
+                'name' => null,
+                'cnpj' => null,
+                'state' => null,
+                'address' => null,
+                'email' => null,
+                'logo_path' => null,
+                'departments' => [],
+                'created_at' => null,
+                'updated_at' => null,
+            ];
+        }
+
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'cnpj' => $this->cnpj,
-            'state' => $this->state,
-            'address' => $this->address,
-            'email' => $this->email,
-            'logo_path' => $this->logo_path,
+            'id' => $m->getAttribute('id'),
+            'name' => $m->getAttribute('name'),
+            'cnpj' => $m->getAttribute('cnpj'),
+            'state' => $m->getAttribute('state'),
+            'address' => $m->getAttribute('address'),
+            'email' => $m->getAttribute('email'),
+            'logo_path' => $m->getAttribute('logo_path'),
             'departments' => DepartmentResource::collection($this->whenLoaded('departments')),
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'created_at' => $m->getAttribute('created_at'),
+            'updated_at' => $m->getAttribute('updated_at'),
         ];
     }
 }

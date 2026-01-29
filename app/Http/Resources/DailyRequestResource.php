@@ -17,7 +17,8 @@ class DailyRequestResource extends JsonResource
         return [
             'id' => $this->id,
             'servant_id' => $this->servant_id,
-            'legislation_snapshot_id' => $this->legislation_snapshot_id,
+            'destination_type' => $this->destination_type,
+            'legislation_item_snapshot_id' => $this->legislation_item_snapshot_id,
             'destination_city' => $this->destination_city,
             'destination_state' => $this->destination_state,
             'departure_date' => $this->departure_date?->format('Y-m-d'),
@@ -39,7 +40,7 @@ class DailyRequestResource extends JsonResource
             'is_editable' => $this->isEditable(),
             'is_cancellable' => $this->isCancellable(),
             'servant' => new ServantResource($this->whenLoaded('servant')),
-            'legislation_snapshot' => new LegislationResource($this->whenLoaded('legislationSnapshot')),
+            'legislation_item_snapshot' => new LegislationItemResource($this->whenLoaded('legislationItemSnapshot')),
             'requester' => new UserResource($this->whenLoaded('requester')),
             'validator' => new UserResource($this->whenLoaded('validator')),
             'authorizer' => new UserResource($this->whenLoaded('authorizer')),

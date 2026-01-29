@@ -19,11 +19,17 @@ class StoreLegislationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:legislations,code'],
             'title' => ['required', 'string', 'max:255'],
             'law_number' => ['required', 'string', 'max:100'],
-            'daily_value' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['boolean'],
+            'items' => ['array'],
+            'items.*.functional_category' => ['required', 'string', 'max:255'],
+            'items.*.daily_class' => ['required', 'string', 'max:100'],
+            'items.*.value_up_to_200km' => ['required', 'integer', 'min:0', 'max:9999999999'],
+            'items.*.value_above_200km' => ['required', 'integer', 'min:0', 'max:9999999999'],
+            'items.*.value_state_capital' => ['required', 'integer', 'min:0', 'max:9999999999'],
+            'items.*.value_other_capitals_df' => ['required', 'integer', 'min:0', 'max:9999999999'],
+            'items.*.value_exterior' => ['required', 'integer', 'min:0', 'max:9999999999'],
         ];
     }
 }

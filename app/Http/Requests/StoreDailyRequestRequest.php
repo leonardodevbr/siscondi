@@ -18,8 +18,11 @@ class StoreDailyRequestRequest extends FormRequest
      */
     public function rules(): array
     {
+        $destinationTypes = ['up_to_200km', 'above_200km', 'state_capital', 'other_capitals_df', 'exterior'];
+
         return [
             'servant_id' => ['required', 'exists:servants,id'],
+            'destination_type' => ['required', 'string', 'in:' . implode(',', $destinationTypes)],
             'destination_city' => ['required', 'string', 'max:255'],
             'destination_state' => ['required', 'string', 'size:2'],
             'departure_date' => ['required', 'date', 'after_or_equal:today'],

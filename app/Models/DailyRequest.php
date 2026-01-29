@@ -18,7 +18,8 @@ class DailyRequest extends Model
      */
     protected $fillable = [
         'servant_id',
-        'legislation_snapshot_id',
+        'destination_type',
+        'legislation_item_snapshot_id',
         'destination_city',
         'destination_state',
         'departure_date',
@@ -38,14 +39,16 @@ class DailyRequest extends Model
     ];
 
     /**
+     * unit_value e total_value em centavos (integer).
+     *
      * @var array<string, string>
      */
     protected $casts = [
         'departure_date' => 'date',
         'return_date' => 'date',
         'quantity_days' => 'decimal:1',
-        'unit_value' => 'decimal:2',
-        'total_value' => 'decimal:2',
+        'unit_value' => 'integer',
+        'total_value' => 'integer',
         'status' => DailyRequestStatus::class,
         'validated_at' => 'datetime',
         'authorized_at' => 'datetime',
@@ -63,13 +66,13 @@ class DailyRequest extends Model
     }
 
     /**
-     * Legislação (snapshot) usada no momento da solicitação
-     * 
-     * @return BelongsTo<Legislation, DailyRequest>
+     * Item da legislação (snapshot) no momento da solicitação
+     *
+     * @return BelongsTo<LegislationItem, DailyRequest>
      */
-    public function legislationSnapshot(): BelongsTo
+    public function legislationItemSnapshot(): BelongsTo
     {
-        return $this->belongsTo(Legislation::class, 'legislation_snapshot_id');
+        return $this->belongsTo(LegislationItem::class, 'legislation_item_snapshot_id');
     }
 
     /**
@@ -113,11 +116,11 @@ class DailyRequest extends Model
     }
 
     /**
-     * Calcula o valor total baseado na quantidade de dias e valor unitário
+     * Calcula o valor total baseado na quantidade de dias e valor unitário (tudo em centavos).
      */
     public function calculateTotal(): void
     {
-        $this->total_value = $this->quantity_days * $this->unit_value;
+        $this->total_value = (int) round((float) $this->quantity_days * (int) $this->unit_value);
     }
 
     /**

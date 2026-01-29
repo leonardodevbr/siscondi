@@ -17,13 +17,12 @@ class LegislationController extends Controller
     {
         $this->authorize('legislations.view');
 
-        $query = Legislation::query();
+        $query = Legislation::with('items');
 
         if ($request->has('search')) {
             $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
+                $q->where('title', 'like', "%{$search}%")
                   ->orWhere('law_number', 'like', "%{$search}%");
             });
         }
@@ -32,7 +31,7 @@ class LegislationController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        $query->orderBy('code', 'asc');
+        $query->orderBy('title', 'asc');
 
         if ($request->boolean('all') || !$request->has('page')) {
             $legislations = $query->get();
@@ -44,30 +43,51 @@ class LegislationController extends Controller
 
     public function store(StoreLegislationRequest $request): JsonResponse
     {
-        $legislation = Legislation::create($request->validated());
+        $data = $request->validated();
+        $items = $data['items'] ?? [];
+        unset($data['items']);
 
+        $legislation = Legislation::create($data);
+
+        foreach ($items as $item) {
+            $legislation->items()->create($item);
+        }
+
+        $legislation->load('items');
         return response()->json(new LegislationResource($legislation), 201);
     }
 
-    public function show(Legislation $legislation): JsonResponse
+    public function show(string|int $legislation): JsonResponse
     {
+        $legislation = Legislation::query()->with('items')->findOrFail((int) $legislation);
         $this->authorize('legislations.view');
 
         return response()->json(new LegislationResource($legislation));
     }
 
-    public function update(UpdateLegislationRequest $request, Legislation $legislation): JsonResponse
+    public function update(UpdateLegislationRequest $request, string|int $legislation): JsonResponse
     {
-        $legislation->update($request->validated());
+        $legislation = Legislation::query()->findOrFail((int) $legislation);
+        $data = $request->validated();
+        $items = $data['items'] ?? [];
+        unset($data['items']);
 
+        $legislation->update($data);
+
+        $legislation->items()->delete();
+        foreach ($items as $item) {
+            $legislation->items()->create($item);
+        }
+
+        $legislation->load('items');
         return response()->json(new LegislationResource($legislation));
     }
 
-    public function destroy(Legislation $legislation): JsonResponse
+    public function destroy(string|int $legislation): JsonResponse
     {
+        $legislation = Legislation::query()->findOrFail((int) $legislation);
         $this->authorize('legislations.delete');
 
-        // Verifica se há servidores vinculados
         if ($legislation->servants()->exists()) {
             return response()->json([
                 'message' => 'Não é possível deletar uma legislação com servidores vinculados.',

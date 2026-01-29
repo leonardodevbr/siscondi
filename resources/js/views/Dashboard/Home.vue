@@ -129,13 +129,13 @@ onMounted(() => {
           <div class="p-4 bg-green-50 rounded">
             <p class="text-xs text-green-600">Total Autorizado</p>
             <p class="text-xl font-bold text-green-700 mt-1">
-              R$ {{ formatCurrency(stats.financial?.total_authorized || 0) }}
+              {{ formatCurrency(stats.financial?.total_authorized || 0) }}
             </p>
           </div>
           <div class="p-4 bg-purple-50 rounded">
             <p class="text-xs text-purple-600">Total Pago</p>
             <p class="text-xl font-bold text-purple-700 mt-1">
-              R$ {{ formatCurrency(stats.financial?.total_paid || 0) }}
+              {{ formatCurrency(stats.financial?.total_paid || 0) }}
             </p>
           </div>
           <div class="p-4 bg-yellow-50 rounded">
@@ -160,7 +160,7 @@ onMounted(() => {
               <p class="text-xs text-slate-500">{{ req.destination }}</p>
             </div>
             <div class="text-right">
-              <p class="text-sm font-semibold text-slate-900">R$ {{ formatCurrency(req.total_value) }}</p>
+              <p class="text-sm font-semibold text-slate-900">{{ formatCurrency(req.total_value) }}</p>
               <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">{{ req.status_label }}</span>
             </div>
           </div>

@@ -2,21 +2,24 @@ import { format as formatDateFns, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
- * Formata um valor numérico como moeda brasileira (R$)
- * @param {number|string} value - Valor a ser formatado
+ * Formata um valor em centavos como moeda brasileira (R$).
+ * O banco armazena em centavos; apenas na exibição convertemos para reais.
+ * @param {number|string} cents - Valor em centavos (ex: 20000 = R$ 200,00)
  * @returns {string} Valor formatado (ex: "R$ 1.234,56")
  */
-export function formatCurrency(value) {
-  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+export function formatCurrency(cents) {
+  const numCents = typeof cents === 'string' ? parseInt(cents, 10) : cents;
 
-  if (isNaN(numValue)) {
+  if (isNaN(numCents) || numCents == null) {
     return 'R$ 0,00';
   }
+
+  const reais = Number(numCents) / 100;
 
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(numValue);
+  }).format(reais);
 }
 
 /**

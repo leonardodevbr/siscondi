@@ -10,7 +10,7 @@
       </router-link>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -20,7 +20,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lotação</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+            <th class="sticky right-0 z-10 bg-gray-50 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase border-l border-gray-200">Ações</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -28,14 +28,14 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ servant.matricula }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ servant.name }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ servant.formatted_cpf || servant.cpf }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ servant.legislation?.title }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ servant.legislation_item ? `${servant.legislation_item.functional_category} (${servant.legislation_item.daily_class})` : '–' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ servant.department?.name }}</td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span :class="servant.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 text-xs rounded-full">
                 {{ servant.is_active ? 'Ativo' : 'Inativo' }}
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right">
+            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right border-l border-gray-200">
               <router-link
                 :to="`/servants/${servant.id}/edit`"
                 class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
@@ -53,7 +53,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
+import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const servants = ref([])
 

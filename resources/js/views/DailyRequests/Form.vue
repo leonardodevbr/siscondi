@@ -9,11 +9,24 @@
         <select v-model="form.servant_id" @change="onServantChange" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
           <option value="">Selecione o servidor...</option>
           <option v-for="servant in servants" :key="servant.id" :value="servant.id">
-            {{ servant.matricula }} - {{ servant.name }} ({{ servant.legislation?.title }})
+            {{ servant.matricula }} - {{ servant.name }} ({{ servant.legislation_item ? servant.legislation_item.functional_category : '' }})
           </option>
         </select>
-        <p v-if="selectedServant" class="mt-2 text-sm text-gray-600">
-          Valor da diária: <span class="font-semibold">R$ {{ formatCurrency(selectedServant.legislation?.daily_value) }}</span>
+      </div>
+
+      <!-- Tipo de Destino (define o valor da diária) -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Destino *</label>
+        <select v-model="form.destination_type" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+          <option value="">Selecione...</option>
+          <option value="up_to_200km">Cidades até 200 km da sede</option>
+          <option value="above_200km">Cidades acima de 200 km</option>
+          <option value="state_capital">Capital do estado</option>
+          <option value="other_capitals_df">Demais capitais e DF</option>
+          <option value="exterior">Exterior</option>
+        </select>
+        <p v-if="selectedServant && form.destination_type" class="mt-2 text-sm text-gray-600">
+          Valor da diária para este destino: <span class="font-semibold">{{ formatCurrency(unitValueForDestination) }}</span>
         </p>
       </div>
 
@@ -52,7 +65,7 @@
           <div class="w-full">
             <label class="block text-sm font-medium text-gray-700">Valor Total Previsto</label>
             <div class="mt-1 p-2 bg-gray-50 rounded-md text-lg font-semibold text-green-600">
-              R$ {{ formatCurrency(calculatedTotal) }}
+              {{ formatCurrency(calculatedTotal) }}
             </div>
           </div>
         </div>
@@ -75,12 +88,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
+import { useAlert } from '@/composables/useAlert'
+import { formatCurrency } from '@/utils/format'
 
 const router = useRouter()
+const { success, error: showError } = useAlert()
 
 const form = ref({
   servant_id: '',
+  destination_type: '',
   destination_city: '',
   destination_state: '',
   departure_date: '',
@@ -89,19 +106,35 @@ const form = ref({
   reason: ''
 })
 
+const DESTINATION_VALUES = {
+  up_to_200km: 'value_up_to_200km',
+  above_200km: 'value_above_200km',
+  state_capital: 'value_state_capital',
+  other_capitals_df: 'value_other_capitals_df',
+  exterior: 'value_exterior'
+}
+
 const servants = ref([])
-const selectedServant = computed(() => 
+const selectedServant = computed(() =>
   servants.value.find(s => s.id === form.value.servant_id)
 )
 
+const unitValueForDestination = computed(() => {
+  const servant = selectedServant.value
+  const type = form.value.destination_type
+  if (!servant?.legislation_item || !type) return 0
+  const key = DESTINATION_VALUES[type]
+  return servant.legislation_item[key] ?? 0
+})
+
 const calculatedTotal = computed(() => {
-  if (!selectedServant.value || !form.value.quantity_days) return 0
-  return selectedServant.value.legislation?.daily_value * form.value.quantity_days
+  if (!form.value.quantity_days) return 0
+  return unitValueForDestination.value * form.value.quantity_days
 })
 
 const fetchServants = async () => {
   try {
-    const { data } = await axios.get('/api/servants?all=1&is_active=1')
+    const { data } = await api.get('/servants?all=1&is_active=1')
     servants.value = data.data || data
   } catch (error) {
     console.error('Erro ao carregar servidores:', error)
@@ -122,19 +155,14 @@ const calculateDays = () => {
   }
 }
 
-const formatCurrency = (value) => {
-  if (!value) return '0,00'
-  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(value)
-}
-
 const handleSubmit = async () => {
   try {
-    await axios.post('/api/daily-requests', form.value)
-    alert('Solicitação enviada com sucesso!')
+    await api.post('/daily-requests', form.value)
+    await success('Sucesso', 'Solicitação enviada com sucesso.')
     router.push('/daily-requests')
   } catch (error) {
     console.error('Erro ao salvar:', error)
-    alert('Erro ao enviar solicitação')
+    showError('Erro', error.response?.data?.message || 'Erro ao enviar solicitação.')
   }
 }
 

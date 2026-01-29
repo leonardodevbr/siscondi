@@ -16,10 +16,8 @@ class Legislation extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'code',
         'title',
         'law_number',
-        'daily_value',
         'is_active',
     ];
 
@@ -27,27 +25,26 @@ class Legislation extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'daily_value' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
     /**
-     * Servidores vinculados a esta legislação
-     * 
+     * Itens da tabela de valores (categoria, classe, valores por destino)
+     *
+     * @return HasMany<LegislationItem>
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(LegislationItem::class, 'legislation_id');
+    }
+
+    /**
+     * Servidores vinculados via itens desta legislação
+     *
      * @return HasMany<Servant>
      */
     public function servants(): HasMany
     {
-        return $this->hasMany(Servant::class);
-    }
-
-    /**
-     * Solicitações de diárias que usam esta legislação como snapshot
-     * 
-     * @return HasMany<DailyRequest>
-     */
-    public function dailyRequests(): HasMany
-    {
-        return $this->hasMany(DailyRequest::class, 'legislation_snapshot_id');
+        return $this->hasManyThrough(Servant::class, LegislationItem::class, 'legislation_id', 'legislation_item_id');
     }
 }

@@ -43,9 +43,9 @@ class DailyRequestController extends Controller
         $departmentIds = $user ? $user->getDepartmentIds() : [];
 
         $query = DailyRequest::with([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator',
             'authorizer',
@@ -108,35 +108,36 @@ class DailyRequestController extends Controller
 
     public function store(StoreDailyRequestRequest $request): JsonResponse
     {
-        $servant = Servant::with('legislation')->findOrFail($request->servant_id);
+        $servant = Servant::with('legislationItem')->findOrFail($request->servant_id);
 
         $dailyRequest = new DailyRequest($request->validated());
-        $dailyRequest->legislation_snapshot_id = $servant->legislation_id;
-        $dailyRequest->unit_value = $servant->legislation->daily_value;
+        $dailyRequest->legislation_item_snapshot_id = $servant->legislation_item_id;
+        $dailyRequest->unit_value = $servant->legislationItem->getValueForDestination($request->destination_type);
         $dailyRequest->status = DailyRequestStatus::DRAFT;
         $dailyRequest->requester_id = auth()->id();
         $dailyRequest->calculateTotal();
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester'
         ]);
 
         return response()->json(new DailyRequestResource($dailyRequest), 201);
     }
 
-    public function show(DailyRequest $dailyRequest): JsonResponse
+    public function show(string|int $daily_request): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
         $this->authorize('daily-requests.view');
         $this->ensureCanAccess($dailyRequest);
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator',
             'authorizer',
@@ -146,8 +147,9 @@ class DailyRequestController extends Controller
         return response()->json(new DailyRequestResource($dailyRequest));
     }
 
-    public function update(UpdateDailyRequestRequest $request, DailyRequest $dailyRequest): JsonResponse
+    public function update(UpdateDailyRequestRequest $request, string|int $daily_request): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
         $this->ensureCanAccess($dailyRequest);
         $dailyRequest->update($request->validated());
         
@@ -157,17 +159,18 @@ class DailyRequestController extends Controller
         }
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester'
         ]);
 
         return response()->json(new DailyRequestResource($dailyRequest));
     }
 
-    public function destroy(DailyRequest $dailyRequest): JsonResponse
+    public function destroy(string|int $daily_request): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
         $this->authorize('daily-requests.delete');
         $this->ensureCanAccess($dailyRequest);
 
@@ -185,8 +188,9 @@ class DailyRequestController extends Controller
     /**
      * Validador (Secretário) valida a solicitação
      */
-    public function validate(Request $request, DailyRequest $dailyRequest): JsonResponse
+    public function validate(Request $request, string|int $dailyRequest): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
 
@@ -202,9 +206,9 @@ class DailyRequestController extends Controller
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator'
         ]);
@@ -215,8 +219,9 @@ class DailyRequestController extends Controller
     /**
      * Concedente (Prefeito) autoriza a solicitação
      */
-    public function authorize(Request $request, DailyRequest $dailyRequest): JsonResponse
+    public function authorize(Request $request, string|int $dailyRequest): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.authorize');
         $this->ensureCanAccess($dailyRequest);
 
@@ -232,9 +237,9 @@ class DailyRequestController extends Controller
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator',
             'authorizer'
@@ -263,9 +268,9 @@ class DailyRequestController extends Controller
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator',
             'authorizer',
@@ -278,8 +283,9 @@ class DailyRequestController extends Controller
     /**
      * Cancela a solicitação
      */
-    public function cancel(Request $request, DailyRequest $dailyRequest): JsonResponse
+    public function cancel(Request $request, string|int $dailyRequest): JsonResponse
     {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.cancel');
         $this->ensureCanAccess($dailyRequest);
 
@@ -293,9 +299,9 @@ class DailyRequestController extends Controller
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislation',
+            'servant.legislationItem',
             'servant.department',
-            'legislationSnapshot',
+            'legislationItemSnapshot',
             'requester',
             'validator',
             'authorizer',

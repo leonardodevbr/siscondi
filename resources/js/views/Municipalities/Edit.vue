@@ -8,7 +8,7 @@
     <div v-if="loading" class="flex items-center justify-center py-12">
       <p class="text-slate-500">Carregando...</p>
     </div>
-    <div v-else class="card p-6 space-y-4">
+    <div v-else class="space-y-4">
       <form @submit.prevent="save" class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
@@ -31,8 +31,13 @@
           <input v-model="form.email" type="email" class="input-base w-full" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Brasão / Logo</label>
-          <input v-model="form.logo_path" type="text" class="input-base w-full" />
+          <LogoUpload
+            v-model="form.logo_path"
+            type="municipality"
+            :entity-id="id"
+            label="Brasão / Logo"
+            size-class="h-32 w-32 min-h-[120px]"
+          />
         </div>
         <div class="flex justify-end gap-2 pt-4">
           <router-link
@@ -60,6 +65,7 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '@/services/api';
+import LogoUpload from '@/components/Common/LogoUpload.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -80,12 +86,13 @@ const load = async () => {
   loading.value = true;
   try {
     const { data } = await api.get(`/municipalities/${id.value}`);
-    form.name = data.name ?? '';
-    form.cnpj = data.cnpj ?? '';
-    form.state = data.state ?? '';
-    form.address = data.address ?? '';
-    form.email = data.email ?? '';
-    form.logo_path = data.logo_path ?? '';
+    const m = data?.data ?? data ?? {};
+    form.name = m.name ?? '';
+    form.cnpj = m.cnpj ?? '';
+    form.state = m.state ?? '';
+    form.address = m.address ?? '';
+    form.email = m.email ?? '';
+    form.logo_path = m.logo_path ?? '';
   } catch (error) {
     toast.error('Erro ao carregar município.');
   } finally {

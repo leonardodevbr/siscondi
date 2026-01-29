@@ -11,18 +11,16 @@ use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
 {
-    public function __construct()
+    private function ensureSuperAdmin(): void
     {
-        $this->middleware(function ($request, $next) {
-            if (! $request->user()?->hasRole('super-admin')) {
-                abort(403, 'Apenas Super Admin pode acessar as configurações do sistema.');
-            }
-            return $next($request);
-        });
+        if (! auth()->user()?->hasRole('super-admin')) {
+            abort(403, 'Apenas Super Admin pode acessar as configurações do sistema.');
+        }
     }
 
     public function index(): JsonResponse
     {
+        $this->ensureSuperAdmin();
         $this->authorize('settings.manage');
 
         $settings = Setting::query()
@@ -51,6 +49,7 @@ class SettingController extends Controller
 
     public function update(UpdateSettingRequest $request): JsonResponse
     {
+        $this->ensureSuperAdmin();
         $data = $request->validated();
 
         foreach ($data['settings'] as $item) {

@@ -33,7 +33,7 @@
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">E-mail</th>
               <th v-if="showDepartmentColumn" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Secretaria principal</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cargo</th>
-              <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">Ações</th>
+              <th class="sticky right-0 z-10 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">Ações</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
@@ -44,7 +44,7 @@
                 <div class="flex items-center gap-2">
                   <span>{{ u.department?.name ?? '—' }}</span>
                   <span
-                    v-if="u.branch_ids && u.branch_ids.length > 1"
+                    v-if="u.department_ids && u.department_ids.length > 1"
                     class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
                     :title="`Acesso a ${u.department_ids.length} secretarias`"
                   >
@@ -56,7 +56,7 @@
                 <span v-if="u.role" class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">{{ roleLabel(u.role) }}</span>
                 <span v-else>—</span>
               </td>
-              <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 text-right border-l border-slate-200">
+              <td class="sticky right-0 z-10 bg-white px-4 sm:px-6 py-4 text-right border-l border-slate-200">
                 <div class="flex items-center justify-end gap-1">
                   <button
                     v-if="u.id !== authStore.user?.id"

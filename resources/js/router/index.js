@@ -97,7 +97,7 @@ const routes = [
         path: 'servants/:id/edit',
         name: 'servants.edit',
         component: ServantForm,
-        meta: { title: 'Editar Servidor', roles: ['admin', 'validator'] },
+        meta: { title: 'Editar Servidor', roles: ['admin', 'super-admin', 'validator'] },
       },
       // Legislações (Cargos)
       {

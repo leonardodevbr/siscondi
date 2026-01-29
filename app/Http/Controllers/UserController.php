@@ -64,7 +64,12 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = $this->departmentScope()->with('roles', 'departments');
+        $user = auth()->user();
+        $query = ($user && $user->hasRole('super-admin'))
+            ? User::query()
+            : $this->departmentScope();
+
+        $query->with('roles', 'departments');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -74,7 +79,7 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->where('id', '!=', auth()->user()->id)->orderBy('name')->paginate(15);
+        $users = $query->where('id', '!=', $user->id)->orderBy('name')->paginate(15);
 
         return response()->json(UserResource::collection($users));
     }

@@ -37,11 +37,11 @@
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Vínculo</h2>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Cargo *</label>
-            <select v-model="form.legislation_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-gray-700">Cargo (item da legislação) *</label>
+            <select v-model="form.legislation_item_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
               <option value="">Selecione...</option>
-              <option v-for="leg in legislations" :key="leg.id" :value="leg.id">
-                {{ leg.code }} - {{ leg.title }}
+              <option v-for="opt in legislationItemOptions" :key="opt.id" :value="opt.id">
+                {{ opt.label }}
               </option>
             </select>
           </div>
@@ -99,9 +99,8 @@
         </div>
       </div>
 
-      <div class="flex items-center pt-4">
-        <input v-model="form.is_active" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-        <label class="ml-2 block text-sm text-gray-900">Servidor Ativo</label>
+      <div class="pt-4">
+        <Toggle v-model="form.is_active" label="Servidor Ativo" />
       </div>
 
       <div class="flex gap-3 pt-4">
@@ -113,12 +112,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
+import { useAlert } from '@/composables/useAlert'
+import Toggle from '@/components/Common/Toggle.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { success, error: showError } = useAlert()
 const isEdit = ref(false)
 
 const form = ref({
@@ -127,7 +129,7 @@ const form = ref({
   rg: '',
   organ_expeditor: '',
   matricula: '',
-  legislation_id: '',
+  legislation_item_id: '',
   department_id: '',
   bank_name: '',
   agency_number: '',
@@ -141,11 +143,25 @@ const form = ref({
 const legislations = ref([])
 const departments = ref([])
 
+const legislationItemOptions = computed(() => {
+  const list = []
+  for (const leg of legislations.value) {
+    const items = leg.items || []
+    for (const item of items) {
+    list.push({
+      id: item.id,
+      label: `${leg.title} – ${item.functional_category} (${item.daily_class})`
+    })
+    }
+  }
+  return list
+})
+
 const fetchData = async () => {
   try {
     const [legData, deptData] = await Promise.all([
-      axios.get('/api/legislations?all=1'),
-      axios.get('/api/departments?all=1')
+      api.get('/legislations?all=1'),
+      api.get('/departments?all=1')
     ])
     legislations.value = legData.data.data || legData.data
     departments.value = deptData.data.data || deptData.data
@@ -156,8 +172,9 @@ const fetchData = async () => {
 
 const fetchServant = async () => {
   try {
-    const { data } = await axios.get(`/api/servants/${route.params.id}`)
-    form.value = data.data || data
+    const { data } = await api.get(`/servants/${route.params.id}`)
+    const payload = data.data || data
+    form.value = { ...form.value, ...payload, legislation_item_id: payload.legislation_item_id }
   } catch (error) {
     console.error('Erro ao carregar servidor:', error)
   }
@@ -166,14 +183,15 @@ const fetchServant = async () => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await axios.put(`/api/servants/${route.params.id}`, form.value)
+      await api.put(`/servants/${route.params.id}`, form.value)
     } else {
-      await axios.post('/api/servants', form.value)
+      await api.post('/servants', form.value)
     }
+    await success('Salvo', 'Servidor salvo com sucesso.')
     router.push('/servants')
   } catch (error) {
     console.error('Erro ao salvar:', error)
-    alert('Erro ao salvar servidor')
+    showError('Erro', 'Erro ao salvar servidor.')
   }
 }
 

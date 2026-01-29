@@ -21,7 +21,7 @@ class UpdateServantRequest extends FormRequest
     {
         return [
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
-            'legislation_id' => ['sometimes', 'exists:legislations,id'],
+            'legislation_item_id' => ['sometimes', 'exists:legislation_items,id'],
             'department_id' => ['sometimes', 'exists:departments,id'],
             'name' => ['sometimes', 'string', 'max:255'],
             'cpf' => ['sometimes', 'string', 'size:11', Rule::unique('servants', 'cpf')->ignore($this->servant)],

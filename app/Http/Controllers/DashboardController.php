@@ -47,7 +47,7 @@ class DashboardController extends Controller
             ],
             
             // Solicitações recentes
-            'recent_requests' => DailyRequest::with(['servant', 'legislationSnapshot'])
+            'recent_requests' => DailyRequest::with(['servant', 'legislationItemSnapshot'])
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()

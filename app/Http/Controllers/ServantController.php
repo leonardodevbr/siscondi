@@ -17,7 +17,7 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $query = Servant::with(['legislation', 'department', 'user']);
+        $query = Servant::with(['legislationItem', 'department', 'user']);
 
         if ($request->has('search')) {
             $search = $request->string('search')->toString();
@@ -32,8 +32,8 @@ class ServantController extends Controller
             $query->where('department_id', $request->integer('department_id'));
         }
 
-        if ($request->has('legislation_id')) {
-            $query->where('legislation_id', $request->integer('legislation_id'));
+        if ($request->has('legislation_item_id')) {
+            $query->where('legislation_item_id', $request->integer('legislation_item_id'));
         }
 
         if ($request->has('is_active')) {
@@ -53,30 +53,31 @@ class ServantController extends Controller
     public function store(StoreServantRequest $request): JsonResponse
     {
         $servant = Servant::create($request->validated());
-        $servant->load(['legislation', 'department', 'user']);
+        $servant->load(['legislationItem', 'department', 'user']);
 
         return response()->json(new ServantResource($servant), 201);
     }
 
-    public function show(Servant $servant): JsonResponse
+    public function show(string|int $servant): JsonResponse
     {
+        $servant = Servant::query()->with(['legislationItem', 'department', 'user'])->findOrFail((int) $servant);
         $this->authorize('servants.view');
 
-        $servant->load(['legislation', 'department', 'user']);
-
         return response()->json(new ServantResource($servant));
     }
 
-    public function update(UpdateServantRequest $request, Servant $servant): JsonResponse
+    public function update(UpdateServantRequest $request, string|int $servant): JsonResponse
     {
+        $servant = Servant::query()->findOrFail((int) $servant);
         $servant->update($request->validated());
-        $servant->load(['legislation', 'department', 'user']);
+        $servant->load(['legislationItem', 'department', 'user']);
 
         return response()->json(new ServantResource($servant));
     }
 
-    public function destroy(Servant $servant): JsonResponse
+    public function destroy(string|int $servant): JsonResponse
     {
+        $servant = Servant::query()->findOrFail((int) $servant);
         $this->authorize('servants.delete');
 
         // Verifica se há solicitações de diárias vinculadas
