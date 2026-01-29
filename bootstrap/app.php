@@ -15,13 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
-        apiPrefix: 'v1',
+        apiPrefix: 'api',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function ($request) {
-            if ($request->is('v1/*') || $request->expectsJson()) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return null;
             }
 
@@ -30,12 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->group('api', [
             \Illuminate\Http\Middleware\HandleCors::class,
-            \App\Http\Middleware\SetTenantBranch::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request): bool {
-            if ($request->is('v1/*')) {
+            if ($request->is('api/*')) {
                 return true;
             }
 
@@ -43,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (NotFoundHttpException $e, $request) {
-            if (! $request->is('v1/*') && ! $request->expectsJson()) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;
             }
 
@@ -61,7 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (ValidationException $e, $request) {
-            if (! $request->is('v1/*') && ! $request->expectsJson()) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;
             }
 
@@ -72,7 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Throwable $e, $request) {
-            if (! $request->is('v1/*') && ! $request->expectsJson()) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;
             }
 

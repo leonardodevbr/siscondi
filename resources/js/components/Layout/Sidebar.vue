@@ -107,14 +107,14 @@ function handleClick() {
   />
 
   <aside
-    class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out shadow-lg flex flex-col"
+    class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-lg flex flex-col"
     :class="{
       '-translate-x-full md:translate-x-0': !isOpen,
       'translate-x-0': isOpen,
     }"
   >
-    <div class="flex h-16 items-center gap-2 border-b border-slate-800 px-4">
-      <AppLogo icon-class="h-6 w-6" text-class="text-lg" light />
+    <div class="flex h-16 items-center gap-2 border-b border-slate-200 px-4 bg-slate-50/80">
+      <AppLogo icon-class="h-6 w-6" text-class="text-lg" :light="false" />
     </div>
 
     <nav class="flex-1 space-y-1 py-4 text-sm">
@@ -123,7 +123,7 @@ function handleClick() {
         :key="group.title"
         class="mt-4 first:mt-0"
       >
-        <p class="mt-2 mb-1 px-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <p class="mt-2 mb-1 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
           {{ group.title }}
         </p>
 
@@ -132,17 +132,17 @@ function handleClick() {
             v-for="item in group.items"
             :key="item.name"
             :to="item.to"
-            class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white border-l-4 border-transparent"
+            class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent"
             :class="
               isActive(item)
-                ? 'border-blue-500 bg-slate-800 text-white'
+                ? 'border-emerald-500 bg-emerald-50 text-slate-900'
                 : ''
             "
             @click="handleClick"
           >
             <component
               :is="item.icon"
-              class="h-5 w-5 text-slate-400"
+              :class="['h-5 w-5 shrink-0', isActive(item) ? 'text-emerald-600' : 'text-slate-500 group-hover:text-slate-700']"
             />
             <span class="truncate">
               {{ item.name }}

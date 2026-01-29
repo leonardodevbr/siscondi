@@ -35,7 +35,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user->load(['branch', 'branches', 'roles']);
+        $user->load(['branches', 'roles']);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -64,7 +64,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user?->load(['branch', 'branches', 'roles']);
+        $user?->load(['branches', 'roles']);
 
         $payload = (new UserResource($user))->toArray($request);
 
@@ -101,7 +101,7 @@ class AuthController extends Controller
 
         $pin = trim($request->input('pin'));
         $plain = $request->input('password');
-        $branchId = $user->branch_id;
+        $branchId = $user->getPrimaryBranch()?->id;
 
         $manager = User::query()
             ->where('operation_pin', $pin)
@@ -117,7 +117,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($branchId !== null && ! $manager->hasRole('super-admin') && (int) $manager->branch_id !== (int) $branchId) {
+        if ($branchId !== null && ! $manager->hasRole('super-admin') && (int) ($manager->getPrimaryBranch()?->id) !== (int) $branchId) {
             return response()->json([
                 'valid' => false,
                 'message' => 'Gerente de outra filial.',

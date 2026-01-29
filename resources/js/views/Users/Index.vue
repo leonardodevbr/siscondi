@@ -5,7 +5,7 @@
         <h2 class="text-lg font-semibold text-slate-800">Usuários</h2>
         <p class="text-xs text-slate-500">Gerencie os usuários da filial</p>
       </div>
-      <Button v-if="authStore.can('users.create')" type="button" variant="primary" @click="$router.push({ name: 'users.form' })">Novo Usuário</Button>
+      <Button v-if="authStore.can('users.create')" type="button" variant="primary" @click="$router.push({ name: 'users.create' })">Novo Usuário</Button>
     </div>
 
     <div class="card p-4 sm:p-6">
@@ -58,7 +58,7 @@
               </td>
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 text-right border-l border-slate-200">
                 <div class="flex items-center justify-end gap-2">
-                  <button type="button" class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors" title="Editar" @click="$router.push({ name: 'users.form.edit', params: { id: u.id } })">
+                  <button type="button" class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors" title="Editar" @click="$router.push({ name: 'users.edit', params: { id: u.id } })">
                     <PencilSquareIcon class="h-5 w-5" />
                   </button>
                   <button type="button" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Excluir" @click="confirmDelete(u)">

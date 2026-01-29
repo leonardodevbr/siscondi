@@ -39,9 +39,9 @@ class UserController extends Controller
             }
         }
 
-        $branchId = $user->branch_id;
-        if ($branchId) {
-            return (int) $branchId;
+        $branch = $user->getPrimaryBranch();
+        if ($branch) {
+            return $branch->id;
         }
 
         throw ValidationException::withMessages(['branch' => [$message]]);
@@ -65,24 +65,17 @@ class UserController extends Controller
             // Verifica se o usuário tem acesso a essa filial
             if ($user && ($user->hasRole(['super-admin', 'owner']) || $user->hasAccessToBranch($branchId))) {
                 if (Branch::whereKey($branchId)->exists()) {
-                    // Retorna usuários que têm branch_id OU estão vinculados via pivot
-                    return User::query()->where(function ($query) use ($branchId): void {
-                        $query->where('branch_id', $branchId)
-                            ->orWhereHas('branches', function ($q) use ($branchId): void {
-                                $q->where('branches.id', $branchId);
-                            });
+                    return User::query()->whereHas('branches', function ($q) use ($branchId): void {
+                        $q->where('branches.id', $branchId);
                     });
                 }
             }
         }
-        
+
         // Fallback: usa a filial do usuário logado
         $branchId = $this->getEffectiveBranchId('Filial não identificada para listar usuários.');
-        return User::query()->where(function ($query) use ($branchId): void {
-            $query->where('branch_id', $branchId)
-                ->orWhereHas('branches', function ($q) use ($branchId): void {
-                    $q->where('branches.id', $branchId);
-                });
+        return User::query()->whereHas('branches', function ($q) use ($branchId): void {
+            $q->where('branches.id', $branchId);
         });
     }
 
@@ -91,7 +84,7 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $this->branchScope()->with('branch', 'roles', 'branches');
+        $query = $this->branchScope()->with('roles', 'branches');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -145,7 +138,6 @@ class UserController extends Controller
 
         $data = $request->safe()->only(['name', 'email', 'role', 'operation_pin']);
         $data['password'] = $request->validated('password');
-        $data['branch_id'] = $primaryBranchId; // Mantém para compatibilidade
         if ($request->filled('operation_password')) {
             $data['operation_password'] = $request->validated('operation_password');
         }
@@ -157,13 +149,11 @@ class UserController extends Controller
                 'password' => $data['password'],
                 'operation_password' => $data['operation_password'] ?? null,
                 'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
-                'branch_id' => $data['branch_id'],
             ]);
-            
+
             $user->assignRole($data['role']);
-            
-            // Vincula as filiais na tabela pivot
-            if (!empty($branchIds)) {
+
+            if (! empty($branchIds)) {
                 $pivotData = [];
                 foreach ($branchIds as $branchId) {
                     $pivotData[$branchId] = ['is_primary' => $branchId === $primaryBranchId];
@@ -171,7 +161,7 @@ class UserController extends Controller
                 $user->branches()->attach($pivotData);
             }
 
-            return $user->load('roles', 'branch', 'branches');
+            return $user->load('roles', 'branches');
         });
 
         return response()->json(new UserResource($user), 201);
@@ -187,16 +177,14 @@ class UserController extends Controller
         
         // Usuário pode sempre ver o próprio perfil
         if ($authUser && $authUser->id === $userId) {
-            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail($userId);
+            $user = User::query()->with('roles', 'branches')->findOrFail($userId);
             return response()->json(new UserResource($user));
         }
-        
-        // Super Admin pode ver qualquer usuário
+
         if ($authUser && $authUser->hasRole('super-admin')) {
-            $user = User::query()->with('roles', 'branch', 'branches')->findOrFail($userId);
+            $user = User::query()->with('roles', 'branches')->findOrFail($userId);
         } else {
-            // Outros usuários: apenas da mesma filial (exceto próprio)
-            $user = $this->branchScope()->where('id', '!=', $authUser->id)->with('roles', 'branch', 'branches')->findOrFail($userId);
+            $user = $this->branchScope()->where('id', '!=', $authUser->id)->with('roles', 'branches')->findOrFail($userId);
         }
 
         return response()->json(new UserResource($user));
@@ -207,7 +195,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $user = $this->branchScope()->with('roles', 'branch', 'branches')->findOrFail((int) $id);
+        $user = $this->branchScope()->with('roles', 'branches')->findOrFail((int) $id);
 
         $data = $request->safe()->only(['name', 'email', 'role', 'branch_id', 'operation_pin']);
         if ($request->filled('password')) {
@@ -235,30 +223,16 @@ class UserController extends Controller
                 $payload['operation_pin'] = $data['operation_pin'] !== null && $data['operation_pin'] !== '' ? $data['operation_pin'] : null;
             }
             
-            // Super Admin pode alterar filiais
-            if ($authUser && $authUser->hasRole('super-admin')) {
-                // Atualiza branch_id (compatibilidade)
-                if (array_key_exists('branch_id', $data)) {
-                    $payload['branch_id'] = $data['branch_id'];
+            if ($authUser && $authUser->hasRole('super-admin') && $request->filled('branch_ids')) {
+                $branchIds = $request->input('branch_ids');
+                $primaryBranchId = $request->filled('primary_branch_id')
+                    ? (int) $request->input('primary_branch_id')
+                    : ($branchIds[0] ?? null);
+                $pivotData = [];
+                foreach ($branchIds as $branchId) {
+                    $pivotData[$branchId] = ['is_primary' => $branchId === $primaryBranchId];
                 }
-                
-                // Atualiza múltiplas filiais se enviado
-                if ($request->filled('branch_ids')) {
-                    $branchIds = $request->input('branch_ids');
-                    $primaryBranchId = $request->filled('primary_branch_id') 
-                        ? (int) $request->input('primary_branch_id')
-                        : ($branchIds[0] ?? null);
-                    
-                    // Sincroniza filiais na tabela pivot
-                    $pivotData = [];
-                    foreach ($branchIds as $branchId) {
-                        $pivotData[$branchId] = ['is_primary' => $branchId === $primaryBranchId];
-                    }
-                    $user->branches()->sync($pivotData);
-                    
-                    // Atualiza branch_id para a primária
-                    $payload['branch_id'] = $primaryBranchId;
-                }
+                $user->branches()->sync($pivotData);
             }
             
             $user->update($payload);
@@ -267,7 +241,7 @@ class UserController extends Controller
             }
         });
 
-        $user->refresh()->load('roles', 'branch', 'branches');
+        $user->refresh()->load('roles', 'branches');
 
         return response()->json(new UserResource($user));
     }

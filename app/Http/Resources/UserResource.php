@@ -20,6 +20,10 @@ class UserResource extends JsonResource
             ? $this->roles->first()->name
             : null;
 
+        $primaryBranch = $this->relationLoaded('branches')
+            ? $this->branches->where('pivot.is_primary', true)->first()
+            : null;
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -28,18 +32,18 @@ class UserResource extends JsonResource
             'roles' => $this->getRoleNames()->values()->all(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values()->all(),
             'is_super_admin' => $this->hasRole('super-admin'),
-            'branch_id' => $this->branch_id,
-            'branch' => $this->whenLoaded('branch', fn () => $this->branch ? [
-                'id' => $this->branch->id,
-                'name' => $this->branch->name,
-            ] : null),
+            'branch_id' => $primaryBranch?->id,
+            'branch' => $primaryBranch ? [
+                'id' => $primaryBranch->id,
+                'name' => $primaryBranch->name,
+            ] : null,
             'branches' => $this->whenLoaded('branches', fn () => $this->branches->map(fn ($branch) => [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'is_primary' => $branch->pivot->is_primary ?? false,
             ])),
             'branch_ids' => $this->whenLoaded('branches', fn () => $this->branches->pluck('id')->toArray()),
-            'primary_branch_id' => $this->whenLoaded('branches', fn () => $this->branches->where('pivot.is_primary', true)->first()?->id),
+            'primary_branch_id' => $primaryBranch?->id,
         ];
     }
 }
