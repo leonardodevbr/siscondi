@@ -275,7 +275,7 @@ class DailyRequestController extends Controller
     /**
      * Concedente (Prefeito) autoriza a solicitação
      */
-    public function authorize(Request $request, string|int $dailyRequest): JsonResponse
+    public function authorizeRequest(Request $request, string|int $dailyRequest): JsonResponse
     {
         $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.authorize');

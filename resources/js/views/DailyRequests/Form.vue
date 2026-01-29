@@ -52,11 +52,13 @@
             label="Tipo de destino *"
             :options="destinationOptions"
             placeholder="Selecione o tipo de destino..."
-            :searchable="destinationOptions.length > 10"
-            :disabled="!selectedServant?.destination_options?.length"
+            :searchable="allDestinationTypes.length > 10"
           />
           <p v-if="selectedServant && form.destination_type && unitValueForDestination" class="mt-1 text-xs text-slate-500">
             Valor da diária para este destino: <span class="font-semibold text-slate-800">{{ formatCurrency(unitValueForDestination) }}</span>
+          </p>
+          <p v-else-if="selectedServant && form.destination_type && !unitValueForDestination" class="mt-1 text-xs text-amber-600">
+            Servidor sem valor de diária definido para este destino na legislação.
           </p>
         </div>
 
@@ -134,6 +136,14 @@
           <div class="input-base w-full bg-slate-50 text-slate-900 font-semibold flex items-center min-h-[42px]">
             {{ formatCurrency(calculatedTotal) }}
           </div>
+          <p v-if="form.servant_id && form.destination_type" class="mt-1 text-xs text-slate-500">
+            <template v-if="unitValueForDestination">
+              {{ formatCurrency(unitValueForDestination) }} × {{ form.quantity_days }} diária(s) = {{ formatCurrency(calculatedTotal) }}
+            </template>
+            <template v-else>
+              Selecione um servidor com valor de diária definido para este destino para ver o total.
+            </template>
+          </p>
         </div>
 
         <!-- Motivo -->
@@ -205,6 +215,8 @@ const form = ref({
 })
 
 const servants = ref([])
+const allDestinationTypes = ref([])
+
 const servantOptions = computed(() =>
   servants.value.map((s) => ({
     value: s.id,
@@ -212,15 +224,15 @@ const servantOptions = computed(() =>
   }))
 )
 
-const selectedServant = computed(() =>
-  servants.value.find((s) => s.id === form.value.servant_id)
-)
-
-const destinationOptions = computed(() => {
-  const opts = selectedServant.value?.destination_options
-  if (!opts || typeof opts !== 'object') return []
-  return Object.keys(opts).map((label) => ({ value: label, label }))
+const selectedServant = computed(() => {
+  const id = form.value.servant_id
+  if (id == null || id === '') return undefined
+  return servants.value.find((s) => Number(s.id) === Number(id))
 })
+
+const destinationOptions = computed(() =>
+  allDestinationTypes.value.map((label) => ({ value: label, label }))
+)
 
 const unitValueForDestination = computed(() => {
   const opts = selectedServant.value?.destination_options
@@ -240,6 +252,16 @@ async function fetchServants() {
     servants.value = data?.data ?? data ?? []
   } catch (e) {
     console.error('Erro ao carregar servidores:', e)
+  }
+}
+
+async function fetchDestinationTypes() {
+  try {
+    const { data } = await api.get('/legislations/destination-types')
+    const list = data?.data ?? data ?? []
+    allDestinationTypes.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    console.error('Erro ao carregar tipos de destino:', e)
   }
 }
 
@@ -302,7 +324,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
-  await fetchServants()
+  await Promise.all([fetchServants(), fetchDestinationTypes()])
   if (isEdit.value) {
     await loadRequest()
   }

@@ -8,11 +8,45 @@ use App\Http\Requests\StoreLegislationRequest;
 use App\Http\Requests\UpdateLegislationRequest;
 use App\Http\Resources\LegislationResource;
 use App\Models\Legislation;
+use App\Models\LegislationItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LegislationController extends Controller
 {
+    /**
+     * Lista todos os tipos de destino (labels) usados nas legislações ativas.
+     * Usado no formulário de solicitação de diárias para popular o campo "Tipo de destino".
+     */
+    public function destinationTypes(Request $request): JsonResponse
+    {
+        $this->authorize('legislations.view');
+
+        $labels = Legislation::query()
+            ->where('is_active', true)
+            ->get()
+            ->pluck('destinations')
+            ->filter()
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($labels)) {
+            $labels = LegislationItem::query()
+                ->whereHas('legislation', fn ($q) => $q->where('is_active', true))
+                ->get()
+                ->pluck('values')
+                ->filter()
+                ->flatMap(fn ($v) => is_array($v) ? array_keys($v) : [])
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return response()->json(['data' => $labels]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('legislations.view');

@@ -11,7 +11,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     // Ações específicas do fluxo de aprovação
     Route::post('daily-requests/{dailyRequest}/validate', [DailyRequestController::class, 'validate']);
-    Route::post('daily-requests/{dailyRequest}/authorize', [DailyRequestController::class, 'authorize']);
+    Route::post('daily-requests/{dailyRequest}/authorize', [DailyRequestController::class, 'authorizeRequest']);
     Route::post('daily-requests/{dailyRequest}/pay', [DailyRequestController::class, 'pay']);
     Route::post('daily-requests/{dailyRequest}/cancel', [DailyRequestController::class, 'cancel']);
 });
