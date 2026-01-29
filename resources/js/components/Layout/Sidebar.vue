@@ -69,7 +69,7 @@ const menuGroups = computed(() => {
       items: [
         { name: 'Servidores', to: { name: 'servants.index' }, icon: UserGroupIcon, permission: 'servants.view' },
         { name: 'Legislações', to: { name: 'legislations.index' }, icon: DocumentTextIcon, permission: 'legislations.view' },
-        { name: 'Secretarias', to: { name: 'branches.index' }, icon: BuildingOfficeIcon, permission: 'departments.view' },
+        { name: 'Secretarias', to: { name: 'departments.index' }, icon: BuildingOfficeIcon, permission: 'departments.view' },
       ],
     },
     {

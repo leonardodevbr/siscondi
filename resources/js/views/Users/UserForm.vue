@@ -5,7 +5,7 @@
       <button
         type="button"
         class="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-        @click="$router.push({ name: 'users' })"
+        @click="$router.push({ name: 'users.index' })"
       >
         <ArrowLeftIcon class="h-5 w-5 text-slate-600" />
       </button>
@@ -85,10 +85,10 @@
           <p class="mt-1 text-xs text-slate-500">Usada para autorizar cancelamentos e ajustes</p>
         </div>
 
-        <div v-if="form.role === 'manager' || form.role === 'owner' || form.role === 'super-admin'">
+        <div v-if="form.role === 'admin' || form.role === 'super-admin'">
           <Input
             v-model="form.operation_pin"
-            label="PIN de Autorização (PDV)"
+            label="PIN de Autorização (opcional)"
             type="text"
             inputmode="numeric"
             pattern="[0-9]*"
@@ -121,85 +121,39 @@
             </option>
           </select>
 
-          <!-- Info Box: Gestor Geral -->
-          <div v-if="form.role === 'owner'" class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <InformationCircleIcon class="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div class="text-sm text-blue-800">
-                <strong class="font-semibold">Gestor(a) Geral:</strong>
-                <ul class="mt-1 space-y-1 list-disc list-inside">
-                  <li>Tem acesso automático a <strong>todas as filiais</strong></li>
-                  <li>Possui mesmas permissões de <strong>Gerente</strong></li>
-                  <li>Não pode excluir Super Administradores</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- Info Box: Gerente -->
-          <div v-else-if="form.role === 'manager'" class="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <InformationCircleIcon class="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div class="text-sm text-amber-800">
-                <strong class="font-semibold">Gerente:</strong> Acesso completo à(s) filial(is) vinculada(s), exceto configurações críticas do sistema.
-              </div>
-            </div>
-          </div>
-
-          <!-- Info Box: Vendedor -->
-          <div v-else-if="form.role === 'seller'" class="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <InformationCircleIcon class="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-              <div class="text-sm text-green-800">
-                <strong class="font-semibold">Vendedor:</strong> Acesso ao PDV, visualização de produtos, estoque e clientes da sua filial.
-              </div>
-            </div>
-          </div>
-
-          <!-- Info Box: Estoquista -->
-          <div v-else-if="form.role === 'stockist'" class="mt-3 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <InformationCircleIcon class="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-              <div class="text-sm text-purple-800">
-                <strong class="font-semibold">Estoquista:</strong> Gerenciamento de produtos, estoque, entradas e fornecedores.
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- Filiais (apenas Super Admin) -->
-        <div v-if="authStore.user?.is_super_admin && form.role !== 'owner'" class="lg:col-span-2 border-t pt-6">
+        <!-- Secretarias (apenas Super Admin) -->
+        <div v-if="authStore.user?.is_super_admin" class="lg:col-span-2 border-t pt-6">
           <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <BuildingStorefrontIcon class="h-5 w-5 text-slate-500" />
-            Filiais
+            Secretarias
           </h3>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-2">Selecione as Filiais *</label>
-            <p class="text-xs text-slate-500 mb-3">Escolha uma ou mais filiais que o usuário terá acesso</p>
-            
+            <label class="block text-sm font-medium text-slate-700 mb-2">Selecione as secretarias *</label>
+            <p class="text-xs text-slate-500 mb-3">Escolha uma ou mais secretarias que o usuário terá acesso</p>
+
             <div class="rounded-lg border border-slate-200 bg-white p-3">
-              <!-- Busca -->
               <input
-                v-model="branchSearchQuery"
+                v-model="departmentSearchQuery"
                 type="text"
                 class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                placeholder="Pesquisar filiais..."
+                placeholder="Pesquisar secretarias..."
               >
-              
-              <!-- Tags selecionadas -->
-              <div v-if="selectedBranches.length" class="mb-3 flex flex-wrap gap-2">
+
+              <div v-if="selectedDepartments.length" class="mb-3 flex flex-wrap gap-2">
                 <span
-                  v-for="branch in selectedBranches"
-                  :key="branch.id"
+                  v-for="dept in selectedDepartments"
+                  :key="dept.id"
                   class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-sm text-blue-800"
                 >
-                  {{ branch.name }}
+                  {{ dept.name }}
                   <button
                     type="button"
                     class="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     aria-label="Remover"
-                    @click="removeBranchId(branch.id)"
+                    @click="removeDepartmentId(dept.id)"
                   >
                     <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -207,81 +161,58 @@
                   </button>
                 </span>
               </div>
-              
-              <!-- Lista de checkboxes -->
+
               <div class="max-h-48 overflow-y-auto rounded border border-slate-100">
                 <label
-                  v-for="branch in filteredBranchOptions"
-                  :key="branch.value"
+                  v-for="opt in filteredDepartmentOptions"
+                  :key="opt.value"
                   :class="[
                     'flex cursor-pointer items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50',
-                    form.branch_ids.includes(branch.value) ? 'bg-blue-50' : ''
+                    form.department_ids.includes(opt.value) ? 'bg-blue-50' : ''
                   ]"
                 >
                   <input
                     type="checkbox"
-                    :checked="form.branch_ids.includes(branch.value)"
+                    :checked="form.department_ids.includes(opt.value)"
                     class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    @change="toggleBranchId(branch.value)"
+                    @change="toggleDepartmentId(opt.value)"
                   >
-                  <span class="text-sm text-slate-800">{{ branch.label }}</span>
+                  <span class="text-sm text-slate-800">{{ opt.label }}</span>
                 </label>
-                <p v-if="filteredBranchOptions.length === 0" class="px-3 py-4 text-center text-sm text-slate-500">
-                  Nenhuma filial encontrada.
+                <p v-if="filteredDepartmentOptions.length === 0" class="px-3 py-4 text-center text-sm text-slate-500">
+                  Nenhuma secretaria encontrada.
                 </p>
               </div>
             </div>
           </div>
 
-          <!-- Seleção de Filial Primária -->
-          <div v-if="form.branch_ids && form.branch_ids.length > 1" class="mt-6">
-            <label class="block text-sm font-medium text-slate-700 mb-2">Filial Primária</label>
-            <p class="text-xs text-slate-500 mb-3">Filial padrão onde o usuário atuará com mais frequência</p>
+          <div v-if="form.department_ids && form.department_ids.length > 1" class="mt-6">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Secretaria principal</label>
+            <p class="text-xs text-slate-500 mb-3">Secretaria padrão onde o usuário atuará com mais frequência</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label
-                v-for="branchId in form.branch_ids"
-                :key="branchId"
+                v-for="deptId in form.department_ids"
+                :key="deptId"
                 class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all"
                 :class="{
-                  'border-blue-500 bg-blue-50 shadow-sm': form.primary_branch_id === branchId,
-                  'border-slate-200': form.primary_branch_id !== branchId
+                  'border-blue-500 bg-blue-50 shadow-sm': form.primary_department_id === deptId,
+                  'border-slate-200': form.primary_department_id !== deptId
                 }"
               >
                 <input
-                  v-model="form.primary_branch_id"
+                  v-model="form.primary_department_id"
                   type="radio"
-                  :value="branchId"
+                  :value="deptId"
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300"
                 >
                 <span class="ml-3 text-sm font-medium text-slate-900">
-                  {{ branchOptions.find(b => b.value === branchId)?.label }}
+                  {{ departmentOptions.find(d => d.value === deptId)?.label }}
                 </span>
                 <CheckCircleIcon
-                  v-if="form.primary_branch_id === branchId"
+                  v-if="form.primary_department_id === deptId"
                   class="ml-auto h-5 w-5 text-blue-600"
                 />
               </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info: Owner mostra filiais (read-only) -->
-        <div v-if="authStore.user?.is_super_admin && form.role === 'owner'" class="lg:col-span-2 border-t pt-6">
-          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <BuildingStorefrontIcon class="h-5 w-5 text-slate-500" />
-            Filiais (Acesso Automático)
-          </h3>
-          <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-            <p class="text-sm text-slate-700 mb-3">O(A) Gestor(a) Geral tem acesso automático a todas as filiais:</p>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="branch in appStore.branches"
-                :key="branch.id"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-full text-xs font-medium text-slate-700"
-              >
-                <CheckCircleIcon class="h-4 w-4 text-green-600" />
-                {{ branch.name }}
-              </span>
             </div>
           </div>
         </div>
@@ -289,7 +220,7 @@
 
       <!-- Actions -->
       <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t">
-        <Button type="button" variant="outline" @click="$router.push({ name: 'users' })">
+        <Button type="button" variant="outline" @click="$router.push({ name: 'users.index' })">
           Cancelar
         </Button>
         <Button type="submit" :loading="saving">
@@ -306,7 +237,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '@/stores/user';
@@ -325,10 +256,11 @@ import {
 } from '@heroicons/vue/24/outline';
 
 const roleOptions = [
-  { value: 'seller', label: 'Vendedor(a)' },
-  { value: 'stockist', label: 'Estoquista' },
-  { value: 'manager', label: 'Gerente' },
-  { value: 'owner', label: 'Gestor(a) Geral' },
+  { value: 'admin', label: 'Administrador' },
+  { value: 'requester', label: 'Requerente' },
+  { value: 'validator', label: 'Validador' },
+  { value: 'authorizer', label: 'Concedente' },
+  { value: 'payer', label: 'Pagador' },
   { value: 'super-admin', label: 'Super Admin' },
 ];
 
@@ -342,21 +274,21 @@ const appStore = useAppStore();
 const userId = computed(() => route.params.id ? parseInt(route.params.id) : null);
 const loading = ref(false);
 const saving = ref(false);
-const branchSearchQuery = ref('');
+const departmentSearchQuery = ref('');
 
-const branchOptions = computed(() =>
-  (appStore.branches || []).map((b) => ({ value: b.id, label: b.name }))
+const departmentOptions = computed(() =>
+  (appStore.departments || []).map((d) => ({ value: d.id, label: d.name }))
 );
 
-const filteredBranchOptions = computed(() => {
-  if (!branchSearchQuery.value) return branchOptions.value;
-  const q = branchSearchQuery.value.toLowerCase();
-  return branchOptions.value.filter(b => b.label.toLowerCase().includes(q));
+const filteredDepartmentOptions = computed(() => {
+  if (!departmentSearchQuery.value) return departmentOptions.value;
+  const q = departmentSearchQuery.value.toLowerCase();
+  return departmentOptions.value.filter((d) => d.label.toLowerCase().includes(q));
 });
 
-const selectedBranches = computed(() => {
-  return form.value.branch_ids
-    .map(id => appStore.branches?.find(b => b.id === id))
+const selectedDepartments = computed(() => {
+  return form.value.department_ids
+    .map((id) => appStore.departments?.find((d) => d.id === id))
     .filter(Boolean);
 });
 
@@ -367,21 +299,19 @@ const form = ref({
   password_confirmation: '',
   operation_password: '',
   operation_pin: '',
-  branch_id: null,
-  branch_ids: [],
-  primary_branch_id: null,
+  department_ids: [],
+  primary_department_id: null,
   role: null,
 });
 
 onMounted(async () => {
   if (authStore.user?.is_super_admin) {
-    await appStore.fetchBranches();
+    await appStore.fetchDepartments();
   }
 
   if (userId.value) {
-    // Impede edição do próprio usuário
     if (userId.value === authStore.user?.id) {
-      toast.error('Você não pode editar seu próprio usuário por aqui. Use a página de Perfil.');
+      toast.error('Use a página de Perfil para editar seus dados.');
       router.push({ name: 'profile' });
       return;
     }
@@ -396,7 +326,7 @@ async function loadUser() {
     
     if (!user) {
       toast.error('Usuário não encontrado.');
-      router.push({ name: 'users' });
+      router.push({ name: 'users.index' });
       return;
     }
 
@@ -407,55 +337,39 @@ async function loadUser() {
       password_confirmation: '',
       operation_password: '',
       operation_pin: '',
-      branch_id: user.branch_id ?? user.branch?.id ?? null,
-      branch_ids: user.branch_ids ?? [],
-      primary_branch_id: user.primary_branch_id ?? user.branch_id ?? null,
+      department_ids: user.department_ids ?? [],
+      primary_department_id: user.primary_department_id ?? user.department_id ?? null,
       role: user.role ?? null,
     };
   } catch (error) {
     toast.error('Erro ao carregar usuário.');
-    router.push({ name: 'users' });
+    router.push({ name: 'users.index' });
   } finally {
     loading.value = false;
   }
 }
 
-// Watch para auto-selecionar todas as filiais quando escolher "Dono"
-watch(() => form.value.role, (newRole) => {
-  if (newRole === 'owner' && authStore.user?.is_super_admin) {
-    // Auto-seleciona todas as filiais
-    form.value.branch_ids = branchOptions.value.map(b => b.value);
-    // Define a primeira como primária
-    if (form.value.branch_ids.length > 0) {
-      form.value.primary_branch_id = form.value.branch_ids[0];
-    }
-  }
-});
-
-function toggleBranchId(branchId) {
-  const index = form.value.branch_ids.indexOf(branchId);
+function toggleDepartmentId(deptId) {
+  const index = form.value.department_ids.indexOf(deptId);
   if (index > -1) {
-    form.value.branch_ids.splice(index, 1);
-    // Se remover a filial primária, define outra
-    if (form.value.primary_branch_id === branchId) {
-      form.value.primary_branch_id = form.value.branch_ids[0] || null;
+    form.value.department_ids.splice(index, 1);
+    if (form.value.primary_department_id === deptId) {
+      form.value.primary_department_id = form.value.department_ids[0] || null;
     }
   } else {
-    form.value.branch_ids.push(branchId);
-    // Se é a primeira, define como primária
-    if (form.value.branch_ids.length === 1) {
-      form.value.primary_branch_id = branchId;
+    form.value.department_ids.push(deptId);
+    if (form.value.department_ids.length === 1) {
+      form.value.primary_department_id = deptId;
     }
   }
 }
 
-function removeBranchId(branchId) {
-  const index = form.value.branch_ids.indexOf(branchId);
+function removeDepartmentId(deptId) {
+  const index = form.value.department_ids.indexOf(deptId);
   if (index > -1) {
-    form.value.branch_ids.splice(index, 1);
-    // Se remover a filial primária, define outra
-    if (form.value.primary_branch_id === branchId) {
-      form.value.primary_branch_id = form.value.branch_ids[0] || null;
+    form.value.department_ids.splice(index, 1);
+    if (form.value.primary_department_id === deptId) {
+      form.value.primary_department_id = form.value.department_ids[0] || null;
     }
   }
 }
@@ -478,8 +392,8 @@ async function submit() {
     toast.error('Selecione o cargo.');
     return;
   }
-  if (authStore.user?.is_super_admin && form.value.role !== 'owner' && (!form.value.branch_ids || form.value.branch_ids.length === 0)) {
-    toast.error('Selecione pelo menos uma filial.');
+  if (authStore.user?.is_super_admin && (!form.value.department_ids || form.value.department_ids.length === 0)) {
+    toast.error('Selecione pelo menos uma secretaria.');
     return;
   }
 
@@ -491,12 +405,9 @@ async function submit() {
       role: form.value.role,
     };
 
-    // Envia múltiplas filiais se Super Admin
     if (authStore.user?.is_super_admin) {
-      payload.branch_ids = form.value.branch_ids;
-      payload.primary_branch_id = form.value.primary_branch_id || form.value.branch_ids[0];
-      // Mantém branch_id para compatibilidade
-      payload.branch_id = payload.primary_branch_id;
+      payload.department_ids = form.value.department_ids;
+      payload.primary_department_id = form.value.primary_department_id || form.value.department_ids[0];
     }
 
     if (form.value.password) {
@@ -508,8 +419,7 @@ async function submit() {
       payload.operation_password = form.value.operation_password;
     }
 
-    const isManagerOrOwnerOrSuperAdmin = ['manager', 'owner', 'super-admin'].includes(form.value.role);
-    if (isManagerOrOwnerOrSuperAdmin) {
+    if (['admin', 'super-admin'].includes(form.value.role)) {
       payload.operation_pin = form.value.operation_pin?.trim() || null;
     }
 
@@ -526,7 +436,7 @@ async function submit() {
       toast.success('Usuário criado com sucesso.');
     }
 
-    router.push({ name: 'users' });
+    router.push({ name: 'users.index' });
   } catch (err) {
     const msg = err.response?.data?.message ?? err.response?.data?.errors
       ? Object.values(err.response.data.errors).flat().join(' ')

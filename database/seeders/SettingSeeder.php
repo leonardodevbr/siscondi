@@ -11,26 +11,16 @@ class SettingSeeder extends Seeder
 {
     public function run(): void
     {
-        /**
-         * SISCONDI - Configurações do Sistema
-         */
-        
-        // Informações da Prefeitura/Fundo Municipal
-        Settings::set('entity_name', 'Prefeitura Municipal de Exemplo', 'string', 'general');
-        Settings::set('fund_name', 'Fundo Municipal de Saúde', 'string', 'general');
-        Settings::set('cnpj', '00.000.000/0001-00', 'string', 'general');
-        Settings::set('address', 'Rua Principal, 100 - Centro', 'string', 'general');
-        Settings::set('city', 'Cidade Exemplo', 'string', 'general');
-        Settings::set('state', 'MG', 'string', 'general');
-        Settings::set('cep', '00000-000', 'string', 'general');
-        Settings::set('phone', '(00) 0000-0000', 'string', 'general');
-        
-        // Responsável/Gestor (para cabeçalho de relatórios)
-        Settings::set('manager_name', 'João da Silva', 'string', 'general');
-        Settings::set('manager_title', 'Prefeito Municipal', 'string', 'general');
-        
-        // Logo (path para o arquivo)
-        Settings::set('logo_path', '', 'string', 'general');
+        // Nome do sistema (sobrescreve APP_NAME quando definido)
+        Settings::set('app_name', config('app.name'), 'string', 'general');
+
+        // Dados do município (cabeçalho PDF, relatórios)
+        Settings::set('municipality_name', 'Prefeitura Municipal de Cafarnaum', 'string', 'municipality');
+        Settings::set('municipality_state', 'Bahia', 'string', 'municipality');
+        Settings::set('municipality_address', 'Avenida João Costa Brasil, 315 - Centro - Cafarnaum - BA', 'string', 'municipality');
+        Settings::set('municipality_email', 'social@cafarnaum.ba.gov.br', 'string', 'municipality');
+        Settings::set('municipality_cnpj', '17.622.151/0001-84', 'string', 'municipality');
+
+        $this->command->info('Configurações iniciais criadas (app_name, dados do município).');
     }
 }
-

@@ -10,8 +10,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class UserResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -20,8 +18,8 @@ class UserResource extends JsonResource
             ? $this->roles->first()->name
             : null;
 
-        $primaryBranch = $this->relationLoaded('branches')
-            ? $this->branches->where('pivot.is_primary', true)->first()
+        $primaryDepartment = $this->relationLoaded('departments')
+            ? $this->departments->where('pivot.is_primary', true)->first()
             : null;
 
         return [
@@ -32,18 +30,18 @@ class UserResource extends JsonResource
             'roles' => $this->getRoleNames()->values()->all(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values()->all(),
             'is_super_admin' => $this->hasRole('super-admin'),
-            'branch_id' => $primaryBranch?->id,
-            'branch' => $primaryBranch ? [
-                'id' => $primaryBranch->id,
-                'name' => $primaryBranch->name,
+            'department_id' => $primaryDepartment?->id,
+            'department' => $primaryDepartment ? [
+                'id' => $primaryDepartment->id,
+                'name' => $primaryDepartment->name,
             ] : null,
-            'branches' => $this->whenLoaded('branches', fn () => $this->branches->map(fn ($branch) => [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'is_primary' => $branch->pivot->is_primary ?? false,
+            'departments' => $this->whenLoaded('departments', fn () => $this->departments->map(fn ($d) => [
+                'id' => $d->id,
+                'name' => $d->name,
+                'is_primary' => $d->pivot->is_primary ?? false,
             ])),
-            'branch_ids' => $this->whenLoaded('branches', fn () => $this->branches->pluck('id')->toArray()),
-            'primary_branch_id' => $primaryBranch?->id,
+            'department_ids' => $this->whenLoaded('departments', fn () => $this->departments->pluck('id')->toArray()),
+            'primary_department_id' => $primaryDepartment?->id,
         ];
     }
 }

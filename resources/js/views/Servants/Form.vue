@@ -145,7 +145,7 @@ const fetchData = async () => {
   try {
     const [legData, deptData] = await Promise.all([
       axios.get('/api/legislations?all=1'),
-      axios.get('/api/branches?all=1')
+      axios.get('/api/departments?all=1')
     ])
     legislations.value = legData.data.data || legData.data
     departments.value = deptData.data.data || deptData.data

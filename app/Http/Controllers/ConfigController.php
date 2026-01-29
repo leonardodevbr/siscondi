@@ -6,28 +6,27 @@ namespace App\Http\Controllers;
 
 use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Config;
 
 class ConfigController extends Controller
 {
     /**
-     * Retorna configurações públicas (feature flags) acessíveis por qualquer usuário autenticado.
-     * Inclui active_payment_gateway para o PDV decidir fluxo cartão (maquininha vs manual).
+     * Configurações públicas para o frontend (nome do sistema, dados do município, etc.).
+     * Nome do sistema: .env APP_NAME ou settings app_name.
      */
     public function publicConfig(): JsonResponse
     {
-        $token = Settings::get('mp_access_token');
-        $clientId = Settings::get('mp_client_id');
-        $hasMpPoint = (is_string($token) && $token !== '')
-            || (is_string($clientId) && $clientId !== '');
-        $activePaymentGateway = $hasMpPoint ? 'mercadopago_point' : 'manual';
+        $appName = Settings::get('app_name') ?: Config::get('app.name');
 
         return response()->json([
-            'enable_global_stock_search' => Settings::get('enable_global_stock_search', false),
-            'sku_auto_generation' => Settings::get('sku_auto_generation', true),
-            'sku_pattern' => Settings::get('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}'),
-            'active_payment_gateway' => $activePaymentGateway,
-            'print_pix_receipt' => (bool) Settings::get('print_pix_receipt', true),
-            'print_card_receipt' => (bool) Settings::get('print_card_receipt', false),
+            'app_name' => $appName,
+            'municipality' => [
+                'name' => Settings::get('municipality_name'),
+                'state' => Settings::get('municipality_state'),
+                'address' => Settings::get('municipality_address'),
+                'email' => Settings::get('municipality_email'),
+                'cnpj' => Settings::get('municipality_cnpj'),
+            ],
         ]);
     }
 }

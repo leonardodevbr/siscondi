@@ -62,13 +62,13 @@ class Servant extends Model
     }
 
     /**
-     * Secretaria/Departamento de lotação
-     * 
-     * @return BelongsTo<Branch, Servant>
+     * Secretaria/setor de lotação
+     *
+     * @return BelongsTo<Department, Servant>
      */
     public function department(): BelongsTo
     {
-        return $this->belongsTo(Branch::class, 'department_id');
+        return $this->belongsTo(Department::class, 'department_id');
     }
 
     /**

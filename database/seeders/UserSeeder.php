@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Branch;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -14,74 +14,84 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        /**
-         * SISCONDI - Usuários de Teste
-         */
-        
         $adminRole = Role::findByName('admin');
         $requesterRole = Role::findByName('requester');
         $validatorRole = Role::findByName('validator');
         $authorizerRole = Role::findByName('authorizer');
         $payerRole = Role::findByName('payer');
 
-        $prefeitura = Branch::where('is_main', true)->first();
+        $mainDepartment = Department::where('is_main', true)->first();
 
-        if (! $prefeitura) {
-            $this->command->error('Secretaria principal não encontrada.');
+        if (! $mainDepartment) {
+            $this->command->error('Secretaria principal não encontrada. Execute DepartmentSeeder ou a migration de departments.');
+
             return;
         }
 
-        // Administrador do Sistema
+        $attachPrimary = fn (User $u) => $u->departments()->attach($mainDepartment->id, ['is_primary' => true]);
+
         $admin = User::create([
-            'name' => 'Administrador SISCONDI',
+            'name' => 'Administrador',
             'email' => 'admin@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
         $admin->assignRole($adminRole);
-        $admin->branches()->attach($prefeitura->id, ['is_primary' => true]);
+        $attachPrimary($admin);
 
-        // Requerente (funcionário que solicita diárias)
         $requester = User::create([
             'name' => 'Maria Requerente',
             'email' => 'requerente@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
         $requester->assignRole($requesterRole);
-        $requester->branches()->attach($prefeitura->id, ['is_primary' => true]);
+        $attachPrimary($requester);
 
-        // Validador (Secretário)
         $validator = User::create([
             'name' => 'José Secretário',
             'email' => 'secretario@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
         $validator->assignRole($validatorRole);
-        $validator->branches()->attach($prefeitura->id, ['is_primary' => true]);
+        $attachPrimary($validator);
 
-        // Concedente (Prefeito)
         $authorizer = User::create([
             'name' => 'Carlos Prefeito',
             'email' => 'prefeito@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
         $authorizer->assignRole($authorizerRole);
-        $authorizer->branches()->attach($prefeitura->id, ['is_primary' => true]);
+        $attachPrimary($authorizer);
 
-        // Pagador (Tesoureiro)
         $payer = User::create([
             'name' => 'Ana Tesoureira',
             'email' => 'tesoureiro@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
         $payer->assignRole($payerRole);
-        $payer->branches()->attach($prefeitura->id, ['is_primary' => true]);
+        $attachPrimary($payer);
 
-        $this->command->info('SISCONDI - Usuários criados:');
-        $this->command->info('- Admin: admin@siscondi.gov.br');
-        $this->command->info('- Requerente: requerente@siscondi.gov.br');
-        $this->command->info('- Validador (Secretário): secretario@siscondi.gov.br');
-        $this->command->info('- Concedente (Prefeito): prefeito@siscondi.gov.br');
-        $this->command->info('- Pagador (Tesoureiro): tesoureiro@siscondi.gov.br');
-        $this->command->info('Senha padrão: password');
+        $superAdmin = User::firstOrCreate(
+            ['email' => 'superadmin@siscondi.gov.br'],
+            [
+                'name' => 'Super Administrador',
+                'password' => Hash::make('password'),
+            ]
+        );
+        if (! $superAdmin->hasRole('super-admin')) {
+            $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
+            $superAdminRole->syncPermissions(\Spatie\Permission\Models\Permission::all());
+            $superAdmin->assignRole($superAdminRole);
+        }
+        if ($superAdmin->departments()->count() === 0) {
+            $superAdmin->departments()->attach($mainDepartment->id, ['is_primary' => true]);
+        }
+
+        $this->command->info('Usuários criados. Senha padrão: password');
+        $this->command->info('  Admin: admin@siscondi.gov.br');
+        $this->command->info('  Super Admin: superadmin@siscondi.gov.br');
+        $this->command->info('  Requerente: requerente@siscondi.gov.br');
+        $this->command->info('  Validador: secretario@siscondi.gov.br');
+        $this->command->info('  Concedente: prefeito@siscondi.gov.br');
+        $this->command->info('  Pagador: tesoureiro@siscondi.gov.br');
     }
 }

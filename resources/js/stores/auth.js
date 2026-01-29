@@ -83,26 +83,24 @@ export const useAuthStore = defineStore('auth', {
         });
 
         const appStore = useAppStore();
-        
-        // Carrega lista de filiais se necessário
-        if (isAdmin || isOwner || (user?.branch_ids && user.branch_ids.length > 1)) {
-          await appStore.fetchBranches();
+
+        if (isAdmin || isOwner || (user?.department_ids && user.department_ids.length > 1)) {
+          await appStore.fetchDepartments();
         }
 
-        // Define filial inicial
-        if (!isAdmin && user?.branch) {
-          appStore.currentBranch = {
-            id: user.branch.id,
-            name: user.branch.name,
+        if (!isAdmin && user?.department) {
+          appStore.currentDepartment = {
+            id: user.department.id,
+            name: user.department.name,
           };
-          window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
-          window.localStorage.setItem('selected_branch_id', String(user.branch.id));
+          window.localStorage.setItem('currentDepartment', JSON.stringify(appStore.currentDepartment));
+          window.localStorage.setItem('selected_department_id', String(user.department.id));
         } else if (isAdmin || isOwner) {
-          if (appStore.branches?.length) {
-            const first = appStore.branches[0];
-            appStore.currentBranch = { id: first.id, name: first.name };
-            window.localStorage.setItem('currentBranch', JSON.stringify(appStore.currentBranch));
-            window.localStorage.setItem('selected_branch_id', String(first.id));
+          if (appStore.departments?.length) {
+            const first = appStore.departments[0];
+            appStore.currentDepartment = { id: first.id, name: first.name };
+            window.localStorage.setItem('currentDepartment', JSON.stringify(appStore.currentDepartment));
+            window.localStorage.setItem('selected_department_id', String(first.id));
           }
         }
       } catch (error) {
@@ -153,21 +151,18 @@ export const useAuthStore = defineStore('auth', {
         return { valid: false, authorized_by_user_id: null };
       }
     },
-    setBranch(branch) {
+    setDepartment(department) {
       const appStore = useAppStore();
 
-      if (branch) {
-        // atualiza a filial no usuário em memória/localStorage
-        if (this.user) {
-          this.user = {
-            ...this.user,
-            branch,
-          };
-          window.localStorage.setItem('user', JSON.stringify(this.user));
-        }
+      if (department && this.user) {
+        this.user = {
+          ...this.user,
+          department,
+        };
+        window.localStorage.setItem('user', JSON.stringify(this.user));
       }
 
-      appStore.setBranch(branch);
+      appStore.setDepartment(department);
     },
   },
 });

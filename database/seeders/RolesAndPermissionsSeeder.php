@@ -136,5 +136,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'reports.export',
         ]);
+
+        // Super Admin: acesso total (igual admin, para compatibilidade)
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
+        $superAdminRole->syncPermissions(Permission::all());
     }
 }

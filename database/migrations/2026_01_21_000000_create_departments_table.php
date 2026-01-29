@@ -11,15 +11,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('branches', function (Blueprint $table): void {
+        Schema::create('departments', function (Blueprint $table): void {
             $table->id();
-            $table->string('name');
-            $table->boolean('is_main')->default(false);
+            $table->string('name')->comment('Nome da secretaria/setor');
+            $table->boolean('is_main')->default(false)->comment('Secretaria principal (ex.: Gabinete do Prefeito)');
             $table->timestamps();
         });
 
-        // SISCONDI: Gabinete do Prefeito como secretaria principal
-        DB::table('branches')->insert([
+        DB::table('departments')->insert([
             'name' => 'Gabinete do Prefeito',
             'is_main' => true,
             'created_at' => now(),
@@ -29,6 +28,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('branches');
+        Schema::dropIfExists('departments');
     }
 };

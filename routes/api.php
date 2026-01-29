@@ -15,8 +15,8 @@ require __DIR__.'/api/users.php';
 require __DIR__.'/api/config.php';
 require __DIR__.'/api/settings.php';
 
-// Estrutura Organizacional
-require __DIR__.'/api/branches.php'; // Secretarias
+// Estrutura Organizacional (Secretarias/Setores)
+require __DIR__.'/api/departments.php';
 
 // Módulo de Diárias
 require __DIR__.'/api/legislations.php'; // Cargos e Valores

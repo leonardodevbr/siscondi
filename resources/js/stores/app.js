@@ -3,18 +3,26 @@ import api from '@/services/api';
 
 export const useAppStore = defineStore('app', {
   state: () => ({
-    currentBranch: JSON.parse(window.localStorage.getItem('currentBranch') || 'null'),
-    branches: [],
-    loadingBranches: false,
+    appName: '',
+    currentDepartment: JSON.parse(window.localStorage.getItem('currentDepartment') || 'null'),
+    departments: [],
+    loadingDepartments: false,
   }),
   actions: {
-    async fetchBranches() {
-      if (this.loadingBranches) return;
-      this.loadingBranches = true;
+    async fetchConfig() {
       try {
-        // Solicita todas as branches sem paginação
-        const response = await api.get('/branches?all=1');
-        // A resposta vem como { data: [...] }
+        const response = await api.get('/config');
+        this.appName = response.data?.app_name || '';
+        return response.data;
+      } catch (e) {
+        return {};
+      }
+    },
+    async fetchDepartments() {
+      if (this.loadingDepartments) return;
+      this.loadingDepartments = true;
+      try {
+        const response = await api.get('/departments?all=1');
         let items = [];
         if (response.data) {
           if (Array.isArray(response.data)) {
@@ -23,30 +31,28 @@ export const useAppStore = defineStore('app', {
             items = response.data.data;
           }
         }
-        this.branches = items;
-        if (!this.currentBranch && items.length > 0) {
-          this.setBranch(items[0]);
+        this.departments = items;
+        if (!this.currentDepartment && items.length > 0) {
+          this.setDepartment(items[0]);
         }
       } catch (e) {
-        console.error('Erro ao carregar filiais', e);
-        console.error('Detalhes do erro:', e.response?.data || e.message);
+        console.error('Erro ao carregar secretarias', e);
       } finally {
-        this.loadingBranches = false;
+        this.loadingDepartments = false;
       }
     },
-    setBranch(branch) {
-      this.currentBranch = branch ? { id: branch.id, name: branch.name } : null;
+    setDepartment(department) {
+      this.currentDepartment = department ? { id: department.id, name: department.name } : null;
 
-      if (this.currentBranch) {
-        window.localStorage.setItem('currentBranch', JSON.stringify(this.currentBranch));
-        window.localStorage.setItem('selected_branch_id', String(this.currentBranch.id));
+      if (this.currentDepartment) {
+        window.localStorage.setItem('currentDepartment', JSON.stringify(this.currentDepartment));
+        window.localStorage.setItem('selected_department_id', String(this.currentDepartment.id));
       } else {
-        window.localStorage.removeItem('currentBranch');
-        window.localStorage.removeItem('selected_branch_id');
+        window.localStorage.removeItem('currentDepartment');
+        window.localStorage.removeItem('selected_department_id');
       }
 
       window.location.reload();
     },
   },
 });
-

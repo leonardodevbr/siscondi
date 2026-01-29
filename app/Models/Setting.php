@@ -17,12 +17,7 @@ class Setting extends Model
      *
      * @var list<string>
      */
-    public const MASKED_KEYS = [
-        'mp_access_token',
-        'mp_user_id',
-        'mp_client_secret',
-        'pagbank_token',
-    ];
+    public const MASKED_KEYS = [];
 
     /**
      * Recupera valor de configuração pelo banco (cache via Settings). Uso em runtime.

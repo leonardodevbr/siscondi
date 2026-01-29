@@ -13,7 +13,7 @@ import ServantsIndex from '@/views/Servants/Index.vue';
 import ServantForm from '@/views/Servants/Form.vue';
 import DailyRequestsIndex from '@/views/DailyRequests/Index.vue';
 import DailyRequestForm from '@/views/DailyRequests/Form.vue';
-import BranchesIndex from '@/views/Branches/Index.vue';
+import DepartmentsIndex from '@/views/Departments/Index.vue';
 import UsersIndex from '@/views/Users/Index.vue';
 import UserForm from '@/views/Users/UserForm.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
@@ -103,9 +103,9 @@ const routes = [
       },
       // Secretarias
       {
-        path: 'branches',
-        name: 'branches.index',
-        component: BranchesIndex,
+        path: 'departments',
+        name: 'departments.index',
+        component: DepartmentsIndex,
         meta: { title: 'Secretarias', roles: ['admin'] },
       },
       // Usuários
@@ -199,7 +199,8 @@ router.beforeEach((to, from, next) => {
 
 router.afterEach((to) => {
   const title = to.meta.title;
-  document.title = title ? `${title} | SISCONDI` : 'SISCONDI';
+  const appName = document.querySelector('meta[name="apple-mobile-web-app-title"]')?.getAttribute('content') || '';
+  document.title = title ? (appName ? `${title} | ${appName}` : title) : appName || 'Sistema';
 });
 
 export default router;

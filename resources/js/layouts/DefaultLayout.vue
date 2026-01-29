@@ -2,12 +2,14 @@
 import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 import { useSettingsStore } from '@/stores/settings';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
+const appStore = useAppStore();
 const settingsStore = useSettingsStore();
 
 const isSidebarOpen = ref(false);
@@ -26,6 +28,11 @@ onMounted(async () => {
   if (auth.user) {
     try {
       await settingsStore.fetchPublicConfig();
+      appStore.appName = settingsStore.publicConfig?.app_name || '';
+      if (!appStore.appName) {
+        const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        appStore.appName = meta?.getAttribute('content') || '';
+      }
     } catch (error) {
       console.error('Erro ao carregar configurações públicas:', error);
     }

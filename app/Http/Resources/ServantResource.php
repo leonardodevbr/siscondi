@@ -33,7 +33,7 @@ class ServantResource extends JsonResource
             'phone' => $this->phone,
             'is_active' => $this->is_active,
             'legislation' => new LegislationResource($this->whenLoaded('legislation')),
-            'department' => new BranchResource($this->whenLoaded('department')),
+            'department' => new DepartmentResource($this->whenLoaded('department')),
             'user' => new UserResource($this->whenLoaded('user')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

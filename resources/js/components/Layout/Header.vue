@@ -1,5 +1,4 @@
 <script setup>
-import BranchSwitcher from '@/components/Common/BranchSwitcher.vue';
 import UserMenu from '@/components/Common/UserMenu.vue';
 
 const props = defineProps({
@@ -40,7 +39,6 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
     </div>
 
     <div class="flex items-center gap-4">
-      <BranchSwitcher />
       <UserMenu :user-name="props.userName" @logout="emit('logout')" />
     </div>
   </header>

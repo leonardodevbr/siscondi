@@ -1,10 +1,6 @@
 import axios from 'axios';
 import { useAppStore } from '@/stores/app';
 
-/**
- * SISCONDI API Client
- * Como o frontend está integrado ao Laravel, usamos baseURL relativa
- */
 const baseURL = '/api';
 
 const api = axios.create({
@@ -18,21 +14,19 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Header de filial via store (quando Pinia já estiver pronto)
   try {
     const appStore = useAppStore();
-    if (appStore.currentBranch?.id) {
-      config.headers['X-Branch-ID'] = appStore.currentBranch.id;
+    if (appStore.currentDepartment?.id) {
+      config.headers['X-Department-ID'] = appStore.currentDepartment.id;
     }
   } catch (e) {
-    // se o Pinia ainda não estiver inicializado, ignoramos aqui
+    // Pinia pode ainda não estar inicializado
   }
 
-  // Fallback: usa o ID salvo no localStorage
-  if (!config.headers['X-Branch-ID']) {
-    const storedBranchId = window.localStorage.getItem('selected_branch_id');
-    if (storedBranchId) {
-      config.headers['X-Branch-ID'] = storedBranchId;
+  if (!config.headers['X-Department-ID']) {
+    const storedId = window.localStorage.getItem('selected_department_id');
+    if (storedId) {
+      config.headers['X-Department-ID'] = storedId;
     }
   }
 
@@ -56,4 +50,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

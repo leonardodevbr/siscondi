@@ -46,54 +46,44 @@ class User extends Authenticatable
     }
 
     /**
-     * Secretarias que o usuário tem acesso
-     * 
-     * @return BelongsToMany<Branch>
+     * Secretarias/setores que o usuário tem acesso
+     *
+     * @return BelongsToMany<Department>
      */
-    public function branches(): BelongsToMany
+    public function departments(): BelongsToMany
     {
-        return $this->belongsToMany(Branch::class, 'branch_user')
+        return $this->belongsToMany(Department::class, 'department_user')
             ->withPivot('is_primary')
             ->withTimestamps();
     }
 
-    /**
-     * Secretaria primária do usuário
-     */
-    public function getPrimaryBranch(): ?Branch
+    public function getPrimaryDepartment(): ?Department
     {
-        return $this->branches()->wherePivot('is_primary', true)->first();
+        return $this->departments()->wherePivot('is_primary', true)->first();
     }
 
     /**
-     * IDs de todas as secretarias que o usuário tem acesso
-     * 
      * @return array<int>
      */
-    public function getBranchIds(): array
+    public function getDepartmentIds(): array
     {
         if ($this->hasRole('admin')) {
-            return Branch::query()->pluck('id')->toArray();
+            return Department::query()->pluck('id')->toArray();
         }
 
-        return $this->branches()->pluck('branches.id')->toArray();
+        return $this->departments()->pluck('departments.id')->toArray();
     }
 
-    /**
-     * Verifica se o usuário tem acesso a uma secretaria específica
-     */
-    public function hasAccessToBranch(int $branchId): bool
+    public function hasAccessToDepartment(int $departmentId): bool
     {
         if ($this->hasRole('admin')) {
             return true;
         }
 
-        return $this->branches()->where('branches.id', $branchId)->exists();
+        return $this->departments()->where('departments.id', $departmentId)->exists();
     }
 
     /**
-     * Servidor associado ao usuário (se for um servidor público)
-     * 
      * @return HasOne<Servant>
      */
     public function servant(): HasOne
@@ -101,4 +91,3 @@ class User extends Authenticatable
         return $this->hasOne(Servant::class);
     }
 }
-

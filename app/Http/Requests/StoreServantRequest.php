@@ -21,7 +21,7 @@ class StoreServantRequest extends FormRequest
         return [
             'user_id' => ['nullable', 'exists:users,id'],
             'legislation_id' => ['required', 'exists:legislations,id'],
-            'department_id' => ['required', 'exists:branches,id'],
+            'department_id' => ['required', 'exists:departments,id'],
             'name' => ['required', 'string', 'max:255'],
             'cpf' => ['required', 'string', 'size:11', 'unique:servants,cpf'],
             'rg' => ['required', 'string', 'max:20'],

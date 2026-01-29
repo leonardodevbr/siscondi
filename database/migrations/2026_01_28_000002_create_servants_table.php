@@ -16,7 +16,7 @@ return new class extends Migration
             // Relacionamentos
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('legislation_id')->constrained('legislations')->cascadeOnDelete();
-            $table->foreignId('department_id')->constrained('branches')->cascadeOnDelete()->comment('Secretaria/Lotação');
+            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete()->comment('Secretaria/Lotação');
             
             // Informações Pessoais
             $table->string('name');

@@ -5,10 +5,12 @@ import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 
 const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
+const appStore = useAppStore();
 
 const stats = ref({
   total_servants: 0,
@@ -49,8 +51,8 @@ onMounted(() => {
     <!-- Cabeçalho -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-slate-800">Dashboard SISCONDI</h2>
-        <p class="text-xs text-slate-500">Sistema de Concessão de Diárias</p>
+        <h2 class="text-lg font-semibold text-slate-800">Dashboard</h2>
+        <p class="text-xs text-slate-500">{{ appStore.appName || 'Sistema de Concessão de Diárias' }}</p>
       </div>
       
       <button

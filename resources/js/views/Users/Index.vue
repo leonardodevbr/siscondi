@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-slate-800">Usuários</h2>
-        <p class="text-xs text-slate-500">Gerencie os usuários da filial</p>
+        <p class="text-xs text-slate-500">Gerencie os usuários do sistema</p>
       </div>
       <Button v-if="authStore.can('users.create')" type="button" variant="primary" @click="$router.push({ name: 'users.create' })">Novo Usuário</Button>
     </div>
@@ -31,7 +31,7 @@
             <tr>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">E-mail</th>
-              <th v-if="showBranchColumn" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Filial Principal</th>
+              <th v-if="showDepartmentColumn" class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Secretaria principal</th>
               <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cargo</th>
               <th class="sticky right-0 bg-slate-50 px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider border-l border-slate-200">Ações</th>
             </tr>
@@ -40,15 +40,15 @@
             <tr v-for="u in userStore.users" :key="u.id">
               <td class="px-4 sm:px-6 py-4 text-sm font-medium text-slate-900">{{ u.name }}</td>
               <td class="px-4 sm:px-6 py-4 text-sm text-slate-900">{{ u.email }}</td>
-              <td v-if="showBranchColumn" class="px-4 sm:px-6 py-4 text-sm text-slate-900">
+              <td v-if="showDepartmentColumn" class="px-4 sm:px-6 py-4 text-sm text-slate-900">
                 <div class="flex items-center gap-2">
-                  <span>{{ u.branch?.name ?? '—' }}</span>
+                  <span>{{ u.department?.name ?? '—' }}</span>
                   <span
                     v-if="u.branch_ids && u.branch_ids.length > 1"
                     class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
-                    :title="`Acesso a ${u.branch_ids.length} filiais`"
+                    :title="`Acesso a ${u.department_ids.length} secretarias`"
                   >
-                    +{{ u.branch_ids.length - 1 }}
+                    +{{ u.department_ids.length - 1 }}
                   </span>
                 </div>
               </td>
@@ -90,7 +90,14 @@ import { useAlert } from '@/composables/useAlert';
 import Button from '@/components/Common/Button.vue';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
-const ROLE_LABELS = { seller: 'Vendedor(a)', stockist: 'Estoquista', manager: 'Gerente', owner: 'Gestor(a) Geral', 'super-admin': 'Super Admin' };
+const ROLE_LABELS = {
+  admin: 'Administrador',
+  requester: 'Requerente',
+  validator: 'Validador',
+  authorizer: 'Concedente',
+  payer: 'Pagador',
+  'super-admin': 'Super Admin',
+};
 
 const toast = useToast();
 const { confirm } = useAlert();
@@ -99,13 +106,12 @@ const userStore = useUserStore();
 const searchQuery = ref('');
 let searchTimeout = null;
 
-// Verifica se deve mostrar coluna de filial (Super Admin, Owner ou Manager)
-const showBranchColumn = computed(() => {
+const showDepartmentColumn = computed(() => {
   if (!authStore.user) return false;
   const roles = authStore.user.roles || [];
   return roles.some((r) => {
     const name = typeof r === 'string' ? r : r?.name;
-    return ['super-admin', 'owner', 'manager'].includes(name);
+    return ['super-admin', 'admin'].includes(name);
   });
 });
 

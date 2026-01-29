@@ -57,24 +57,23 @@
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Filial Principal</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Secretaria principal</label>
               <div class="px-3 py-2 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700">
-                {{ user?.branch?.name ?? '—' }}
+                {{ user?.department?.name ?? '—' }}
               </div>
             </div>
           </div>
-          
-          <!-- Múltiplas Filiais -->
-          <div v-if="user?.branch_ids && user.branch_ids.length > 1" class="mt-4">
-            <label class="block text-sm font-medium text-slate-700 mb-2">Filiais com Acesso</label>
+
+          <div v-if="user?.department_ids && user.department_ids.length > 1" class="mt-4">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Secretarias com acesso</label>
             <div class="flex flex-wrap gap-2">
               <span
-                v-for="branchId in user.branch_ids"
-                :key="branchId"
+                v-for="deptId in user.department_ids"
+                :key="deptId"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-xs font-medium text-blue-700"
               >
-                {{ getBranchName(branchId) }}
-                <span v-if="user.primary_branch_id === branchId" class="text-xs text-blue-600">(Principal)</span>
+                {{ getDepartmentName(deptId) }}
+                <span v-if="user.primary_department_id === deptId" class="text-xs text-blue-600">(Principal)</span>
               </span>
             </div>
           </div>
@@ -101,10 +100,11 @@ import Input from '@/components/Common/Input.vue';
 import Button from '@/components/Common/Button.vue';
 
 const ROLE_LABELS = {
-  seller: 'Vendedor(a)',
-  stockist: 'Estoquista',
-  manager: 'Gerente',
-  owner: 'Gestor(a) Geral',
+  admin: 'Administrador',
+  requester: 'Requerente',
+  validator: 'Validador',
+  authorizer: 'Concedente',
+  payer: 'Pagador',
   'super-admin': 'Super Admin',
 };
 
@@ -128,15 +128,15 @@ const roleLabel = computed(() => {
   return user.value?.role ? (ROLE_LABELS[user.value.role] ?? user.value.role) : '—';
 });
 
-function getBranchName(branchId) {
-  const branch = appStore.branches?.find(b => b.id === branchId);
-  return branch?.name ?? `Filial #${branchId}`;
+function getDepartmentName(deptId) {
+  const dept = appStore.departments?.find((d) => d.id === deptId);
+  return dept?.name ?? `#${deptId}`;
 }
 
 onMounted(async () => {
   await loadProfile();
-  if (appStore.branches.length === 0) {
-    await appStore.fetchBranches();
+  if (appStore.departments?.length === 0) {
+    await appStore.fetchDepartments();
   }
 });
 
