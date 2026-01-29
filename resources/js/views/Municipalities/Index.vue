@@ -1,0 +1,54 @@
+<template>
+  <div class="space-y-4">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-800">Municípios (meus clientes)</h2>
+      <p class="text-xs text-slate-500">Apenas Super Admin.</p>
+    </div>
+    <div class="card">
+      <div v-if="loading" class="text-center py-8 text-slate-500">Carregando...</div>
+      <div v-else-if="municipalities.length === 0" class="text-center py-8 text-slate-500">Nenhum município.</div>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nome</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">CNPJ</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-slate-200">
+            <tr v-for="m in municipalities" :key="m.id">
+              <td class="px-6 py-4 text-sm font-medium text-slate-900">{{ m.name }}</td>
+              <td class="px-6 py-4 text-sm text-slate-500">{{ m.cnpj || '—' }}</td>
+              <td class="px-6 py-4 text-right">
+                <router-link :to="{ name: 'municipalities.edit', params: { id: m.id } }" class="inline-flex p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Editar">
+                  <PencilSquareIcon class="h-5 w-5" />
+                </router-link>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import api from '@/services/api';
+import { PencilSquareIcon } from '@heroicons/vue/24/outline';
+const municipalities = ref([]);
+const loading = ref(true);
+const load = async () => {
+  loading.value = true;
+  try {
+    const { data } = await api.get('/municipalities');
+    municipalities.value = Array.isArray(data) ? data : (data?.data ?? []);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+};
+onMounted(() => load());
+</script>

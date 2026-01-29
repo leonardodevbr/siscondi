@@ -28,53 +28,18 @@ class UserSeeder extends Seeder
             return;
         }
 
-        $attachPrimary = fn (User $u) => $u->departments()->attach($mainDepartment->id, ['is_primary' => true]);
+        $municipalityId = $mainDepartment->municipality_id;
 
-        $admin = User::create([
-            'name' => 'Administrador',
-            'email' => 'admin@siscondi.gov.br',
-            'password' => Hash::make('password'),
-        ]);
-        $admin->assignRole($adminRole);
-        $attachPrimary($admin);
-
-        $requester = User::create([
-            'name' => 'Maria Requerente',
-            'email' => 'requerente@siscondi.gov.br',
-            'password' => Hash::make('password'),
-        ]);
-        $requester->assignRole($requesterRole);
-        $attachPrimary($requester);
-
-        $validator = User::create([
-            'name' => 'José Secretário',
-            'email' => 'secretario@siscondi.gov.br',
-            'password' => Hash::make('password'),
-        ]);
-        $validator->assignRole($validatorRole);
-        $attachPrimary($validator);
-
-        $authorizer = User::create([
-            'name' => 'Carlos Prefeito',
-            'email' => 'prefeito@siscondi.gov.br',
-            'password' => Hash::make('password'),
-        ]);
-        $authorizer->assignRole($authorizerRole);
-        $attachPrimary($authorizer);
-
-        $payer = User::create([
-            'name' => 'Ana Tesoureira',
-            'email' => 'tesoureiro@siscondi.gov.br',
-            'password' => Hash::make('password'),
-        ]);
-        $payer->assignRole($payerRole);
-        $attachPrimary($payer);
+        $attachPrimary = function (User $u) use ($mainDepartment): void {
+            $u->departments()->attach($mainDepartment->id, ['is_primary' => true]);
+        };
 
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@siscondi.gov.br'],
             [
                 'name' => 'Super Administrador',
                 'password' => Hash::make('password'),
+                'municipality_id' => $municipalityId,
             ]
         );
         if (! $superAdmin->hasRole('super-admin')) {
@@ -86,9 +51,54 @@ class UserSeeder extends Seeder
             $superAdmin->departments()->attach($mainDepartment->id, ['is_primary' => true]);
         }
 
+        $admin = User::create([
+            'name' => 'Administrador',
+            'email' => 'admin@siscondi.gov.br',
+            'password' => Hash::make('password'),
+            'municipality_id' => $municipalityId,
+        ]);
+        $admin->assignRole($adminRole);
+        $attachPrimary($admin);
+
+        $requester = User::create([
+            'name' => 'Maria Requerente',
+            'email' => 'requerente@siscondi.gov.br',
+            'password' => Hash::make('password'),
+            'municipality_id' => $municipalityId,
+        ]);
+        $requester->assignRole($requesterRole);
+        $attachPrimary($requester);
+
+        $validator = User::create([
+            'name' => 'José Secretário',
+            'email' => 'secretario@siscondi.gov.br',
+            'password' => Hash::make('password'),
+            'municipality_id' => $municipalityId,
+        ]);
+        $validator->assignRole($validatorRole);
+        $attachPrimary($validator);
+
+        $authorizer = User::create([
+            'name' => 'Carlos Prefeito',
+            'email' => 'prefeito@siscondi.gov.br',
+            'password' => Hash::make('password'),
+            'municipality_id' => $municipalityId,
+        ]);
+        $authorizer->assignRole($authorizerRole);
+        $attachPrimary($authorizer);
+
+        $payer = User::create([
+            'name' => 'Ana Tesoureira',
+            'email' => 'tesoureiro@siscondi.gov.br',
+            'password' => Hash::make('password'),
+            'municipality_id' => $municipalityId,
+        ]);
+        $payer->assignRole($payerRole);
+        $attachPrimary($payer);
+
         $this->command->info('Usuários criados. Senha padrão: password');
-        $this->command->info('  Admin: admin@siscondi.gov.br');
         $this->command->info('  Super Admin: superadmin@siscondi.gov.br');
+        $this->command->info('  Admin: admin@siscondi.gov.br');
         $this->command->info('  Requerente: requerente@siscondi.gov.br');
         $this->command->info('  Validador: secretario@siscondi.gov.br');
         $this->command->info('  Concedente: prefeito@siscondi.gov.br');

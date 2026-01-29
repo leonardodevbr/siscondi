@@ -15,9 +15,32 @@ use Illuminate\Http\Request;
 
 class DailyRequestController extends Controller
 {
+    private function ensureCanAccess(DailyRequest $dailyRequest): void
+    {
+        $user = auth()->user();
+        if ($user && $user->hasRole('super-admin')) {
+            return;
+        }
+        $departmentIds = $user ? $user->getDepartmentIds() : [];
+        if (empty($departmentIds)) {
+            abort(403, 'Sem secretarias vinculadas.');
+        }
+        $requesterInScope = $dailyRequest->requester
+            ? $dailyRequest->requester->departments()->whereIn('departments.id', $departmentIds)->exists()
+            : false;
+        $servantDeptId = $dailyRequest->servant?->department_id;
+        $servantInScope = $servantDeptId !== null && in_array((int) $servantDeptId, $departmentIds, true);
+        if (! $requesterInScope && ! $servantInScope) {
+            abort(403, 'Solicitação fora do seu escopo.');
+        }
+    }
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('daily-requests.view');
+
+        $user = auth()->user();
+        $departmentIds = $user ? $user->getDepartmentIds() : [];
 
         $query = DailyRequest::with([
             'servant.legislation',
@@ -29,27 +52,48 @@ class DailyRequestController extends Controller
             'payer'
         ]);
 
+        // Escopo: secretaria só vê solicitações feitas por ela ou para ela; admin/gestor vê todas do município (já em getDepartmentIds)
+        if (! empty($departmentIds)) {
+            $query->where(function ($q) use ($departmentIds): void {
+                $q->whereHas('requester', function ($req) use ($departmentIds): void {
+                    $req->whereHas('departments', function ($d) use ($departmentIds): void {
+                        $d->whereIn('departments.id', $departmentIds);
+                    });
+                })
+                ->orWhereHas('servant', function ($s) use ($departmentIds): void {
+                    $s->whereIn('department_id', $departmentIds);
+                });
+            });
+        }
+
         // Filtros
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->string('search')->toString();
-            $query->whereHas('servant', function ($q) use ($search) {
+            $query->whereHas('servant', function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('cpf', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->string('status')->toString());
         }
 
-        if ($request->has('servant_id')) {
+        if ($request->filled('servant_id')) {
             $query->where('servant_id', $request->integer('servant_id'));
         }
 
-        if ($request->has('department_id')) {
-            $query->whereHas('servant', function ($q) use ($request) {
+        if ($request->filled('department_id')) {
+            $query->whereHas('servant', function ($q) use ($request): void {
                 $q->where('department_id', $request->integer('department_id'));
             });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('departure_date', '>=', $request->string('date_from')->toString());
+        }
+        if ($request->filled('date_to')) {
+            $query->where('return_date', '<=', $request->string('date_to')->toString());
         }
 
         $query->orderBy('created_at', 'desc');
@@ -87,6 +131,7 @@ class DailyRequestController extends Controller
     public function show(DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.view');
+        $this->ensureCanAccess($dailyRequest);
 
         $dailyRequest->load([
             'servant.legislation',
@@ -103,6 +148,7 @@ class DailyRequestController extends Controller
 
     public function update(UpdateDailyRequestRequest $request, DailyRequest $dailyRequest): JsonResponse
     {
+        $this->ensureCanAccess($dailyRequest);
         $dailyRequest->update($request->validated());
         
         if ($request->has('quantity_days')) {
@@ -123,8 +169,9 @@ class DailyRequestController extends Controller
     public function destroy(DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.delete');
+        $this->ensureCanAccess($dailyRequest);
 
-        if (!$dailyRequest->isEditable()) {
+        if (! $dailyRequest->isEditable()) {
             return response()->json([
                 'message' => 'Não é possível deletar uma solicitação que já foi processada.',
             ], 422);
@@ -141,8 +188,9 @@ class DailyRequestController extends Controller
     public function validate(Request $request, DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.validate');
+        $this->ensureCanAccess($dailyRequest);
 
-        if (!$dailyRequest->status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
+        if (! $dailyRequest->status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser validada no status atual.',
             ], 422);
@@ -170,8 +218,9 @@ class DailyRequestController extends Controller
     public function authorize(Request $request, DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.authorize');
+        $this->ensureCanAccess($dailyRequest);
 
-        if (!$dailyRequest->status->canTransitionTo(DailyRequestStatus::AUTHORIZED)) {
+        if (! $dailyRequest->status->canTransitionTo(DailyRequestStatus::AUTHORIZED)) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser autorizada no status atual.',
             ], 422);
@@ -200,8 +249,9 @@ class DailyRequestController extends Controller
     public function pay(Request $request, DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.pay');
+        $this->ensureCanAccess($dailyRequest);
 
-        if (!$dailyRequest->status->canTransitionTo(DailyRequestStatus::PAID)) {
+        if (! $dailyRequest->status->canTransitionTo(DailyRequestStatus::PAID)) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser paga no status atual.',
             ], 422);
@@ -231,8 +281,9 @@ class DailyRequestController extends Controller
     public function cancel(Request $request, DailyRequest $dailyRequest): JsonResponse
     {
         $this->authorize('daily-requests.cancel');
+        $this->ensureCanAccess($dailyRequest);
 
-        if (!$dailyRequest->isCancellable()) {
+        if (! $dailyRequest->isCancellable()) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser cancelada.',
             ], 422);

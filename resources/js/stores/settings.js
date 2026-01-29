@@ -5,6 +5,8 @@ export const useSettingsStore = defineStore('settings', {
   state: () => ({
     settings: {},
     settingsMeta: {},
+    /** Dados agrupados retornados pela API: { group: [ { key, value, type, masked } ] } */
+    settingsGrouped: {},
     publicConfig: {
       app_name: '',
       municipality: {},
@@ -41,6 +43,7 @@ export const useSettingsStore = defineStore('settings', {
       try {
         const response = await api.get('/settings');
         const grouped = response.data || {};
+        this.settingsGrouped = grouped;
         const flatSettings = {};
         const meta = {};
         Object.keys(grouped).forEach((group) => {
@@ -51,8 +54,10 @@ export const useSettingsStore = defineStore('settings', {
         });
         this.settings = flatSettings;
         this.settingsMeta = meta;
+        return grouped;
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
+        return {};
       } finally {
         this.loading = false;
       }

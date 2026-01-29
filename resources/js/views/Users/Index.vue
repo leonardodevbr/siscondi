@@ -57,12 +57,18 @@
                 <span v-else>—</span>
               </td>
               <td class="sticky right-0 bg-white px-4 sm:px-6 py-4 text-right border-l border-slate-200">
-                <div class="flex items-center justify-end gap-2">
-                  <button type="button" class="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors" title="Editar" @click="$router.push({ name: 'users.edit', params: { id: u.id } })">
-                    <PencilSquareIcon class="h-5 w-5" />
-                  </button>
-                  <button type="button" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Excluir" @click="confirmDelete(u)">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    v-if="u.id !== authStore.user?.id"
+                    type="button"
+                    class="p-1.5 text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition-colors"
+                    title="Excluir"
+                    @click="confirmDelete(u)"
+                  >
                     <TrashIcon class="h-5 w-5" />
+                  </button>
+                  <button type="button" class="p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors" title="Editar" @click="$router.push({ name: 'users.edit', params: { id: u.id } })">
+                    <PencilSquareIcon class="h-5 w-5" />
                   </button>
                 </div>
               </td>

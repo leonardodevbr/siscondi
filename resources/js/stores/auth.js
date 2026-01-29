@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await api.post('/login', { email, password });
-        const { token, user } = response.data;
+        const { token, user, needs_primary_department } = response.data;
 
         this.token = token;
         this.user = user;
@@ -84,11 +84,16 @@ export const useAuthStore = defineStore('auth', {
 
         const appStore = useAppStore();
 
+        if (needs_primary_department) {
+          await appStore.fetchDepartments();
+          return { needsPrimaryDepartment: true };
+        }
+
         if (isAdmin || isOwner || (user?.department_ids && user.department_ids.length > 1)) {
           await appStore.fetchDepartments();
         }
 
-        if (!isAdmin && user?.department) {
+        if (!isAdmin && !isOwner && user?.department) {
           appStore.currentDepartment = {
             id: user.department.id,
             name: user.department.name,
@@ -103,6 +108,7 @@ export const useAuthStore = defineStore('auth', {
             window.localStorage.setItem('selected_department_id', String(first.id));
           }
         }
+        return { needsPrimaryDepartment: false };
       } catch (error) {
         const errors = error.response?.data?.errors;
         this.error = errors?.email?.[0] || error.response?.data?.message || 'Não foi possível fazer login.';
@@ -158,11 +164,24 @@ export const useAuthStore = defineStore('auth', {
         this.user = {
           ...this.user,
           department,
+          primary_department_id: department.id,
         };
         window.localStorage.setItem('user', JSON.stringify(this.user));
       }
 
       appStore.setDepartment(department);
+    },
+    async setPrimaryDepartment(departmentId) {
+      const response = await api.post('/set-primary-department', { department_id: departmentId });
+      const user = response.data?.user ?? response.data;
+      if (user) {
+        this.user = user;
+        window.localStorage.setItem('user', JSON.stringify(user));
+      }
+      const appStore = useAppStore();
+      if (user?.department) {
+        appStore.setDepartment({ id: user.department.id, name: user.department.name });
+      }
     },
   },
 });

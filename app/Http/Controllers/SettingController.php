@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\MercadoPagoConnectRequest;
 use App\Http\Requests\UpdateSettingRequest;
 use App\Models\Setting;
-use App\Services\Payment\MercadoPagoPointService;
-use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
 {
-    public function __construct(
-        private readonly MercadoPagoPointService $mercadoPagoPointService
-    ) {}
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (! $request->user()?->hasRole('super-admin')) {
+                abort(403, 'Apenas Super Admin pode acessar as configurações do sistema.');
+            }
+            return $next($request);
+        });
+    }
 
     public function index(): JsonResponse
     {
@@ -83,41 +86,6 @@ class SettingController extends Controller
 
         Cache::forget('settings.all');
 
-        return response()->json(['message' => 'Settings updated successfully.']);
-    }
-
-    /**
-     * Conecta ao Mercado Pago com Client ID e Client Secret, gera e persiste o Access Token.
-     */
-    public function mercadopagoConnect(MercadoPagoConnectRequest $request): JsonResponse
-    {
-        $clientId = $request->validated('mp_client_id');
-        $clientSecret = $request->validated('mp_client_secret');
-
-        try {
-            $this->mercadoPagoPointService->authenticate($clientId, $clientSecret);
-        } catch (\RuntimeException $e) {
-            return response()->json(
-                ['message' => 'Credenciais inválidas. Verifique o Client ID e o Client Secret.'],
-                422
-            );
-        }
-
-        Settings::set('mp_client_id', $clientId, 'string', 'integrations');
-        Settings::set('mp_client_secret', $clientSecret, 'string', 'integrations');
-        Cache::forget('settings.all');
-
-        return response()->json(['message' => 'Conectado ao Mercado Pago. Token gerado com sucesso.']);
-    }
-
-    /**
-     * Retorna se a integração Mercado Pago está conectada (possui access token).
-     */
-    public function mercadopagoStatus(): JsonResponse
-    {
-        $token = $this->mercadoPagoPointService->getAccessToken();
-
-        return response()->json(['connected' => is_string($token) && $token !== '']);
+        return response()->json(['message' => 'Configurações atualizadas com sucesso.']);
     }
 }
-

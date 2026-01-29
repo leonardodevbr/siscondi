@@ -7,7 +7,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class DepartmentResource extends JsonResource
+class MunicipalityResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -17,11 +17,12 @@ class DepartmentResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'is_main' => $this->is_main,
             'cnpj' => $this->cnpj,
-            'fund_name' => $this->fund_name,
-            'fund_code' => $this->fund_code,
+            'state' => $this->state,
+            'address' => $this->address,
+            'email' => $this->email,
             'logo_path' => $this->logo_path,
+            'departments' => DepartmentResource::collection($this->whenLoaded('departments')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

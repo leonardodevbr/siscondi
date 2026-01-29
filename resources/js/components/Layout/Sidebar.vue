@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   ClipboardDocumentCheckIcon,
   BuildingOfficeIcon,
+  MapPinIcon,
   UsersIcon,
   Cog6ToothIcon,
 } from '@heroicons/vue/24/outline';
@@ -75,8 +76,10 @@ const menuGroups = computed(() => {
     {
       title: 'Sistema',
       items: [
+        { name: 'Dados do município', to: { name: 'municipality.profile' }, icon: BuildingOfficeIcon, role: 'admin' },
         { name: 'Usuários', to: { name: 'users.index' }, icon: UsersIcon, permission: 'users.view' },
-        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: null, role: ['admin', 'super-admin'] },
+        { name: 'Municípios', to: { name: 'municipalities.index' }, icon: MapPinIcon, permission: null, role: 'super-admin' },
+        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: null, role: 'super-admin' },
       ],
     },
   ];

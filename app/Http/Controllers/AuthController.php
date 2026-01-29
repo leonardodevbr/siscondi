@@ -32,29 +32,64 @@ class AuthController extends Controller
             ]);
         }
 
-        $user->load(['departments', 'roles']);
+        $user->load(['departments', 'roles', 'municipality']);
+        $user->update(['primary_department_id' => null]);
+
+        $departments = $user->departments;
+        if ($departments->count() === 1) {
+            $user->update(['primary_department_id' => $departments->first()->id]);
+        }
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->fresh(['departments', 'roles', 'municipality'])),
+            'needs_primary_department' => $user->needsPrimaryDepartmentChoice(),
         ]);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $user = $request->user();
+        if ($user) {
+            $user->update(['primary_department_id' => null]);
+            $user->currentAccessToken()?->delete();
+        }
 
         return response()->json([
             'message' => 'Logout realizado com sucesso.',
         ]);
     }
 
+    /**
+     * Define a secretaria em que o usuário está atuando (obrigatório após login quando tem mais de uma).
+     */
+    public function setPrimaryDepartment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'department_id' => ['required', 'integer', 'exists:departments,id'],
+        ]);
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Não autenticado.'], 401);
+        }
+        $departmentId = (int) $request->input('department_id');
+        if (! $user->departments()->where('departments.id', $departmentId)->exists()) {
+            return response()->json(['message' => 'Secretaria não vinculada ao usuário.'], 422);
+        }
+        $user->update(['primary_department_id' => $departmentId]);
+        $user->load(['departments', 'roles', 'municipality']);
+
+        return response()->json([
+            'user' => new UserResource($user),
+        ]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user?->load(['departments', 'roles']);
+        $user?->load(['departments', 'roles', 'municipality']);
 
         $payload = (new UserResource($user))->toArray($request);
 
@@ -65,6 +100,7 @@ class AuthController extends Controller
                 if ($department) {
                     $payload['department_id'] = $department->id;
                     $payload['department'] = ['id' => $department->id, 'name' => $department->name];
+                    $payload['primary_department_id'] = $department->id;
                 }
             }
         }

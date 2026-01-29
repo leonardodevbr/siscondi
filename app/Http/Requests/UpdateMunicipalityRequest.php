@@ -6,11 +6,11 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreDepartmentRequest extends FormRequest
+class UpdateMunicipalityRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('departments.create') ?? false;
+        return $this->user()?->can('settings.manage') ?? false;
     }
 
     /**
@@ -19,12 +19,11 @@ class StoreDepartmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'municipality_id' => ['nullable', 'integer', 'exists:municipalities,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'is_main' => ['nullable', 'boolean'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
-            'fund_name' => ['nullable', 'string', 'max:255'],
-            'fund_code' => ['nullable', 'string', 'max:50'],
+            'state' => ['nullable', 'string', 'max:2'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'email' => ['nullable', 'email', 'max:255'],
             'logo_path' => ['nullable', 'string', 'max:500'],
         ];
     }

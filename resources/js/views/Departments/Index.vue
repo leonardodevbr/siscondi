@@ -65,19 +65,25 @@
                 {{ formatDate(dept.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="editDepartment(dept)"
-                  class="text-blue-600 hover:text-blue-900 mr-4"
-                >
-                  Editar
-                </button>
-                <button
-                  v-if="!dept.is_main"
-                  @click="deleteDepartment(dept)"
-                  class="text-red-600 hover:text-red-900"
-                >
-                  Excluir
-                </button>
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    v-if="!dept.is_main"
+                    type="button"
+                    class="p-1.5 text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition-colors"
+                    title="Excluir"
+                    @click="deleteDepartment(dept)"
+                  >
+                    <TrashIcon class="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
+                    title="Editar"
+                    @click="editDepartment(dept)"
+                  >
+                    <PencilSquareIcon class="h-5 w-5" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -96,15 +102,60 @@
 
         <form @submit.prevent="saveDepartment" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
-              Nome
-            </label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
             <input
               v-model="form.name"
               type="text"
               required
               class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ex: Secretaria de Educação"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
+            <input
+              v-model="form.cnpj"
+              type="text"
+              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="00.000.000/0001-00"
+              maxlength="18"
+            />
+          </div>
+
+          <div class="border-t border-slate-200 pt-4">
+            <h4 class="text-sm font-semibold text-slate-800 mb-2">Dados do fundo (pagamento)</h4>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Nome do fundo</label>
+                <input
+                  v-model="form.fund_name"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Fundo Municipal de Educação"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Código do fundo</label>
+                <input
+                  v-model="form.fund_code"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: 001"
+                  maxlength="50"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Brasão / Logo</label>
+            <p class="text-xs text-slate-500 mb-2">Caminho do arquivo ou URL (upload em versão futura)</p>
+            <input
+              v-model="form.logo_path"
+              type="text"
+              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ex: departments/1/logo.png"
             />
           </div>
 
@@ -146,8 +197,10 @@
 <script>
 import api from '@/services/api';
 import { useAlert } from '@/composables/useAlert';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
 export default {
+  components: { PencilSquareIcon, TrashIcon },
   name: 'DepartmentsIndex',
   data() {
     return {
@@ -182,7 +235,11 @@ export default {
       this.editingDepartment = dept;
       this.form = {
         name: dept.name,
-        is_main: dept.is_main,
+        is_main: dept.is_main ?? false,
+        cnpj: dept.cnpj ?? '',
+        fund_name: dept.fund_name ?? '',
+        fund_code: dept.fund_code ?? '',
+        logo_path: dept.logo_path ?? '',
       };
     },
     async saveDepartment() {
@@ -232,6 +289,10 @@ export default {
       this.form = {
         name: '',
         is_main: false,
+        cnpj: '',
+        fund_name: '',
+        fund_code: '',
+        logo_path: '',
       };
     },
     formatDate(date) {

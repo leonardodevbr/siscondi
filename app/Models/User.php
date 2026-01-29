@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,6 +25,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'municipality_id',
+        'primary_department_id',
     ];
 
     /**
@@ -46,7 +49,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Secretarias/setores que o usuário tem acesso
+     * Município ao qual o usuário pertence (cadastro).
+     *
+     * @return BelongsTo<Municipality, $this>
+     */
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
+
+    /**
+     * Secretaria em que o usuário está "atuando" no momento (escolhida no login quando tem mais de uma).
+     *
+     * @return BelongsTo<Department, $this>
+     */
+    public function primaryDepartment(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'primary_department_id');
+    }
+
+    /**
+     * Secretarias/setores que o usuário tem acesso (todas do município do usuário).
      *
      * @return BelongsToMany<Department>
      */
@@ -57,9 +80,27 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    /**
+     * Secretaria principal (em que está atuando): coluna primary_department_id ou fallback no pivot is_primary.
+     */
     public function getPrimaryDepartment(): ?Department
     {
+        if ($this->primary_department_id !== null) {
+            $dept = $this->primaryDepartment;
+            if ($dept && $this->departments()->where('departments.id', $dept->id)->exists()) {
+                return $dept;
+            }
+        }
+
         return $this->departments()->wherePivot('is_primary', true)->first();
+    }
+
+    /**
+     * Município do usuário (registro na tabela users).
+     */
+    public function getMunicipality(): ?Municipality
+    {
+        return $this->municipality;
     }
 
     /**
@@ -67,8 +108,11 @@ class User extends Authenticatable
      */
     public function getDepartmentIds(): array
     {
-        if ($this->hasRole('admin')) {
+        if ($this->hasRole('super-admin')) {
             return Department::query()->pluck('id')->toArray();
+        }
+        if ($this->hasRole('admin') && $this->municipality_id !== null) {
+            return Department::query()->where('municipality_id', $this->municipality_id)->pluck('id')->toArray();
         }
 
         return $this->departments()->pluck('departments.id')->toArray();
@@ -76,11 +120,27 @@ class User extends Authenticatable
 
     public function hasAccessToDepartment(int $departmentId): bool
     {
-        if ($this->hasRole('admin')) {
+        if ($this->hasRole('super-admin')) {
             return true;
+        }
+        if ($this->hasRole('admin') && $this->municipality_id !== null) {
+            return Department::query()->where('id', $departmentId)->where('municipality_id', $this->municipality_id)->exists();
         }
 
         return $this->departments()->where('departments.id', $departmentId)->exists();
+    }
+
+    /**
+     * Verifica se o usuário precisa escolher secretaria no login (>1 secretaria e não é admin).
+     */
+    public function needsPrimaryDepartmentChoice(): bool
+    {
+        if ($this->hasRole('super-admin') || $this->hasRole('admin')) {
+            return false;
+        }
+        $count = $this->departments()->count();
+
+        return $count > 1;
     }
 
     /**

@@ -29,9 +29,13 @@ async function handleSubmit() {
   }
 
   try {
-    await auth.login(email.value, password.value);
+    const result = await auth.login(email.value, password.value);
     toast.success('Login realizado com sucesso.');
-    router.push({ name: 'dashboard' });
+    if (result?.needsPrimaryDepartment) {
+      router.push({ name: 'choose-department' });
+    } else {
+      router.push({ name: 'dashboard' });
+    }
   } catch (error) {
     const errors = error.response?.data?.errors;
     const message = errors?.email?.[0] || error.response?.data?.message || 'Falha ao autenticar.';

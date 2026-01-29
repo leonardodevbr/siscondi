@@ -17,9 +17,19 @@ class DepartmentController extends Controller
     {
         $this->authorize('departments.view');
 
+        $user = auth()->user();
         $query = Department::query();
 
-        if ($request->has('search')) {
+        if ($user && ! $user->hasRole('super-admin')) {
+            $municipality = $user->getMunicipality();
+            if ($municipality) {
+                $query->where('municipality_id', $municipality->id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $query->where('name', 'like', "%{$search}%");
         }
@@ -35,21 +45,50 @@ class DepartmentController extends Controller
 
     public function store(StoreDepartmentRequest $request): JsonResponse
     {
-        $department = Department::create($request->validated());
+        $data = $request->validated();
+        $user = auth()->user();
+        if ($user && ! $user->hasRole('super-admin')) {
+            $municipality = $user->getMunicipality();
+            if (! $municipality) {
+                return response()->json(['message' => 'Usuário sem município vinculado (secretaria principal).'], 422);
+            }
+            $data['municipality_id'] = $municipality->id;
+        }
+
+        $department = Department::create($data);
 
         return response()->json(new DepartmentResource($department), 201);
+    }
+
+    private function ensureDepartmentScope(Department $department): void
+    {
+        $user = auth()->user();
+        if ($user && $user->hasRole('super-admin')) {
+            return;
+        }
+        $municipality = $user?->getMunicipality();
+        if (! $municipality || $department->municipality_id !== $municipality->id) {
+            abort(403, 'Secretaria fora do seu município.');
+        }
     }
 
     public function show(Department $department): JsonResponse
     {
         $this->authorize('departments.view');
+        $this->ensureDepartmentScope($department);
 
         return response()->json(new DepartmentResource($department));
     }
 
     public function update(UpdateDepartmentRequest $request, Department $department): JsonResponse
     {
-        $department->update($request->validated());
+        $this->ensureDepartmentScope($department);
+        $data = $request->validated();
+        $user = auth()->user();
+        if ($user && ! $user->hasRole('super-admin')) {
+            unset($data['municipality_id']);
+        }
+        $department->update($data);
 
         return response()->json(new DepartmentResource($department));
     }
@@ -57,6 +96,7 @@ class DepartmentController extends Controller
     public function destroy(Department $department): JsonResponse
     {
         $this->authorize('departments.delete');
+        $this->ensureDepartmentScope($department);
 
         if ($department->is_main) {
             return response()->json([

@@ -18,9 +18,7 @@ class UserResource extends JsonResource
             ? $this->roles->first()->name
             : null;
 
-        $primaryDepartment = $this->relationLoaded('departments')
-            ? $this->departments->where('pivot.is_primary', true)->first()
-            : null;
+        $primaryDepartment = $this->getPrimaryDepartment();
 
         return [
             'id' => $this->id,
@@ -30,6 +28,11 @@ class UserResource extends JsonResource
             'roles' => $this->getRoleNames()->values()->all(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values()->all(),
             'is_super_admin' => $this->hasRole('super-admin'),
+            'municipality_id' => $this->municipality_id,
+            'municipality' => $this->whenLoaded('municipality', fn () => $this->municipality ? [
+                'id' => $this->municipality->id,
+                'name' => $this->municipality->name,
+            ] : null),
             'department_id' => $primaryDepartment?->id,
             'department' => $primaryDepartment ? [
                 'id' => $primaryDepartment->id,
@@ -38,10 +41,11 @@ class UserResource extends JsonResource
             'departments' => $this->whenLoaded('departments', fn () => $this->departments->map(fn ($d) => [
                 'id' => $d->id,
                 'name' => $d->name,
-                'is_primary' => $d->pivot->is_primary ?? false,
+                'is_primary' => (int) $d->id === (int) $this->primary_department_id,
             ])),
             'department_ids' => $this->whenLoaded('departments', fn () => $this->departments->pluck('id')->toArray()),
-            'primary_department_id' => $primaryDepartment?->id,
+            'primary_department_id' => $this->primary_department_id ?? $primaryDepartment?->id,
+            'needs_primary_department' => $this->needsPrimaryDepartmentChoice(),
         ];
     }
 }

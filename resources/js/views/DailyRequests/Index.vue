@@ -52,9 +52,14 @@
                 {{ request.status_label }}
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
-              <router-link :to="`/daily-requests/${request.id}`" class="text-blue-600 hover:text-blue-900 mr-2">Ver</router-link>
-              <button v-if="request.is_editable" @click="editRequest(request.id)" class="text-green-600 hover:text-green-900">Editar</button>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+              <router-link
+                :to="`/daily-requests/${request.id}/edit`"
+                class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
+                :title="request.is_editable ? 'Editar' : 'Ver'"
+              >
+                <PencilSquareIcon class="h-5 w-5" />
+              </router-link>
             </td>
           </tr>
         </tbody>
@@ -66,7 +71,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
+import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const requests = ref([])
@@ -74,7 +80,7 @@ const filters = ref({ status: '' })
 
 const fetchRequests = async () => {
   try {
-    const { data } = await axios.get('/api/daily-requests', { params: filters.value })
+    const { data } = await api.get('/daily-requests', { params: filters.value })
     requests.value = data.data || data
   } catch (error) {
     console.error('Erro ao carregar solicitações:', error)

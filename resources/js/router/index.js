@@ -7,6 +7,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 // Views
 import HomeView from '@/views/Dashboard/Home.vue';
 import LoginView from '@/views/Auth/Login.vue';
+import ChooseDepartmentView from '@/views/Auth/ChooseDepartment.vue';
 import LegislationsIndex from '@/views/Legislations/Index.vue';
 import LegislationForm from '@/views/Legislations/Form.vue';
 import ServantsIndex from '@/views/Servants/Index.vue';
@@ -18,6 +19,9 @@ import UsersIndex from '@/views/Users/Index.vue';
 import UserForm from '@/views/Users/UserForm.vue';
 import SettingsIndex from '@/views/Settings/Index.vue';
 import ProfileIndex from '@/views/Profile/Index.vue';
+import MunicipalityProfile from '@/views/Municipality/Profile.vue';
+import MunicipalitiesIndex from '@/views/Municipalities/Index.vue';
+import MunicipalitiesEdit from '@/views/Municipalities/Edit.vue';
 
 const routes = [
   {
@@ -32,6 +36,19 @@ const routes = [
       },
     ],
     meta: { guestOnly: true },
+  },
+  {
+    path: '/choose-department',
+    component: AuthLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'choose-department',
+        component: ChooseDepartmentView,
+        meta: { title: 'Escolher secretaria' },
+      },
+    ],
   },
   {
     path: '/',
@@ -135,10 +152,28 @@ const routes = [
         meta: { title: 'Perfil' },
       },
       {
+        path: 'municipality',
+        name: 'municipality.profile',
+        component: MunicipalityProfile,
+        meta: { title: 'Dados do município', roles: ['admin'] },
+      },
+      {
+        path: 'municipalities',
+        name: 'municipalities.index',
+        component: MunicipalitiesIndex,
+        meta: { title: 'Municípios', roles: ['super-admin'] },
+      },
+      {
+        path: 'municipalities/:id/edit',
+        name: 'municipalities.edit',
+        component: MunicipalitiesEdit,
+        meta: { title: 'Editar município', roles: ['super-admin'] },
+      },
+      {
         path: 'settings',
         name: 'settings',
         component: SettingsIndex,
-        meta: { title: 'Configurações', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Configurações', roles: ['super-admin'] },
       },
     ],
   },
@@ -161,6 +196,15 @@ router.beforeEach((to, from, next) => {
   if (to.meta.guestOnly && token) {
     next({ name: 'dashboard' });
     return;
+  }
+
+  if (to.meta.requiresAuth && token && to.name !== 'choose-department') {
+    const authStore = useAuthStore();
+    const user = authStore.user;
+    if (user?.needs_primary_department && !user?.primary_department_id) {
+      next({ name: 'choose-department' });
+      return;
+    }
   }
 
   if (to.meta.roles && token) {

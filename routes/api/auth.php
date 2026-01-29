@@ -14,5 +14,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/set-primary-department', [AuthController::class, 'setPrimaryDepartment']);
     Route::post('/validate-operation-password', [AuthController::class, 'validateOperationPassword']);
 });

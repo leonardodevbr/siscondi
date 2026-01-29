@@ -20,7 +20,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lotação</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -35,8 +35,14 @@
                 {{ servant.is_active ? 'Ativo' : 'Inativo' }}
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <router-link :to="`/servants/${servant.id}/edit`" class="text-blue-600 hover:text-blue-900 mr-3">Editar</router-link>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+              <router-link
+                :to="`/servants/${servant.id}/edit`"
+                class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
+                title="Editar"
+              >
+                <PencilSquareIcon class="h-5 w-5" />
+              </router-link>
             </td>
           </tr>
         </tbody>
@@ -53,7 +59,7 @@ const servants = ref([])
 
 const fetchServants = async () => {
   try {
-    const { data } = await axios.get('/api/servants')
+    const { data } = await api.get('/servants')
     servants.value = data.data || data
   } catch (error) {
     console.error('Erro ao carregar servidores:', error)

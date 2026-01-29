@@ -19,7 +19,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lei Nº</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor Diária</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -33,8 +33,14 @@
                 {{ item.is_active ? 'Ativo' : 'Inativo' }}
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <router-link :to="`/legislations/${item.id}/edit`" class="text-blue-600 hover:text-blue-900 mr-3">Editar</router-link>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+              <router-link
+                :to="`/legislations/${item.id}/edit`"
+                class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
+                title="Editar"
+              >
+                <PencilSquareIcon class="h-5 w-5" />
+              </router-link>
             </td>
           </tr>
         </tbody>
@@ -51,7 +57,7 @@ const legislations = ref([])
 
 const fetchLegislations = async () => {
   try {
-    const { data } = await axios.get('/api/legislations')
+    const { data } = await api.get('/legislations')
     legislations.value = data.data || data
   } catch (error) {
     console.error('Erro ao carregar legislações:', error)

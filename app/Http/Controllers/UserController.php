@@ -105,8 +105,17 @@ class UserController extends Controller
             $departmentIds = [$primaryDepartmentId];
         }
 
+        $municipalityId = null;
+        if (! empty($departmentIds)) {
+            $firstDept = Department::find($departmentIds[0]);
+            if ($firstDept) {
+                $municipalityId = $firstDept->municipality_id;
+            }
+        }
+
         $data = $request->safe()->only(['name', 'email', 'role', 'operation_pin']);
         $data['password'] = $request->validated('password');
+        $data['municipality_id'] = $municipalityId;
         if ($request->filled('operation_password')) {
             $data['operation_password'] = $request->validated('operation_password');
         }
@@ -116,6 +125,7 @@ class UserController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'],
+                'municipality_id' => $data['municipality_id'] ?? null,
                 'operation_password' => $data['operation_password'] ?? null,
                 'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
             ]);
@@ -190,6 +200,10 @@ class UserController extends Controller
                 $primaryDepartmentId = $request->filled('primary_department_id')
                     ? (int) $request->input('primary_department_id')
                     : ($departmentIds[0] ?? null);
+                $firstDept = Department::find($departmentIds[0] ?? null);
+                if ($firstDept) {
+                    $payload['municipality_id'] = $firstDept->municipality_id;
+                }
                 $pivotData = [];
                 foreach ($departmentIds as $departmentId) {
                     $pivotData[$departmentId] = ['is_primary' => $departmentId === $primaryDepartmentId];

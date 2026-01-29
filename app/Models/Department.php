@@ -17,8 +17,13 @@ class Department extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'municipality_id',
         'name',
         'is_main',
+        'cnpj',
+        'fund_name',
+        'fund_code',
+        'logo_path',
     ];
 
     /**
@@ -27,6 +32,16 @@ class Department extends Model
     protected $casts = [
         'is_main' => 'boolean',
     ];
+
+    /**
+     * Município ao qual a secretaria pertence
+     *
+     * @return BelongsTo<Municipality, $this>
+     */
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
 
     /**
      * Usuários que têm acesso a esta secretaria

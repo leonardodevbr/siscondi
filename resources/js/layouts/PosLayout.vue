@@ -16,8 +16,8 @@ const isSidebarOpen = ref(false);
 
 const currentUserName = computed(() => auth.user?.name ?? 'Usuário');
 
-function handleLogout() {
-  auth.logout();
+async function handleLogout() {
+  await auth.logout();
   router.push({ name: 'login' });
 }
 
