@@ -160,15 +160,7 @@
           </div>
 
           <div>
-            <label class="flex items-center">
-              <input
-                v-model="form.is_main"
-                type="checkbox"
-                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                :disabled="editingDepartment && editingDepartment.is_main"
-              />
-              <span class="ml-2 text-sm text-slate-700">Secretaria principal</span>
-            </label>
+            <Toggle v-model="form.is_main" label="Secretaria principal" />
           </div>
 
           <div class="flex justify-end gap-2 pt-4">
@@ -199,9 +191,10 @@ import api from '@/services/api';
 import { useAlert } from '@/composables/useAlert';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import LogoUpload from '@/components/Common/LogoUpload.vue';
+import Toggle from '@/components/Common/Toggle.vue';
 
 export default {
-  components: { PencilSquareIcon, TrashIcon, LogoUpload },
+  components: { PencilSquareIcon, TrashIcon, LogoUpload, Toggle },
   name: 'DepartmentsIndex',
   data() {
     return {

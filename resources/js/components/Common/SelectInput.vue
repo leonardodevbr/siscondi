@@ -85,7 +85,7 @@ export default defineComponent({
 
 :deep(.multiselect-container .multiselect-single-label),
 :deep(.multiselect-container .multiselect-placeholder) {
-  @apply px-3 py-2 border border-slate-300 rounded text-sm;
+  @apply px-3 py-2 border border-slate-300 rounded-lg text-sm;
   min-height: 2.5rem;
   display: flex;
   align-items: center;
@@ -115,28 +115,28 @@ export default defineComponent({
 }
 
 :deep(.multiselect-option) {
-  @apply px-3 py-2 text-sm text-slate-900 cursor-pointer;
+  @apply px-3 py-2 text-sm cursor-pointer text-slate-800 font-medium;
 }
 
 :deep(.multiselect-option:hover) {
-  @apply bg-blue-50;
+  @apply bg-slate-50;
 }
 
 :deep(.multiselect-option-pointed) {
-  @apply bg-blue-50 text-blue-900;
+  @apply bg-blue-50 text-slate-900;
 }
 
 :deep(.multiselect-option-selected) {
-  @apply bg-blue-600 text-white;
+  @apply bg-blue-100 text-blue-900;
 }
 
 :deep(.multiselect-option-selected-pointed) {
-  @apply bg-blue-700 text-white;
+  @apply bg-blue-100 text-blue-900;
 }
 
 :deep(.multiselect-container-active .multiselect-single-label),
 :deep(.multiselect-container-active .multiselect-placeholder) {
-  @apply border-blue-500 ring-2 ring-blue-500;
+  @apply border-blue-500 ring-2 ring-blue-100;
 }
 
 :deep(.multiselect-caret) {

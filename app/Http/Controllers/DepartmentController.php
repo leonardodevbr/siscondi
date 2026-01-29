@@ -57,6 +57,13 @@ class DepartmentController extends Controller
 
         $department = Department::create($data);
 
+        if (! empty($data['is_main']) && $department->municipality_id) {
+            Department::query()
+                ->where('municipality_id', $department->municipality_id)
+                ->where('id', '!=', $department->id)
+                ->update(['is_main' => false]);
+        }
+
         return response()->json(new DepartmentResource($department), 201);
     }
 
@@ -90,6 +97,14 @@ class DepartmentController extends Controller
         if ($user && ! $user->hasRole('super-admin')) {
             unset($data['municipality_id']);
         }
+
+        if (! empty($data['is_main']) && $department->municipality_id) {
+            Department::query()
+                ->where('municipality_id', $department->municipality_id)
+                ->where('id', '!=', $department->id)
+                ->update(['is_main' => false]);
+        }
+
         $department->update($data);
 
         return response()->json(new DepartmentResource($department->fresh()));

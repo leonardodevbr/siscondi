@@ -38,19 +38,32 @@
             Adicionar destino
           </button>
         </div>
-        <p class="text-sm text-gray-500 mb-3">Defina as colunas de valor por destino (ex.: Até 200 km, Capital Estado). Cada lei pode ter destinos únicos.</p>
+        <p class="text-sm text-gray-500 mb-3">Defina as colunas de valor por destino (ex.: Até 200 km, Capital Estado). Arraste o destino pelo ícone para reordenar; a tabela abaixo acompanha a ordem.</p>
         <div class="flex flex-wrap gap-2">
           <div
             v-for="(dest, idx) in form.destinations"
             :key="idx"
-            class="flex w-48 min-w-[10rem] rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-100"
+            data-dest-chip
+            class="dest-chip flex w-52 min-w-[11rem] rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-100 transition-opacity"
+            :class="{ 'opacity-50': draggedDestIndex === idx, 'dest-chip-dragging': draggedDestIndex === idx }"
+            @dragover.prevent="onDestDragOver($event, idx)"
+            @drop.prevent="onDestDrop($event, idx)"
           >
+            <span
+              draggable="true"
+              class="dest-drag-handle flex items-center justify-center shrink-0 w-8 cursor-grab active:cursor-grabbing border-r border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 select-none"
+              title="Arrastar para reordenar"
+              @dragstart="onDestDragStart($event, idx)"
+              @dragend="onDestDragEnd"
+            >
+              <Bars3Icon class="w-4 h-4" />
+            </span>
             <input
               v-model="form.destinations[idx]"
               type="text"
               required
               placeholder="Ex: Até 200 km"
-              class="flex-1 min-w-0 border-0 bg-transparent px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0"
+              class="flex-1 min-w-0 border-0 bg-transparent px-2 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0"
             />
             <button
               type="button"
@@ -89,7 +102,7 @@
                   <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full min-w-[12rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
                 </td>
                 <td class="px-4 py-3 align-top">
-                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="input-table block w-full min-w-[6rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
+                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="block w-full min-w-[6rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
                 </td>
                 <td v-for="(dest, dIdx) in form.destinations" :key="dIdx" class="px-4 py-3 align-top">
                   <input
@@ -126,6 +139,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import Toggle from '@/components/Common/Toggle.vue'
@@ -160,6 +174,60 @@ function removeDestination(idx) {
   form.value.destinations.splice(idx, 1)
   form.value.items.forEach((item) => {
     item.valueByIndex.splice(idx, 1)
+  })
+}
+
+const draggedDestIndex = ref(null)
+let dragGhostEl = null
+
+function onDestDragStart(e, idx) {
+  draggedDestIndex.value = idx
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', String(idx))
+
+  const chip = e.currentTarget.closest('[data-dest-chip]')
+  if (chip) {
+    const rect = chip.getBoundingClientRect()
+    const clone = chip.cloneNode(true)
+    clone.classList.add('dest-drag-ghost')
+    clone.style.cssText = `
+      position: fixed; top: -9999px; left: 0;
+      width: ${rect.width}px; min-width: ${rect.width}px;
+      pointer-events: none; opacity: 0.95;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.12), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+      z-index: 9999; border-radius: 0.5rem; background: white;
+    `
+    document.body.appendChild(clone)
+    dragGhostEl = clone
+    e.dataTransfer.setDragImage(clone, rect.width / 2, rect.height / 2)
+  }
+}
+
+function onDestDragEnd() {
+  draggedDestIndex.value = null
+  if (dragGhostEl && dragGhostEl.parentNode) {
+    dragGhostEl.parentNode.removeChild(dragGhostEl)
+    dragGhostEl = null
+  }
+}
+
+function onDestDragOver(e, toIdx) {
+  e.dataTransfer.dropEffect = 'move'
+}
+
+function onDestDrop(e, toIdx) {
+  const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10)
+  if (fromIdx === toIdx) return
+  moveDestination(fromIdx, toIdx)
+  draggedDestIndex.value = null
+}
+
+function moveDestination(fromIdx, toIdx) {
+  const dest = form.value.destinations.splice(fromIdx, 1)[0]
+  form.value.destinations.splice(toIdx, 0, dest)
+  form.value.items.forEach((item) => {
+    const val = item.valueByIndex.splice(fromIdx, 1)[0]
+    item.valueByIndex.splice(toIdx, 0, val ?? '')
   })
 }
 
