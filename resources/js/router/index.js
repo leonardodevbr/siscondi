@@ -68,13 +68,13 @@ const routes = [
         path: 'servants',
         name: 'servants.index',
         component: ServantsIndex,
-        meta: { title: 'Servidores', roles: ['admin', 'validator'] },
+        meta: { title: 'Servidores', roles: ['admin', 'super-admin', 'validator'] },
       },
       {
         path: 'servants/create',
         name: 'servants.create',
         component: ServantForm,
-        meta: { title: 'Novo Servidor', roles: ['admin', 'validator'] },
+        meta: { title: 'Novo Servidor', roles: ['admin', 'super-admin', 'validator'] },
       },
       {
         path: 'servants/:id/edit',
@@ -87,33 +87,33 @@ const routes = [
         path: 'legislations',
         name: 'legislations.index',
         component: LegislationsIndex,
-        meta: { title: 'Legislações', roles: ['admin'] },
+        meta: { title: 'Legislações', roles: ['admin', 'super-admin'] },
       },
       {
         path: 'legislations/create',
         name: 'legislations.create',
         component: LegislationForm,
-        meta: { title: 'Nova Legislação', roles: ['admin'] },
+        meta: { title: 'Nova Legislação', roles: ['admin', 'super-admin'] },
       },
       {
         path: 'legislations/:id/edit',
         name: 'legislations.edit',
         component: LegislationForm,
-        meta: { title: 'Editar Legislação', roles: ['admin'] },
+        meta: { title: 'Editar Legislação', roles: ['admin', 'super-admin'] },
       },
       // Secretarias
       {
         path: 'departments',
         name: 'departments.index',
         component: DepartmentsIndex,
-        meta: { title: 'Secretarias', roles: ['admin'] },
+        meta: { title: 'Secretarias', roles: ['admin', 'super-admin'] },
       },
       // Usuários
       {
         path: 'users',
         name: 'users.index',
         component: UsersIndex,
-        meta: { title: 'Usuários', roles: ['admin'] },
+        meta: { title: 'Usuários', roles: ['admin', 'super-admin'] },
       },
       {
         path: 'users/new',
@@ -125,7 +125,7 @@ const routes = [
         path: 'users/:id/edit',
         name: 'users.edit',
         component: UserForm,
-        meta: { title: 'Editar Usuário', roles: ['admin'] },
+        meta: { title: 'Editar Usuário', roles: ['admin', 'super-admin'] },
       },
       // Perfil e Configurações
       {
@@ -138,7 +138,7 @@ const routes = [
         path: 'settings',
         name: 'settings',
         component: SettingsIndex,
-        meta: { title: 'Configurações', roles: ['admin'] },
+        meta: { title: 'Configurações', roles: ['admin', 'super-admin'] },
       },
     ],
   },

@@ -76,7 +76,7 @@ const menuGroups = computed(() => {
       title: 'Sistema',
       items: [
         { name: 'Usuários', to: { name: 'users.index' }, icon: UsersIcon, permission: 'users.view' },
-        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: null, role: 'admin' },
+        { name: 'Configurações', to: { name: 'settings' }, icon: Cog6ToothIcon, permission: null, role: ['admin', 'super-admin'] },
       ],
     },
   ];
