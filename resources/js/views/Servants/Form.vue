@@ -14,8 +14,16 @@
             <input v-model="form.name" type="text" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">CPF * (apenas números)</label>
-            <input v-model="form.cpf" type="text" required maxlength="11" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+            <label class="block text-sm font-medium text-gray-700">CPF *</label>
+            <input
+              :value="form.cpf"
+              type="text"
+              required
+              maxlength="14"
+              placeholder="000.000.000-00"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              @input="form.cpf = formatCpf($event.target.value)"
+            />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700">RG *</label>
@@ -115,6 +123,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
+import { formatCpf } from '@/utils/format'
 import { useAlert } from '@/composables/useAlert'
 import Toggle from '@/components/Common/Toggle.vue'
 
@@ -182,10 +191,12 @@ const fetchServant = async () => {
 
 const handleSubmit = async () => {
   try {
+    const payload = { ...form.value }
+    payload.cpf = (form.value.cpf || '').replace(/\D/g, '').slice(0, 11)
     if (isEdit.value) {
-      await api.put(`/servants/${route.params.id}`, form.value)
+      await api.put(`/servants/${route.params.id}`, payload)
     } else {
-      await api.post('/servants', form.value)
+      await api.post('/servants', payload)
     }
     await success('Salvo', 'Servidor salvo com sucesso.')
     router.push('/servants')

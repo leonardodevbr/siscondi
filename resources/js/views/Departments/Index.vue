@@ -95,7 +95,7 @@
       v-if="showCreateModal || editingDepartment"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div class="bg-white rounded-lg border border-slate-200 w-full max-w-md p-6">
+      <div class="bg-white rounded-lg border border-slate-200 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">
           {{ editingDepartment ? 'Editar Secretaria' : 'Nova Secretaria' }}
         </h3>
@@ -115,11 +115,12 @@
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
             <input
-              v-model="form.cnpj"
+              :value="form.cnpj"
               type="text"
               class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="00.000.000/0001-00"
               maxlength="18"
+              @input="form.cnpj = formatCnpj($event.target.value)"
             />
           </div>
 
@@ -234,9 +235,9 @@ export default {
     editDepartment(dept) {
       this.editingDepartment = dept;
       this.form = {
-        name: dept.name,
+        name: dept.name ?? '',
         is_main: dept.is_main ?? false,
-        cnpj: dept.cnpj ?? '',
+        cnpj: this.formatCnpj(dept.cnpj ?? ''),
         fund_name: dept.fund_name ?? '',
         fund_code: dept.fund_code ?? '',
         logo_path: dept.logo_path ?? '',
@@ -259,7 +260,7 @@ export default {
             this.form = {
               name: created.name ?? this.form.name,
               is_main: created.is_main ?? false,
-              cnpj: created.cnpj ?? '',
+              cnpj: this.formatCnpj(created.cnpj ?? ''),
               fund_name: created.fund_name ?? '',
               fund_code: created.fund_code ?? '',
               logo_path: created.logo_path ?? '',
@@ -307,6 +308,15 @@ export default {
         fund_code: '',
         logo_path: '',
       };
+    },
+    formatCnpj(value) {
+      if (value == null || value === '') return '';
+      const digits = String(value).replace(/\D/g, '').slice(0, 14);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+      if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+      if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
     },
     formatDate(date) {
       if (!date) return '-';

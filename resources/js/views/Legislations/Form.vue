@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-6xl mx-auto space-y-6">
+  <div class="p-6 max-w-7xl mx-auto space-y-6">
     <h1 class="text-2xl font-bold text-gray-900">
       {{ isEdit ? 'Editar Legislação' : 'Nova Legislação' }}
     </h1>
@@ -31,9 +31,12 @@
       <Toggle v-model="form.is_active" label="Ativo" />
 
       <div>
-        <div class="flex justify-between items-center mb-3">
-          <h2 class="text-lg font-semibold text-gray-900">Itens da tabela de valores (por categoria e destino)</h2>
-          <button type="button" @click="addItem" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Itens da tabela de valores (por categoria e destino)</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Valores em R$ (reais). Ex.: 650,01 para R$ 650,01.</p>
+          </div>
+          <button type="button" @click="addItem" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shrink-0">
             Adicionar item
           </button>
         </div>
@@ -41,41 +44,41 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria Funcional</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Classe da Diária</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Até 200 km</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acima 200 km</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Capital Estado</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Demais Capitais/DF</th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exterior</th>
-                <th class="px-3 py-2 w-10"></th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria Funcional</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Classe da Diária</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Até 200 km</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acima 200 km</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capital Estado</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Demais Capitais/DF</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exterior</th>
+                <th class="px-4 py-3 w-12"></th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="(item, idx) in form.items" :key="idx">
-                <td class="px-3 py-2">
-                  <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full min-w-[12rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="block w-full min-w-[6rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model.number="item.value_up_to_200km" type="number" step="0.01" min="0" placeholder="0" title="Valor em R$ (reais)" class="block w-20 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model.number="item.value_up_to_200km" type="number" step="0.01" min="0" placeholder="0" title="Valor em R$ (reais)" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model.number="item.value_above_200km" type="number" step="0.01" min="0" placeholder="0" class="block w-20 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model.number="item.value_above_200km" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model.number="item.value_state_capital" type="number" step="0.01" min="0" placeholder="0" class="block w-20 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model.number="item.value_state_capital" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model.number="item.value_other_capitals_df" type="number" step="0.01" min="0" placeholder="0" class="block w-20 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model.number="item.value_other_capitals_df" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <input v-model.number="item.value_exterior" type="number" step="0.01" min="0" placeholder="0" class="block w-20 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+                <td class="px-4 py-3 align-top">
+                  <input v-model.number="item.value_exterior" type="number" step="0.01" min="0" placeholder="0" class="block w-full min-w-[5.5rem] rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2" />
                 </td>
-                <td class="px-3 py-2">
-                  <button type="button" @click="removeItem(idx)" class="text-red-600 hover:text-red-800 p-1" title="Remover">×</button>
+                <td class="px-4 py-3 align-top">
+                  <button type="button" @click="removeItem(idx)" class="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50" title="Remover">×</button>
                 </td>
               </tr>
             </tbody>
@@ -163,15 +166,18 @@ const removeItem = (index) => {
   form.value.items.splice(index, 1)
 }
 
+/** Converte valor em reais (formulário) para centavos (inteiro) para a API. */
+const reaisToCents = (val) => Math.round(100 * (Number(val) || 0))
+
 const toPayload = () => {
   const items = (form.value.items || []).map((it) => ({
     functional_category: it.functional_category || '',
     daily_class: it.daily_class || '',
-    value_up_to_200km: Number(it.value_up_to_200km) || 0,
-    value_above_200km: Number(it.value_above_200km) || 0,
-    value_state_capital: Number(it.value_state_capital) || 0,
-    value_other_capitals_df: Number(it.value_other_capitals_df) || 0,
-    value_exterior: Number(it.value_exterior) || 0
+    value_up_to_200km: reaisToCents(it.value_up_to_200km),
+    value_above_200km: reaisToCents(it.value_above_200km),
+    value_state_capital: reaisToCents(it.value_state_capital),
+    value_other_capitals_df: reaisToCents(it.value_other_capitals_df),
+    value_exterior: reaisToCents(it.value_exterior)
   }))
   return { title: form.value.title, law_number: form.value.law_number, is_active: form.value.is_active, items }
 }

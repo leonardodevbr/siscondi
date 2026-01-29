@@ -16,7 +16,14 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
-          <input v-model="form.cnpj" type="text" class="input-base w-full" maxlength="18" />
+          <input
+            :value="form.cnpj"
+            type="text"
+            class="input-base w-full"
+            maxlength="18"
+            placeholder="00.000.000/0001-00"
+            @input="form.cnpj = formatCnpj($event.target.value)"
+          />
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">UF</label>
@@ -53,6 +60,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '@/services/api';
+import { formatCnpj } from '@/utils/format';
 import LogoUpload from '@/components/Common/LogoUpload.vue';
 const toast = useToast();
 const loading = ref(true);
@@ -67,7 +75,7 @@ const load = async () => {
     municipality.value = payload;
     if (payload) {
       form.name = payload.name ?? '';
-      form.cnpj = payload.cnpj ?? '';
+      form.cnpj = formatCnpj(payload.cnpj ?? '');
       form.state = payload.state ?? '';
       form.address = payload.address ?? '';
       form.email = payload.email ?? '';

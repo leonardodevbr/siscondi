@@ -59,3 +59,32 @@ export function formatDateTime(date) {
 export function formatTime(date) {
   return formatDate(date, 'HH:mm');
 }
+
+/**
+ * Aplica máscara de CNPJ (00.000.000/0001-00). Aceita entrada parcial.
+ * @param {string} value - Valor digitado (só números ou já formatado)
+ * @returns {string} Valor formatado
+ */
+export function formatCnpj(value) {
+  if (value == null || value === '') return '';
+  const digits = String(value).replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
+/**
+ * Aplica máscara de CPF (000.000.000-00). Aceita entrada parcial.
+ * @param {string} value - Valor digitado (só números ou já formatado)
+ * @returns {string} Valor formatado
+ */
+export function formatCpf(value) {
+  if (value == null || value === '') return '';
+  const digits = String(value).replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
