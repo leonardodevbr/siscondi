@@ -85,7 +85,7 @@
           <p class="mt-1 text-xs text-slate-500">Usada para autorizar cancelamentos e ajustes</p>
         </div>
 
-        <div v-if="form.role === 'admin' || form.role === 'super-admin'">
+        <div v-if="form.roles && (form.roles.includes('admin') || form.roles.includes('super-admin'))">
           <Input
             v-model="form.operation_pin"
             label="PIN de Autorização (opcional)"
@@ -100,23 +100,24 @@
           <p class="mt-1 text-xs text-slate-500">Apenas números, máximo 10 dígitos</p>
         </div>
 
-        <!-- Cargo e Permissões -->
+        <!-- Perfis (Roles) -->
         <div class="lg:col-span-2 border-t pt-6">
           <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <ShieldCheckIcon class="h-5 w-5 text-slate-500" />
-            Cargo e Permissões
+            Perfis de acesso
           </h3>
         </div>
 
         <div class="lg:col-span-2">
           <SelectInput
-            v-model="form.cargo_id"
-            label="Cargo *"
-            :options="cargoOptions"
-            placeholder="Selecione o cargo"
-            :searchable="cargoOptions.length > 10"
+            v-model="form.roles"
+            label="Perfis (roles) *"
+            :options="roleOptions"
+            placeholder="Selecione um ou mais perfis"
+            mode="multiple"
+            :searchable="false"
           />
-          <p class="mt-1 text-xs text-slate-500">O perfil (permissões) do usuário é definido pelo cargo. Vincule o cargo no cadastro de Cargos.</p>
+          <p class="mt-1 text-xs text-slate-500">Vincule diretamente os perfis de acesso ao usuário. Servidores (usuários com cargo) herdam as roles do cargo e podem ter roles adicionais.</p>
         </div>
 
         <!-- Secretarias (apenas Super Admin) -->
@@ -233,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '@/services/api';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
@@ -249,7 +250,7 @@ import {
   KeyIcon,
   ShieldCheckIcon,
   BuildingStorefrontIcon,
-  InformationCircleIcon,
+  DocumentDuplicateIcon,
   CheckCircleIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -269,13 +270,14 @@ const departmentOptions = computed(() =>
   (appStore.departments || []).map((d) => ({ value: d.id, label: d.name }))
 );
 
-const cargos = ref([]);
-const cargoOptions = computed(() =>
-  (cargos.value || []).map((c) => ({
-    value: c.id,
-    label: c.name ? `${c.name} (${c.symbol})` : c.symbol,
-  }))
-);
+const roleOptions = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'requester', label: 'Requerente' },
+  { value: 'validator', label: 'Validador' },
+  { value: 'authorizer', label: 'Concedente' },
+  { value: 'payer', label: 'Pagador' },
+  { value: 'super-admin', label: 'Super Admin' },
+];
 
 const filteredDepartmentOptions = computed(() => {
   if (!departmentSearchQuery.value) return departmentOptions.value;
@@ -298,25 +300,31 @@ const form = ref({
   operation_pin: '',
   department_ids: [],
   primary_department_id: null,
-  cargo_id: null,
-  role: null,
+  roles: [],
 });
 
-watch(
-  () => form.value.cargo_id,
-  (cargoId) => {
-    const cargo = cargos.value.find((c) => c.id === cargoId);
-    form.value.role = cargo?.role ?? null;
+const APPROVER_ROLES = ['validator', 'authorizer', 'payer', 'admin', 'super-admin'];
+const canUploadSignature = computed(() => {
+  const roles = form.value.roles;
+  return Array.isArray(roles) && roles.some((r) => APPROVER_ROLES.includes(r));
+});
+const signatureInputRef = ref(null);
+const signatureFile = ref(null);
+const signaturePreviewUrl = ref(null);
+
+function onSignatureFileChange(e) {
+  const file = e.target.files?.[0];
+  signatureFile.value = file || null;
+  if (signaturePreviewUrl.value) {
+    URL.revokeObjectURL(signaturePreviewUrl.value);
+    signaturePreviewUrl.value = null;
   }
-);
+  if (file) {
+    signaturePreviewUrl.value = URL.createObjectURL(file);
+  }
+}
 
 onMounted(async () => {
-  try {
-    const { data } = await api.get('/cargos?all=1');
-    cargos.value = data?.data ?? data ?? [];
-  } catch (e) {
-    console.error(e);
-  }
   if (authStore.user?.is_super_admin) {
     await appStore.fetchDepartments();
   }
@@ -351,9 +359,9 @@ async function loadUser() {
       operation_pin: '',
       department_ids: user.department_ids ?? [],
       primary_department_id: user.primary_department_id ?? user.department_id ?? null,
-      cargo_id: user.cargo_id ?? null,
-      role: user.role ?? null,
+      roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
     };
+    signaturePreviewUrl.value = user.signature_url || null;
   } catch (error) {
     toast.error('Erro ao carregar usuário.');
     router.push({ name: 'users.index' });
@@ -401,8 +409,8 @@ async function submit() {
     toast.error('Nova senha e confirmação devem ser iguais.');
     return;
   }
-  if (!form.value.cargo_id) {
-    toast.error('Selecione o cargo.');
+  if (!form.value.roles || form.value.roles.length === 0) {
+    toast.error('Selecione pelo menos um perfil.');
     return;
   }
   if (authStore.user?.is_super_admin && (!form.value.department_ids || form.value.department_ids.length === 0)) {
@@ -415,7 +423,7 @@ async function submit() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      cargo_id: form.value.cargo_id,
+      roles: form.value.roles,
     };
 
     if (authStore.user?.is_super_admin) {
@@ -432,7 +440,7 @@ async function submit() {
       payload.operation_password = form.value.operation_password;
     }
 
-    if (['admin', 'super-admin'].includes(form.value.role)) {
+    if (form.value.roles && (form.value.roles.includes('admin') || form.value.roles.includes('super-admin'))) {
       payload.operation_pin = form.value.operation_pin?.trim() || null;
     }
 
@@ -442,11 +450,35 @@ async function submit() {
         delete payload.password;
         delete payload.password_confirmation;
       }
-      await userStore.updateUser(userId.value, payload);
-      toast.success('Usuário atualizado com sucesso.');
+    }
+
+    const hasSignature = signatureFile.value;
+    if (hasSignature) {
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach((v) => formData.append(key + '[]', v));
+        } else if (value != null && value !== '') {
+          formData.append(key, value);
+        }
+      });
+      formData.append('signature', signatureFile.value);
+
+      if (userId.value) {
+        await api.put(`/users/${userId.value}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Usuário atualizado com sucesso.');
+      } else {
+        await api.post('/users', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Usuário criado com sucesso.');
+      }
     } else {
-      await userStore.createUser(payload);
-      toast.success('Usuário criado com sucesso.');
+      if (userId.value) {
+        await userStore.updateUser(userId.value, payload);
+        toast.success('Usuário atualizado com sucesso.');
+      } else {
+        await userStore.createUser(payload);
+        toast.success('Usuário criado com sucesso.');
+      }
     }
 
     router.push({ name: 'users.index' });

@@ -10,8 +10,10 @@ use App\Http\Requests\UpdateDailyRequestRequest;
 use App\Http\Resources\DailyRequestResource;
 use App\Models\DailyRequest;
 use App\Models\Servant;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class DailyRequestController extends Controller
 {
@@ -108,18 +110,24 @@ class DailyRequestController extends Controller
 
     public function store(StoreDailyRequestRequest $request): JsonResponse
     {
-        $servant = Servant::with('legislationItem')->findOrFail($request->servant_id);
+        $servant = Servant::with('cargos.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
+        $effectiveItem = $servant->getEffectiveLegislationItem();
+        if (! $effectiveItem) {
+            return response()->json([
+                'message' => 'O servidor selecionado não possui cargo vinculado a um item da legislação com valores de diária. Vincule cargos ao servidor e aos itens da legislação.',
+            ], 422);
+        }
 
         $dailyRequest = new DailyRequest($request->validated());
-        $dailyRequest->legislation_item_snapshot_id = $servant->legislation_item_id;
-        $dailyRequest->unit_value = $servant->legislationItem->getValueForDestination($request->destination_type);
+        $dailyRequest->legislation_item_snapshot_id = $effectiveItem->id;
+        $dailyRequest->unit_value = $effectiveItem->getValueForDestination($request->destination_type);
         $dailyRequest->status = DailyRequestStatus::DRAFT;
         $dailyRequest->requester_id = auth()->id();
         $dailyRequest->calculateTotal();
         $dailyRequest->save();
 
         $dailyRequest->load([
-            'servant.legislationItem',
+            'servant.cargos',
             'servant.department',
             'legislationItemSnapshot',
             'requester'
@@ -183,6 +191,54 @@ class DailyRequestController extends Controller
         $dailyRequest->delete();
 
         return response()->json(['message' => 'Solicitação deletada com sucesso.']);
+    }
+
+    public function pdf(string|int $daily_request): Response
+    {
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
+        $this->authorize('daily-requests.view');
+        $this->ensureCanAccess($dailyRequest);
+
+        $dailyRequest->load([
+            'servant.department.municipality',
+            'servant.cargos',
+            'legislationItemSnapshot',
+            'requester',
+            'validator',
+            'authorizer',
+            'payer',
+        ]);
+
+        $department = $dailyRequest->servant?->department;
+        $municipality = $department?->municipality;
+
+        $estadoTexto = $municipality?->state ? 'Estado da ' . ($municipality->state === 'BA' ? 'Bahia' : $municipality->state) : 'Estado';
+        $fundoNome = $department?->fund_name ?: $department?->name ?? '–';
+        $cnpjFundo = $department?->cnpj ?: $municipality?->cnpj ?? '–';
+        $enderecoSecretaria = $municipality?->address ?? '–';
+        $emailSecretaria = $municipality?->email ?? '–';
+
+        $cargoFuncao = $dailyRequest->servant?->cargos?->isNotEmpty()
+            ? $dailyRequest->servant->cargos->map(fn ($c) => ($c->symbol ?? '') . ' ' . ($c->name ?? ''))->join(', ')
+            : ($dailyRequest->legislationItemSnapshot?->functional_category ?? '–');
+
+        $data = [
+            'dailyRequest' => $dailyRequest,
+            'municipality' => $municipality,
+            'department' => $department,
+            'estado_texto' => $estadoTexto,
+            'fundo_nome' => $fundoNome,
+            'cnpj_fundo' => $cnpjFundo,
+            'endereco_secretaria' => $enderecoSecretaria,
+            'email_secretaria' => $emailSecretaria,
+            'cargo_funcao' => trim((string) $cargoFuncao) ?: '–',
+            'ano_exercicio' => (string) now()->year,
+        ];
+
+        $pdf = Pdf::loadView('daily-requests.pdf', $data);
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('solicitacao-diarias-' . $dailyRequest->id . '.pdf');
     }
 
     /**

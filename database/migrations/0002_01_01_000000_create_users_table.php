@@ -13,8 +13,12 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('municipality_id')->nullable()->constrained('municipalities')->nullOnDelete();
+            $table->foreignId('primary_department_id')->nullable()->constrained('departments')->nullOnDelete();
+            $table->foreignId('cargo_id')->nullable()->constrained('cargos')->nullOnDelete();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('signature_path', 500)->nullable()->comment('Caminho do arquivo de assinatura (apenas cargos que aprovam)');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

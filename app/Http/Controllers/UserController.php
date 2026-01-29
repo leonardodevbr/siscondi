@@ -7,12 +7,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
-use App\Models\Cargo;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
@@ -70,7 +70,7 @@ class UserController extends Controller
             ? User::query()
             : $this->departmentScope();
 
-        $query->with('roles', 'departments', 'cargo');
+        $query->with('roles', 'departments');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -90,14 +90,9 @@ class UserController extends Controller
         $authUser = auth()->user();
         $departmentIds = [];
         $primaryDepartmentId = null;
-        $cargoId = $request->validated('cargo_id');
-        $cargo = Cargo::find($cargoId);
-        if (! $cargo || ! $cargo->role) {
-            throw ValidationException::withMessages(['cargo_id' => ['O cargo selecionado não possui perfil (role) configurado. Configure no cadastro de Cargos.']]);
-        }
-        $role = $cargo->role;
+        $roles = $request->validated('roles');
 
-        if ($role === 'owner') {
+        if (in_array('super-admin', $roles, true)) {
             $departmentIds = Department::query()->pluck('id')->toArray();
             $primaryDepartmentId = $departmentIds[0] ?? null;
         } elseif ($authUser && $authUser->hasRole('super-admin')) {
@@ -127,23 +122,21 @@ class UserController extends Controller
         $data = $request->safe()->only(['name', 'email', 'operation_pin']);
         $data['password'] = $request->validated('password');
         $data['municipality_id'] = $municipalityId;
-        $data['cargo_id'] = $cargoId;
         if ($request->filled('operation_password')) {
             $data['operation_password'] = $request->validated('operation_password');
         }
 
-        $user = DB::transaction(function () use ($data, $role, $departmentIds, $primaryDepartmentId): User {
+        $user = DB::transaction(function () use ($data, $roles, $departmentIds, $primaryDepartmentId): User {
             $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'municipality_id' => $data['municipality_id'] ?? null,
-                'cargo_id' => $data['cargo_id'],
                 'operation_password' => $data['operation_password'] ?? null,
                 'operation_pin' => isset($data['operation_pin']) && $data['operation_pin'] !== '' ? $data['operation_pin'] : null,
             ]);
 
-            $user->assignRole($role);
+            $user->syncRoles($roles);
 
             if (! empty($departmentIds)) {
                 $pivotData = [];
@@ -156,7 +149,12 @@ class UserController extends Controller
             return $user->load('roles', 'departments', 'cargo');
         });
 
-        return response()->json(new UserResource($user), 201);
+        if ($request->hasFile('signature')) {
+            $path = $request->file('signature')->store('signatures', 'public');
+            $user->update(['signature_path' => $path]);
+        }
+
+        return response()->json(new UserResource($user->fresh()), 201);
     }
 
     public function show(string $id): JsonResponse
@@ -224,17 +222,21 @@ class UserController extends Controller
                 $user->departments()->sync($pivotData);
             }
 
-            if (isset($data['cargo_id'])) {
-                $cargo = Cargo::find($data['cargo_id']);
-                $payload['cargo_id'] = $data['cargo_id'];
-                if ($cargo && $cargo->role) {
-                    $user->syncRoles([$cargo->role]);
-                }
+            if (isset($data['roles'])) {
+                $user->syncRoles($data['roles']);
             }
             $user->update($payload);
         });
 
-        $user->refresh()->load('roles', 'departments', 'cargo');
+        if ($request->hasFile('signature')) {
+            if ($user->signature_path && Storage::disk('public')->exists($user->signature_path)) {
+                Storage::disk('public')->delete($user->signature_path);
+            }
+            $path = $request->file('signature')->store('signatures', 'public');
+            $user->update(['signature_path' => $path]);
+        }
+
+        $user->refresh()->load('roles', 'departments');
 
         return response()->json(new UserResource($user));
     }

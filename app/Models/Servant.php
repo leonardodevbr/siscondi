@@ -94,6 +94,30 @@ class Servant extends Model
     }
 
     /**
+     * Item da legislação efetivo para cálculo de diária: vindo dos cargos do servidor ou do vínculo direto (legado).
+     * Retorna o primeiro item com valores disponível entre os cargos do servidor; se não houver, o legislation_item_id.
+     */
+    public function getEffectiveLegislationItem(): ?LegislationItem
+    {
+        if ($this->legislation_item_id) {
+            $item = $this->legislationItem;
+            if ($item && ! empty($item->values)) {
+                return $item;
+            }
+        }
+        $this->loadMissing('cargos.legislationItems');
+        foreach ($this->cargos as $cargo) {
+            foreach ($cargo->legislationItems as $item) {
+                if (! empty($item->values)) {
+                    return $item;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Formata o CPF para exibição
      */
     public function getFormattedCpfAttribute(): string

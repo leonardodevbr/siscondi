@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('municipality_id')->constrained('municipalities')->cascadeOnDelete();
             $table->string('symbol')->comment('Símbolo do cargo (ex.: 101, 201)');
             $table->string('name')->nullable()->comment('Nome/descrição do cargo');
+            $table->string('role', 50)->nullable()->comment('Perfil Spatie vinculado a este cargo (admin, requester, validator, etc.)');
             $table->timestamps();
         });
     }

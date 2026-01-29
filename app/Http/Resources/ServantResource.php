@@ -36,6 +36,11 @@ class ServantResource extends JsonResource
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'user' => new UserResource($this->whenLoaded('user')),
             'cargo_ids' => $this->whenLoaded('cargos', fn () => $this->cargos->pluck('id')->values()->all()),
+            'cargos' => $this->whenLoaded('cargos', fn () => $this->cargos->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'symbol' => $c->symbol])->values()->all()),
+            'destination_options' => $this->when(
+                $this->relationLoaded('cargos') || $this->relationLoaded('legislationItem'),
+                fn () => $this->resource->getEffectiveLegislationItem()?->values ?? []
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

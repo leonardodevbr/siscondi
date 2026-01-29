@@ -28,6 +28,7 @@ class User extends Authenticatable
         'municipality_id',
         'primary_department_id',
         'cargo_id',
+        'signature_path',
     ];
 
     /**

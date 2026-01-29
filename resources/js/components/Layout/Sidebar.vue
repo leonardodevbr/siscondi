@@ -62,7 +62,6 @@ const menuGroups = computed(() => {
     {
       title: 'Diárias',
       items: [
-        { name: 'Nova Solicitação', to: { name: 'daily-requests.create' }, icon: ClipboardDocumentCheckIcon, permission: 'daily-requests.create' },
         { name: 'Minhas Solicitações', to: { name: 'daily-requests.index' }, icon: DocumentTextIcon, permission: 'daily-requests.view' },
       ],
     },

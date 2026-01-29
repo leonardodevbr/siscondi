@@ -1,81 +1,169 @@
 <template>
-  <div class="p-6 max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Nova Solicitação de Diária</h1>
-
-    <form @submit.prevent="handleSubmit" class="bg-white rounded-lg shadow p-6 space-y-6">
-      <!-- Servidor -->
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+      <button
+        type="button"
+        class="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+        @click="$router.push({ name: 'daily-requests.index' })"
+      >
+        <ArrowLeftIcon class="h-5 w-5 text-slate-600" />
+      </button>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Servidor *</label>
-        <select v-model="form.servant_id" @change="onServantChange" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-          <option value="">Selecione o servidor...</option>
-          <option v-for="servant in servants" :key="servant.id" :value="servant.id">
-            {{ servant.matricula }} - {{ servant.name }} ({{ servant.legislation_item ? servant.legislation_item.functional_category : '' }})
-          </option>
-        </select>
-      </div>
-
-      <!-- Tipo de Destino (define o valor da diária; opções vêm da lei do servidor) -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Destino *</label>
-        <select v-model="form.destination_type" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-          <option value="">Selecione...</option>
-          <option v-for="label in destinationLabels" :key="label" :value="label">{{ label }}</option>
-        </select>
-        <p v-if="selectedServant && form.destination_type" class="mt-2 text-sm text-gray-600">
-          Valor da diária para este destino: <span class="font-semibold">{{ formatCurrency(unitValueForDestination) }}</span>
+        <h2 class="text-lg font-semibold text-slate-800">
+          {{ isEdit ? 'Editar Solicitação' : 'Nova Solicitação de Diária' }}
+        </h2>
+        <p class="text-xs text-slate-500">
+          {{ isEdit ? 'Atualize os dados da solicitação' : 'Preencha os dados para criar uma nova solicitação' }}
         </p>
       </div>
+    </div>
 
-      <!-- Destino -->
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2">
-          <label class="block text-sm font-medium text-gray-700">Cidade de Destino *</label>
-          <input v-model="form.destination_city" type="text" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Estado *</label>
-          <input v-model="form.destination_state" type="text" required maxlength="2" placeholder="UF" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-        </div>
-      </div>
+    <!-- Loading -->
+    <div v-if="loading" class="card p-12 text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-blue-600"></div>
+      <p class="text-slate-500 mt-3">Carregando...</p>
+    </div>
 
-      <!-- Período -->
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Data de Saída *</label>
-          <input v-model="form.departure_date" @change="calculateDays" type="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+    <form v-else class="card p-6" @submit.prevent="handleSubmit">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Servidor e Destino -->
+        <div class="lg:col-span-2">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <UserCircleIcon class="h-5 w-5 text-slate-500" />
+            Servidor e destino
+          </h3>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Data de Retorno *</label>
-          <input v-model="form.return_date" @change="calculateDays" type="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-        </div>
-      </div>
 
-      <!-- Quantidade de Diárias -->
-      <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Quantidade de Diárias *</label>
-          <input v-model.number="form.quantity_days" type="number" step="0.5" min="0.5" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-          <p class="mt-1 text-xs text-gray-500">Aceita meia diária (ex: 2.5)</p>
+          <SelectInput
+            v-model="form.servant_id"
+            label="Servidor *"
+            :options="servantOptions"
+            placeholder="Selecione o servidor..."
+            :searchable="servants.length > 10"
+            @update:model-value="onServantChange"
+          />
         </div>
-        <div class="flex items-end">
-          <div class="w-full">
-            <label class="block text-sm font-medium text-gray-700">Valor Total Previsto</label>
-            <div class="mt-1 p-2 bg-gray-50 rounded-md text-lg font-semibold text-green-600">
-              {{ formatCurrency(calculatedTotal) }}
-            </div>
+
+        <div>
+          <SelectInput
+            v-model="form.destination_type"
+            label="Tipo de destino *"
+            :options="destinationOptions"
+            placeholder="Selecione o tipo de destino..."
+            :searchable="destinationOptions.length > 10"
+            :disabled="!selectedServant?.destination_options?.length"
+          />
+          <p v-if="selectedServant && form.destination_type && unitValueForDestination" class="mt-1 text-xs text-slate-500">
+            Valor da diária para este destino: <span class="font-semibold text-slate-800">{{ formatCurrency(unitValueForDestination) }}</span>
+          </p>
+        </div>
+
+        <!-- Local e período -->
+        <div class="lg:col-span-2 border-t border-slate-200 pt-6">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <MapPinIcon class="h-5 w-5 text-slate-500" />
+            Local e período
+          </h3>
+        </div>
+
+        <div>
+          <Input
+            v-model="form.destination_city"
+            label="Cidade de destino *"
+            required
+            placeholder="Ex: Salvador"
+          />
+        </div>
+
+        <div>
+          <Input
+            v-model="form.destination_state"
+            label="Estado (UF) *"
+            type="text"
+            required
+            maxlength="2"
+            placeholder="UF"
+          />
+        </div>
+
+        <div>
+          <Input
+            v-model="form.departure_date"
+            label="Data de saída *"
+            type="date"
+            required
+            @update:model-value="calculateDays"
+          />
+        </div>
+
+        <div>
+          <Input
+            v-model="form.return_date"
+            label="Data de retorno *"
+            type="date"
+            required
+            @update:model-value="calculateDays"
+          />
+        </div>
+
+        <!-- Quantidade e valor -->
+        <div class="lg:col-span-2 border-t border-slate-200 pt-6">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <CurrencyDollarIcon class="h-5 w-5 text-slate-500" />
+            Quantidade e valor
+          </h3>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Quantidade de diárias *</label>
+          <input
+            v-model.number="form.quantity_days"
+            type="number"
+            step="0.5"
+            min="0.5"
+            required
+            class="input-base w-full"
+          />
+          <p class="mt-1 text-xs text-slate-500">Aceita meia diária (ex: 2,5)</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Valor total previsto</label>
+          <div class="input-base w-full bg-slate-50 text-slate-900 font-semibold flex items-center min-h-[42px]">
+            {{ formatCurrency(calculatedTotal) }}
           </div>
         </div>
+
+        <!-- Motivo -->
+        <div class="lg:col-span-2 border-t border-slate-200 pt-6">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <DocumentTextIcon class="h-5 w-5 text-slate-500" />
+            Motivo da viagem
+          </h3>
+        </div>
+
+        <div class="lg:col-span-2">
+          <label class="block text-sm font-medium text-slate-700 mb-2">Motivo da viagem *</label>
+          <textarea
+            v-model="form.reason"
+            rows="4"
+            required
+            placeholder="Descreva o motivo da viagem..."
+            class="input-base w-full resize-y"
+          />
+        </div>
       </div>
 
-      <!-- Motivo -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Motivo da Viagem *</label>
-        <textarea v-model="form.reason" rows="4" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-      </div>
-
-      <div class="flex gap-3 pt-4">
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Enviar Solicitação</button>
-        <router-link to="/daily-requests" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancelar</router-link>
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t">
+        <Button type="button" variant="outline" @click="$router.push({ name: 'daily-requests.index' })">
+          Cancelar
+        </Button>
+        <Button type="submit" :loading="saving">
+          {{ isEdit ? 'Atualizar solicitação' : 'Enviar solicitação' }}
+        </Button>
       </div>
     </form>
   </div>
@@ -83,16 +171,30 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import { formatCurrency } from '@/utils/format'
+import Input from '@/components/Common/Input.vue'
+import Button from '@/components/Common/Button.vue'
+import SelectInput from '@/components/Common/SelectInput.vue'
+import {
+  ArrowLeftIcon,
+  UserCircleIcon,
+  MapPinIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+} from '@heroicons/vue/24/outline'
 
+const route = useRoute()
 const router = useRouter()
 const { success, error: showError } = useAlert()
+const isEdit = computed(() => !!route.params.id && route.params.id !== 'create')
+const loading = ref(false)
+const saving = ref(false)
 
 const form = ref({
-  servant_id: '',
+  servant_id: null,
   destination_type: '',
   destination_city: '',
   destination_state: '',
@@ -103,24 +205,28 @@ const form = ref({
 })
 
 const servants = ref([])
-const selectedServant = computed(() =>
-  servants.value.find(s => s.id === form.value.servant_id)
+const servantOptions = computed(() =>
+  servants.value.map((s) => ({
+    value: s.id,
+    label: `${s.matricula} - ${s.name}${s.cargos?.length ? ` (${s.cargos.map((c) => c.symbol || c.name).join(', ')})` : ''}`,
+  }))
 )
 
-/** Labels de destino definidos na legislação do servidor selecionado */
-const destinationLabels = computed(() => {
-  const servant = selectedServant.value
-  const values = servant?.legislation_item?.values
-  if (!values || typeof values !== 'object') return []
-  return Object.keys(values)
+const selectedServant = computed(() =>
+  servants.value.find((s) => s.id === form.value.servant_id)
+)
+
+const destinationOptions = computed(() => {
+  const opts = selectedServant.value?.destination_options
+  if (!opts || typeof opts !== 'object') return []
+  return Object.keys(opts).map((label) => ({ value: label, label }))
 })
 
-/** Valor unitário da diária para o destino selecionado (em centavos) */
 const unitValueForDestination = computed(() => {
-  const servant = selectedServant.value
+  const opts = selectedServant.value?.destination_options
   const label = form.value.destination_type
-  if (!servant?.legislation_item?.values || !label) return 0
-  return Number(servant.legislation_item.values[label]) || 0
+  if (!opts || !label) return 0
+  return Number(opts[label]) || 0
 })
 
 const calculatedTotal = computed(() => {
@@ -128,21 +234,21 @@ const calculatedTotal = computed(() => {
   return unitValueForDestination.value * form.value.quantity_days
 })
 
-const fetchServants = async () => {
+async function fetchServants() {
   try {
-    const { data } = await api.get('/servants?all=1&is_active=1')
-    servants.value = data.data || data
-  } catch (error) {
-    console.error('Erro ao carregar servidores:', error)
+    const { data } = await api.get('/servants?all=1&is_active=1&for_daily_form=1')
+    servants.value = data?.data ?? data ?? []
+  } catch (e) {
+    console.error('Erro ao carregar servidores:', e)
   }
 }
 
-const onServantChange = () => {
+function onServantChange() {
   form.value.destination_type = ''
   calculateDays()
 }
 
-const calculateDays = () => {
+function calculateDays() {
   if (form.value.departure_date && form.value.return_date) {
     const start = new Date(form.value.departure_date)
     const end = new Date(form.value.return_date)
@@ -152,18 +258,53 @@ const calculateDays = () => {
   }
 }
 
-const handleSubmit = async () => {
+async function loadRequest() {
+  if (!route.params.id || route.params.id === 'create') return
+  loading.value = true
   try {
-    await api.post('/daily-requests', form.value)
-    await success('Sucesso', 'Solicitação enviada com sucesso.')
-    router.push('/daily-requests')
-  } catch (error) {
-    console.error('Erro ao salvar:', error)
-    showError('Erro', error.response?.data?.message || 'Erro ao enviar solicitação.')
+    const { data } = await api.get(`/daily-requests/${route.params.id}`)
+    const r = data?.data ?? data
+    form.value = {
+      servant_id: r.servant_id ?? null,
+      destination_type: r.destination_type ?? '',
+      destination_city: r.destination_city ?? '',
+      destination_state: r.destination_state ?? '',
+      departure_date: r.departure_date ? r.departure_date.slice(0, 10) : '',
+      return_date: r.return_date ? r.return_date.slice(0, 10) : '',
+      quantity_days: Number(r.quantity_days) ?? 1,
+      reason: r.reason ?? '',
+    }
+  } catch (e) {
+    showError('Erro', 'Não foi possível carregar a solicitação.')
+    router.push({ name: 'daily-requests.index' })
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchServants()
+async function handleSubmit() {
+  saving.value = true
+  try {
+    const payload = { ...form.value }
+    if (isEdit.value) {
+      await api.put(`/daily-requests/${route.params.id}`, payload)
+      success('Sucesso', 'Solicitação atualizada.')
+    } else {
+      await api.post('/daily-requests', payload)
+      success('Sucesso', 'Solicitação enviada com sucesso.')
+    }
+    router.push({ name: 'daily-requests.index' })
+  } catch (err) {
+    showError('Erro', err.response?.data?.message || 'Erro ao salvar solicitação.')
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchServants()
+  if (isEdit.value) {
+    await loadRequest()
+  }
 })
 </script>

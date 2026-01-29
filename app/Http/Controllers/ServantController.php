@@ -17,7 +17,11 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $query = Servant::with(['legislationItem', 'department', 'user', 'cargos']);
+        $with = ['legislationItem', 'department', 'user', 'cargos'];
+        if ($request->boolean('for_daily_form')) {
+            $with[] = 'cargos.legislationItems';
+        }
+        $query = Servant::with($with);
 
         if ($request->has('search')) {
             $search = $request->string('search')->toString();

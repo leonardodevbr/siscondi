@@ -52,7 +52,15 @@
                 {{ request.status_label }}
               </span>
             </td>
-            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right border-l border-gray-200">
+            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right border-l border-gray-200 flex items-center justify-end gap-1">
+              <button
+                type="button"
+                class="inline-flex p-1.5 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+                title="Ver PDF"
+                @click="openPdf(request.id)"
+              >
+                <DocumentArrowDownIcon class="h-5 w-5" />
+              </button>
               <router-link
                 :to="`/daily-requests/${request.id}/edit`"
                 class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
@@ -90,6 +98,16 @@ const fetchRequests = async () => {
 
 const editRequest = (id) => {
   router.push(`/daily-requests/${id}/edit`)
+}
+
+const openPdf = async (id) => {
+  try {
+    const { data } = await api.get(`/daily-requests/${id}/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    window.open(url, '_blank')
+  } catch (e) {
+    console.error('Erro ao abrir PDF:', e)
+  }
 }
 
 const getStatusClass = (status) => {

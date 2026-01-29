@@ -53,6 +53,8 @@ class UserResource extends JsonResource
             'department_ids' => $this->whenLoaded('departments', fn () => $this->departments->pluck('id')->toArray()),
             'primary_department_id' => $this->primary_department_id ?? $primaryDepartment?->id,
             'needs_primary_department' => $this->needsPrimaryDepartmentChoice(),
+            'signature_path' => $this->signature_path,
+            'signature_url' => $this->signature_path ? asset('storage/'.$this->signature_path) : null,
         ];
     }
 }
