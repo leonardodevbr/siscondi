@@ -1,59 +1,199 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SISCONDI - Sistema de Concessão de Diárias
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema governamental para gestão de solicitações de diárias de servidores públicos municipais.
 
-## About Laravel
+## 📋 Sobre o Sistema
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+O SISCONDI é um sistema completo para gerenciar todo o fluxo de concessão de diárias para servidores públicos, desde a solicitação até o pagamento, passando por validação e autorização.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Funcionalidades Principais
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Gestão de Legislações**: Cadastro de cargos e valores de diárias definidos em lei
+- **Cadastro de Servidores**: Registro completo dos funcionários públicos com dados pessoais e bancários
+- **Solicitações de Diárias**: Criação e acompanhamento de pedidos de diárias
+- **Fluxo de Aprovação**: Sistema de workflow com 4 etapas:
+  1. **Solicitação** (Requerente)
+  2. **Validação** (Secretário)
+  3. **Autorização** (Prefeito)
+  4. **Pagamento** (Tesoureiro)
+- **Relatórios**: Geração de relatórios e documentos para auditoria
 
-## Learning Laravel
+## 👥 Perfis de Acesso
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1. Admin
+- Acesso total ao sistema
+- Gerenciamento de usuários e configurações
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 2. Requerente
+- Cria solicitações de diárias
+- Acompanha suas próprias solicitações
 
-## Laravel Sponsors
+### 3. Validador (Secretário)
+- Valida solicitações da sua secretaria
+- Gerencia servidores lotados na secretaria
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 4. Concedente (Prefeito)
+- Autoriza/concede diárias validadas
+- Gerencia legislações e secretarias
+- Acesso a relatórios gerenciais
 
-### Premium Partners
+### 5. Pagador (Tesoureiro)
+- Efetua pagamento de diárias autorizadas
+- Acesso a relatórios financeiros
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 🏗️ Arquitetura
 
-## Contributing
+### Backend
+- **Framework**: Laravel 10+
+- **Autenticação**: Laravel Sanctum
+- **ACL**: Spatie Laravel Permission
+- **Database**: MySQL/PostgreSQL
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Frontend
+- **Framework**: Vue.js 3
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Router**: Vue Router
+- **State Management**: Pinia
 
-## Code of Conduct
+## 📦 Estrutura de Dados
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Tabelas Principais
 
-## Security Vulnerabilities
+#### legislations
+Cargos e valores definidos em lei
+- `code`: Código do cargo (ex: CC-1)
+- `title`: Nome do cargo
+- `law_number`: Número da lei
+- `daily_value`: Valor da diária
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### servants
+Servidores públicos
+- Dados pessoais (CPF, RG, matrícula)
+- Dados bancários
+- Vinculação com cargo e secretaria
 
-## License
+#### daily_requests
+Solicitações de diárias
+- Informações da viagem
+- Cálculo de valores
+- Status do fluxo
+- Auditoria (quem validou, autorizou, pagou)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+#### branches
+Secretarias municipais (departamentos)
+
+## 🚀 Instalação
+
+### Pré-requisitos
+- PHP 8.1+
+- Composer
+- Node.js 18+
+- MySQL/PostgreSQL
+
+### Backend
+
+```bash
+# Instalar dependências
+composer install
+
+# Configurar ambiente
+cp .env.example .env
+php artisan key:generate
+
+# Configurar banco de dados no .env
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=siscondi
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+# Executar migrations e seeders
+php artisan migrate --seed
+
+# Iniciar servidor
+php artisan serve
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# Instalar dependências
+npm install
+
+# Desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+```
+
+## 🔐 Usuário Padrão
+
+Após executar os seeders, será criado um usuário admin:
+
+- **Email**: admin@siscondi.gov.br
+- **Senha**: password
+
+## 📝 API Endpoints
+
+### Autenticação
+- `POST /api/login` - Login
+- `POST /api/logout` - Logout
+- `GET /api/user` - Usuário autenticado
+
+### Legislações
+- `GET /api/legislations` - Listar
+- `POST /api/legislations` - Criar
+- `GET /api/legislations/{id}` - Detalhes
+- `PUT /api/legislations/{id}` - Atualizar
+- `DELETE /api/legislations/{id}` - Deletar
+
+### Servidores
+- `GET /api/servants` - Listar
+- `POST /api/servants` - Criar
+- `GET /api/servants/{id}` - Detalhes
+- `PUT /api/servants/{id}` - Atualizar
+- `DELETE /api/servants/{id}` - Deletar
+
+### Solicitações de Diárias
+- `GET /api/daily-requests` - Listar
+- `POST /api/daily-requests` - Criar
+- `GET /api/daily-requests/{id}` - Detalhes
+- `PUT /api/daily-requests/{id}` - Atualizar
+- `DELETE /api/daily-requests/{id}` - Deletar
+- `POST /api/daily-requests/{id}/validate` - Validar (Secretário)
+- `POST /api/daily-requests/{id}/authorize` - Autorizar (Prefeito)
+- `POST /api/daily-requests/{id}/pay` - Pagar (Tesoureiro)
+- `POST /api/daily-requests/{id}/cancel` - Cancelar
+
+### Secretarias
+- `GET /api/branches` - Listar secretarias
+
+### Dashboard
+- `GET /api/dashboard` - Estatísticas gerais
+
+## 🧪 Testes
+
+```bash
+# Executar todos os testes
+php artisan test
+
+# Executar testes específicos
+php artisan test --filter=DailyRequestTest
+```
+
+## 📄 Licença
+
+Este sistema é proprietário e de uso exclusivo para órgãos públicos municipais.
+
+## 👨‍💻 Desenvolvimento
+
+Desenvolvido por LeoonTech
+
+---
+
+**SISCONDI** - Sistema de Concessão de Diárias © 2026

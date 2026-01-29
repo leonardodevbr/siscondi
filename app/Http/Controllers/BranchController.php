@@ -14,24 +14,13 @@ use Illuminate\Http\Request;
 class BranchController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     * Super Admin vê todas as filiais; demais usuários só a própria filial.
+     * Display a listing of the resource (Secretarias).
      */
     public function index(Request $request): JsonResponse
     {
-        $this->authorize('products.view');
+        $this->authorize('departments.view');
 
-        $user = auth()->user();
         $query = Branch::query();
-
-        if ($user && $user->hasRole('super-admin')) {
-            // Super Admin: todas as filiais
-        } else {
-            $branchId = $user?->branch_id;
-            if ($branchId !== null) {
-                $query->where('id', $branchId);
-            }
-        }
 
         if ($request->has('search')) {
             $search = $request->string('search')->toString();
@@ -63,7 +52,7 @@ class BranchController extends Controller
      */
     public function show(Branch $branch): JsonResponse
     {
-        $this->authorize('products.view');
+        $this->authorize('departments.view');
 
         return response()->json(new BranchResource($branch));
     }
@@ -83,16 +72,23 @@ class BranchController extends Controller
      */
     public function destroy(Branch $branch): JsonResponse
     {
-        $this->authorize('products.delete');
+        $this->authorize('departments.delete');
 
         if ($branch->is_main) {
             return response()->json([
-                'message' => 'Não é possível deletar a filial principal.',
+                'message' => 'Não é possível deletar a secretaria principal.',
+            ], 422);
+        }
+
+        // Verifica se há servidores lotados nesta secretaria
+        if ($branch->servants()->exists()) {
+            return response()->json([
+                'message' => 'Não é possível deletar uma secretaria com servidores lotados.',
             ], 422);
         }
 
         $branch->delete();
 
-        return response()->json(['message' => 'Branch deleted successfully']);
+        return response()->json(['message' => 'Secretaria deletada com sucesso.']);
     }
 }

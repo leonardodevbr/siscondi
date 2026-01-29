@@ -11,26 +11,26 @@ class SettingSeeder extends Seeder
 {
     public function run(): void
     {
-        Settings::set('store_name', 'Adonai Boutique', 'string', 'general');
-        Settings::set('payment_gateway', 'pix_dev', 'string', 'payment');
-        Settings::set('enable_cash_register', true, 'boolean', 'general');
+        /**
+         * SISCONDI - Configurações do Sistema
+         */
         
-        Settings::set('sku_auto_generation', true, 'boolean', 'products');
-        Settings::set('sku_pattern', '{NAME}-{VARIANTS}-{SEQ}', 'string', 'products');
-
-        // Mercado Pago Point – Client ID/Secret; token gerado pelo sistema
-        Settings::set('mp_client_id', '', 'string', 'integrations');
-        Settings::set('mp_client_secret', '', 'string', 'integrations');
-        Settings::set('mp_access_token', '', 'string', 'integrations');
-        Settings::set('mp_token_expires_at', 0, 'integer', 'integrations');
-        Settings::set('mp_user_id', '', 'string', 'integrations');
-        Settings::set('mp_pos_id', '', 'string', 'integrations');
-
-        // Parcelamento cartão de crédito (manual)
-        Settings::set('cc_max_installments', 12, 'integer', 'payment');
-        Settings::set('cc_no_interest_installments', 3, 'integer', 'payment');
-        Settings::set('cc_interest_rate', '2.99', 'string', 'payment');
-        Settings::set('cc_min_installment_value', '10.00', 'string', 'payment');
+        // Informações da Prefeitura/Fundo Municipal
+        Settings::set('entity_name', 'Prefeitura Municipal de Exemplo', 'string', 'general');
+        Settings::set('fund_name', 'Fundo Municipal de Saúde', 'string', 'general');
+        Settings::set('cnpj', '00.000.000/0001-00', 'string', 'general');
+        Settings::set('address', 'Rua Principal, 100 - Centro', 'string', 'general');
+        Settings::set('city', 'Cidade Exemplo', 'string', 'general');
+        Settings::set('state', 'MG', 'string', 'general');
+        Settings::set('cep', '00000-000', 'string', 'general');
+        Settings::set('phone', '(00) 0000-0000', 'string', 'general');
+        
+        // Responsável/Gestor (para cabeçalho de relatórios)
+        Settings::set('manager_name', 'João da Silva', 'string', 'general');
+        Settings::set('manager_title', 'Prefeito Municipal', 'string', 'general');
+        
+        // Logo (path para o arquivo)
+        Settings::set('logo_path', '', 'string', 'general');
     }
 }
 

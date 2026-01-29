@@ -14,58 +14,74 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $superAdminRole = Role::findByName('super-admin');
-        $managerRole = Role::findByName('manager');
-        $sellerRole = Role::findByName('seller');
+        /**
+         * SISCONDI - Usuários de Teste
+         */
+        
+        $adminRole = Role::findByName('admin');
+        $requesterRole = Role::findByName('requester');
+        $validatorRole = Role::findByName('validator');
+        $authorizerRole = Role::findByName('authorizer');
+        $payerRole = Role::findByName('payer');
 
-        $matriz = Branch::where('is_main', true)->first();
-        $filialShopping = Branch::where('name', 'Filial Shopping')->first();
+        $prefeitura = Branch::where('is_main', true)->first();
 
-        if (! $matriz) {
-            $this->command->error('Matriz não encontrada. Certifique-se de que a migration de branches foi executada.');
+        if (! $prefeitura) {
+            $this->command->error('Secretaria principal não encontrada.');
             return;
         }
 
-        if (! $filialShopping) {
-            $this->command->error('Filial Shopping não encontrada. Certifique-se de que o BranchSeeder foi executado.');
-            return;
-        }
-
-        $admin = User::factory()->global()->create([
-            'name' => 'Administrador',
-            'email' => 'admin@adonai.com',
+        // Administrador do Sistema
+        $admin = User::create([
+            'name' => 'Administrador SISCONDI',
+            'email' => 'admin@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
-        $admin->assignRole($superAdminRole);
+        $admin->assignRole($adminRole);
+        $admin->branches()->attach($prefeitura->id, ['is_primary' => true]);
 
-        $gerenteMatriz = User::factory()->forBranch($matriz)->create([
-            'name' => 'Gerente Matriz',
-            'email' => 'gerente_matriz@adonai.com',
+        // Requerente (funcionário que solicita diárias)
+        $requester = User::create([
+            'name' => 'Maria Requerente',
+            'email' => 'requerente@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
-        $gerenteMatriz->assignRole($managerRole);
+        $requester->assignRole($requesterRole);
+        $requester->branches()->attach($prefeitura->id, ['is_primary' => true]);
 
-        $vendedorMatriz = User::factory()->forBranch($matriz)->create([
-            'name' => 'Vendedor Matriz',
-            'email' => 'vendedor_matriz@adonai.com',
+        // Validador (Secretário)
+        $validator = User::create([
+            'name' => 'José Secretário',
+            'email' => 'secretario@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
-        $vendedorMatriz->assignRole($sellerRole);
+        $validator->assignRole($validatorRole);
+        $validator->branches()->attach($prefeitura->id, ['is_primary' => true]);
 
-        $gerenteShopping = User::factory()->forBranch($filialShopping)->create([
-            'name' => 'Gerente Shopping',
-            'email' => 'gerente_shopping@adonai.com',
+        // Concedente (Prefeito)
+        $authorizer = User::create([
+            'name' => 'Carlos Prefeito',
+            'email' => 'prefeito@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
-        $gerenteShopping->assignRole($managerRole);
+        $authorizer->assignRole($authorizerRole);
+        $authorizer->branches()->attach($prefeitura->id, ['is_primary' => true]);
 
-        $vendedorShopping = User::factory()->forBranch($filialShopping)->create([
-            'name' => 'Vendedor Shopping',
-            'email' => 'vendedor_shopping@adonai.com',
+        // Pagador (Tesoureiro)
+        $payer = User::create([
+            'name' => 'Ana Tesoureira',
+            'email' => 'tesoureiro@siscondi.gov.br',
             'password' => Hash::make('password'),
         ]);
-        $vendedorShopping->assignRole($sellerRole);
+        $payer->assignRole($payerRole);
+        $payer->branches()->attach($prefeitura->id, ['is_primary' => true]);
 
-        $this->command->info("Created 5 users: 1 Admin (global), 2 Matriz (ID: {$matriz->id}), 2 Shopping (ID: {$filialShopping->id})");
+        $this->command->info('SISCONDI - Usuários criados:');
+        $this->command->info('- Admin: admin@siscondi.gov.br');
+        $this->command->info('- Requerente: requerente@siscondi.gov.br');
+        $this->command->info('- Validador (Secretário): secretario@siscondi.gov.br');
+        $this->command->info('- Concedente (Prefeito): prefeito@siscondi.gov.br');
+        $this->command->info('- Pagador (Tesoureiro): tesoureiro@siscondi.gov.br');
+        $this->command->info('Senha padrão: password');
     }
 }

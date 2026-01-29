@@ -1,122 +1,122 @@
-name: Deploy to Servers
+# name: Deploy to Servers
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  deploy-branix:
-    name: Deploy to Branix
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy-branix:
+#     name: Deploy to Branix
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v2
+#     steps:
+#       - name: Check out the repository
+#         uses: actions/checkout@v2
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.5.3
+#         with:
+#           ssh-private-key: ${{ secrets.SSH_KEY }}
       
-      - name: Debug SSH Configuration
-        env:
-          HOST: ${{ secrets.HOST }}
-          SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
-        run: |
-          echo "Testing SSH connection to server..."
-          ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.USERNAME }}@$HOST "echo SSH connection successful"
+#       - name: Debug SSH Configuration
+#         env:
+#           HOST: ${{ secrets.HOST }}
+#           SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
+#         run: |
+#           echo "Testing SSH connection to server..."
+#           ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.USERNAME }}@$HOST "echo SSH connection successful"
 
-      - name: Set deployment directory based on branch
-        id: set-directory
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "DEPLOY_DIR=${{ secrets.DIRECTORY }}" >> $GITHUB_ENV
-            echo "Using production directory: ${{ secrets.DIRECTORY }}"
-          fi
+#       - name: Set deployment directory based on branch
+#         id: set-directory
+#         run: |
+#           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+#             echo "DEPLOY_DIR=${{ secrets.DIRECTORY }}" >> $GITHUB_ENV
+#             echo "Using production directory: ${{ secrets.DIRECTORY }}"
+#           fi
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
+#           cache: "npm"
+#           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build frontend
-        run: |
-          cd frontend && npm ci && npm run build && cd ..
+#       - name: Build frontend
+#         run: |
+#           cd frontend && npm ci && npm run build && cd ..
 
-      - name: Copiar conteúdo de dist para raiz do frontend
-        run: |
-          cp -r frontend/dist/. frontend/
-          rm -rf frontend/dist
+#       - name: Copiar conteúdo de dist para raiz do frontend
+#         run: |
+#           cp -r frontend/dist/. frontend/
+#           rm -rf frontend/dist
 
-      - name: Remover arquivos do frontend não necessários em produção
-        run: |
-          rm -rf frontend/src frontend/public frontend/node_modules
-          rm -f frontend/package.json frontend/package-lock.json
-          rm -f frontend/vite.config.js frontend/tailwind.config.js frontend/postcss.config.js
-          rm -f frontend/.env.production.example frontend/.gitignore frontend/README.md
+#       - name: Remover arquivos do frontend não necessários em produção
+#         run: |
+#           rm -rf frontend/src frontend/public frontend/node_modules
+#           rm -f frontend/package.json frontend/package-lock.json
+#           rm -f frontend/vite.config.js frontend/tailwind.config.js frontend/postcss.config.js
+#           rm -f frontend/.env.production.example frontend/.gitignore frontend/README.md
 
-      - name: Prepare deployment package
-        run: |
-          echo "Preparando pacote de implantação..."
-          zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "vendor/*"
-          echo "Arquivo de implantação criado com sucesso"
-          ls -la deployment.zip
+#       - name: Prepare deployment package
+#         run: |
+#           echo "Preparando pacote de implantação..."
+#           zip -r deployment.zip . -x "*.git*" -x "deployment.zip" -x "vendor/*"
+#           echo "Arquivo de implantação criado com sucesso"
+#           ls -la deployment.zip
 
-      - name: Upload to Branix
-        env:
-          HOST: ${{ secrets.HOST }}
-          USERNAME: ${{ secrets.USERNAME }}
-          SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
-        run: |
-          echo "Enviando pacote de implantação para o servidor..."
-          scp -v -P $SSH_PORT -o StrictHostKeyChecking=no deployment.zip $USERNAME@$HOST:~/
-          echo "Upload concluído com sucesso."
+#       - name: Upload to Branix
+#         env:
+#           HOST: ${{ secrets.HOST }}
+#           USERNAME: ${{ secrets.USERNAME }}
+#           SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
+#         run: |
+#           echo "Enviando pacote de implantação para o servidor..."
+#           scp -v -P $SSH_PORT -o StrictHostKeyChecking=no deployment.zip $USERNAME@$HOST:~/
+#           echo "Upload concluído com sucesso."
 
-      - name: Extract, Build and Optimize on Server
-        env:
-          HOST: ${{ secrets.HOST }}
-          USERNAME: ${{ secrets.USERNAME }}
-          SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
-        run: |
-          echo "Conectando ao servidor para processamento..."
-          ssh -p $SSH_PORT -o StrictHostKeyChecking=no $USERNAME@$HOST << EOF
+#       - name: Extract, Build and Optimize on Server
+#         env:
+#           HOST: ${{ secrets.HOST }}
+#           USERNAME: ${{ secrets.USERNAME }}
+#           SSH_PORT: ${{ secrets.SSH_PORT || '22022' }}
+#         run: |
+#           echo "Conectando ao servidor para processamento..."
+#           ssh -p $SSH_PORT -o StrictHostKeyChecking=no $USERNAME@$HOST << EOF
             
-            # 1. Preparar Diretório
-            echo "Criando diretório se necessário..."
-            mkdir -p ${{ env.DEPLOY_DIR }}
+#             # 1. Preparar Diretório
+#             echo "Criando diretório se necessário..."
+#             mkdir -p ${{ env.DEPLOY_DIR }}
             
-            echo "Movendo e extraindo..."
-            mv ~/deployment.zip ${{ env.DEPLOY_DIR }}/
-            cd ${{ env.DEPLOY_DIR }}
-            unzip -o deployment.zip
-            rm deployment.zip
+#             echo "Movendo e extraindo..."
+#             mv ~/deployment.zip ${{ env.DEPLOY_DIR }}/
+#             cd ${{ env.DEPLOY_DIR }}
+#             unzip -o deployment.zip
+#             rm deployment.zip
             
-            # 2. Composer (Backend)
-            echo "Executando Composer Install..."
-            composer install --no-interaction --prefer-dist --optimize-autoloader
+#             # 2. Composer (Backend)
+#             echo "Executando Composer Install..."
+#             composer install --no-interaction --prefer-dist --optimize-autoloader
             
-            # 3. Frontend: dist já vem no zip (build feito no CI). Não roda npm no servidor.
+#             # 3. Frontend: dist já vem no zip (build feito no CI). Não roda npm no servidor.
             
-            # 4. Artisan e permissões
-            echo "Executando comandos do Artisan..."
-            php artisan migrate:fresh --seed --force
-            php artisan config:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan optimize:clear
+#             # 4. Artisan e permissões
+#             echo "Executando comandos do Artisan..."
+#             php artisan migrate:fresh --seed --force
+#             php artisan config:clear
+#             php artisan config:cache
+#             php artisan route:cache
+#             php artisan view:cache
+#             php artisan optimize:clear
             
-            # Garante permissões de escrita (ajuste conforme seu usuário/grupo do servidor web, ex: www-data)
-            chmod -R 775 storage bootstrap/cache
+#             # Garante permissões de escrita (ajuste conforme seu usuário/grupo do servidor web, ex: www-data)
+#             chmod -R 775 storage bootstrap/cache
             
-            echo "Deploy concluído com sucesso!"
-          EOF
+#             echo "Deploy concluído com sucesso!"
+#           EOF
 
-      - name: Notify deployment
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "Deployment to production environment completed"
-          fi
+#       - name: Notify deployment
+#         run: |
+#           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+#             echo "Deployment to production environment completed"
+#           fi

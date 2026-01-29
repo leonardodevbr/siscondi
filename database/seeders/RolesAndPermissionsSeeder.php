@@ -12,6 +12,11 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        /**
+         * SISCONDI - Sistema de Concessão de Diárias
+         * Permissões e Perfis de Acesso
+         */
+        
         // Permissões do sistema
         $permissions = [
             // Usuários
@@ -20,77 +25,41 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.edit',
             'users.delete',
             
-            // Produtos
-            'products.view',
-            'products.create',
-            'products.edit',
-            'products.delete',
-            'products.import',
-            'products.update', // Para ajustes de estoque via produtos
+            // Secretarias (Branches)
+            'departments.view',
+            'departments.create',
+            'departments.edit',
+            'departments.delete',
             
-            // Estoque
-            'stock.view',
-            'stock.entry',
-            'stock.adjust',
+            // Legislações (Cargos e Valores)
+            'legislations.view',
+            'legislations.create',
+            'legislations.edit',
+            'legislations.delete',
             
-            // PDV
-            'pos.access',
-            'pos.discount',
+            // Servidores
+            'servants.view',
+            'servants.create',
+            'servants.edit',
+            'servants.delete',
             
-            // Financeiro
-            'financial.view',
-            'financial.manage',
+            // Solicitações de Diárias
+            'daily-requests.view',
+            'daily-requests.create',
+            'daily-requests.edit',
+            'daily-requests.delete',
+            'daily-requests.validate',   // Secretário valida
+            'daily-requests.authorize',  // Prefeito concede
+            'daily-requests.pay',        // Tesoureiro paga
+            'daily-requests.cancel',
             
             // Relatórios
             'reports.view',
             'reports.export',
             
-            // Marketing
-            'marketing.manage',
-            'marketing.coupons',
-            
-            // Clientes
-            'customers.view',
-            'customers.create',
-            'customers.edit',
-            'customers.delete',
-            
-            // Fornecedores
-            'suppliers.view',
-            'suppliers.create',
-            'suppliers.edit',
-            'suppliers.delete',
-            
-            // Categorias
-            'categories.view',
-            'categories.create',
-            'categories.edit',
-            'categories.delete',
-            
-            // Filiais
-            'branches.view',
-            'branches.create',
-            'branches.edit',
-            'branches.delete',
-            
-            // Despesas
-            'expenses.view',
-            'expenses.create',
-            'expenses.edit',
-            'expenses.delete',
-            'expenses.pay',
-            
-            // Vendas
-            'sales.view',
-            'sales.create',
-            'sales.edit',
-            'sales.cancel',
-            
-            // Configurações (CRÍTICAS - apenas super-admin)
+            // Configurações
             'settings.manage',
             'settings.system',
-            'settings.integrations',
-            'settings.permissions',
         ];
 
         foreach ($permissions as $permission) {
@@ -98,211 +67,74 @@ class RolesAndPermissionsSeeder extends Seeder
         }
 
         // ========================================
-        // ROLE: SELLER (Vendedor)
+        // ROLE: ADMIN (Administrador do Sistema)
+        // Acesso total ao sistema
         // ========================================
-        $sellerRole = Role::firstOrCreate(['name' => 'seller']);
-        $sellerRole->syncPermissions([
-            'pos.access',
-            'products.view',
-            'stock.view',
-            'customers.view',
-            'sales.view',
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $adminRole->syncPermissions(Permission::all());
+
+        // ========================================
+        // ROLE: REQUESTER (Requerente)
+        // Cria e acompanha suas próprias solicitações de diárias
+        // ========================================
+        $requesterRole = Role::firstOrCreate(['name' => 'requester']);
+        $requesterRole->syncPermissions([
+            'daily-requests.view',
+            'daily-requests.create',
+            'daily-requests.edit',
+            'servants.view',
+            'legislations.view',
+            'departments.view',
         ]);
 
         // ========================================
-        // ROLE: STOCKIST (Estoquista)
+        // ROLE: VALIDATOR (Validador - Secretário)
+        // Valida solicitações de diárias da sua secretaria
         // ========================================
-        $stockistRole = Role::firstOrCreate(['name' => 'stockist']);
-        $stockistRole->syncPermissions([
-            'products.view',
-            'products.edit',
-            'stock.view',
-            'stock.entry',
-            'stock.adjust',
-            'suppliers.view',
+        $validatorRole = Role::firstOrCreate(['name' => 'validator']);
+        $validatorRole->syncPermissions([
+            'daily-requests.view',
+            'daily-requests.validate',
+            'servants.view',
+            'servants.create',
+            'servants.edit',
+            'legislations.view',
+            'departments.view',
+            'reports.view',
         ]);
 
         // ========================================
-        // ROLE: MANAGER (Gerente)
-        // Tem TODAS as permissões, EXCETO as críticas de configuração
+        // ROLE: AUTHORIZER (Concedente - Prefeito)
+        // Autoriza/concede diárias validadas pelos secretários
         // ========================================
-        $managerRole = Role::firstOrCreate(['name' => 'manager']);
-        $managerRole->syncPermissions([
-            // Usuários (completo)
-            'users.view',
-            'users.create',
-            'users.edit',
-            'users.delete',
-            
-            // Produtos (completo)
-            'products.view',
-            'products.create',
-            'products.edit',
-            'products.delete',
-            'products.import',
-            'products.update',
-            
-            // Estoque (completo)
-            'stock.view',
-            'stock.entry',
-            'stock.adjust',
-            
-            // PDV (completo)
-            'pos.access',
-            'pos.discount',
-            
-            // Financeiro (completo)
-            'financial.view',
-            'financial.manage',
-            
-            // Relatórios (completo)
+        $authorizerRole = Role::firstOrCreate(['name' => 'authorizer']);
+        $authorizerRole->syncPermissions([
+            'daily-requests.view',
+            'daily-requests.authorize',
+            'servants.view',
+            'legislations.view',
+            'legislations.create',
+            'legislations.edit',
+            'departments.view',
+            'departments.create',
+            'departments.edit',
             'reports.view',
             'reports.export',
-            
-            // Marketing (completo)
-            'marketing.manage',
-            'marketing.coupons',
-            
-            // Clientes (completo)
-            'customers.view',
-            'customers.create',
-            'customers.edit',
-            'customers.delete',
-            
-            // Fornecedores (completo)
-            'suppliers.view',
-            'suppliers.create',
-            'suppliers.edit',
-            'suppliers.delete',
-            
-            // Categorias (completo)
-            'categories.view',
-            'categories.create',
-            'categories.edit',
-            'categories.delete',
-            
-            // Filiais (completo)
-            'branches.view',
-            'branches.create',
-            'branches.edit',
-            'branches.delete',
-            
-            // Despesas (completo)
-            'expenses.view',
-            'expenses.create',
-            'expenses.edit',
-            'expenses.delete',
-            'expenses.pay',
-            
-            // Vendas (completo)
-            'sales.view',
-            'sales.create',
-            'sales.edit',
-            'sales.cancel',
-            
-            // Configurações básicas (NÃO críticas)
-            'settings.manage',
-            
-            // ❌ NÃO TEM: Configurações críticas (apenas super-admin)
-            // 'settings.system',
-            // 'settings.integrations',
-            // 'settings.permissions',
         ]);
 
         // ========================================
-        // ROLE: OWNER (Gestor Geral)
-        // Mesmo nível do Gerente, mas com acesso a TODAS as filiais
-        // NÃO pode excluir Super-Admin
+        // ROLE: PAYER (Pagador - Tesoureiro)
+        // Efetua o pagamento das diárias autorizadas
         // ========================================
-        $ownerRole = Role::firstOrCreate(['name' => 'owner']);
-        $ownerRole->syncPermissions([
-            // Usuários (completo, exceto super-admin)
-            'users.view',
-            'users.create',
-            'users.edit',
-            'users.delete',
-            
-            // Produtos (completo)
-            'products.view',
-            'products.create',
-            'products.edit',
-            'products.delete',
-            'products.import',
-            'products.update',
-            
-            // Estoque (completo)
-            'stock.view',
-            'stock.entry',
-            'stock.adjust',
-            
-            // PDV (completo)
-            'pos.access',
-            'pos.discount',
-            
-            // Financeiro (completo)
-            'financial.view',
-            'financial.manage',
-            
-            // Relatórios (completo)
+        $payerRole = Role::firstOrCreate(['name' => 'payer']);
+        $payerRole->syncPermissions([
+            'daily-requests.view',
+            'daily-requests.pay',
+            'servants.view',
+            'legislations.view',
+            'departments.view',
             'reports.view',
             'reports.export',
-            
-            // Marketing (completo)
-            'marketing.manage',
-            'marketing.coupons',
-            
-            // Clientes (completo)
-            'customers.view',
-            'customers.create',
-            'customers.edit',
-            'customers.delete',
-            
-            // Fornecedores (completo)
-            'suppliers.view',
-            'suppliers.create',
-            'suppliers.edit',
-            'suppliers.delete',
-            
-            // Categorias (completo)
-            'categories.view',
-            'categories.create',
-            'categories.edit',
-            'categories.delete',
-            
-            // Filiais (completo)
-            'branches.view',
-            'branches.create',
-            'branches.edit',
-            'branches.delete',
-            
-            // Despesas (completo)
-            'expenses.view',
-            'expenses.create',
-            'expenses.edit',
-            'expenses.delete',
-            'expenses.pay',
-            
-            // Vendas (completo)
-            'sales.view',
-            'sales.create',
-            'sales.edit',
-            'sales.cancel',
-            
-            // Configurações básicas
-            'settings.manage',
-            
-            // ❌ NÃO TEM: Configurações críticas (apenas super-admin)
-            // 'settings.system',
-            // 'settings.integrations',
-            // 'settings.permissions',
         ]);
-
-        // ========================================
-        // ROLE: SUPER-ADMIN
-        // Tem TODAS as permissões via Gate (bypass no AppServiceProvider)
-        // ========================================
-        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
-        // Super-admin não precisa de permissões específicas, 
-        // pois tem acesso total via Gate::before() no AppServiceProvider
     }
 }

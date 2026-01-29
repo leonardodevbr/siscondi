@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -18,33 +18,23 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
-     * The attributes that are mass assignable.
-     *
      * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'operation_password',
-        'operation_pin',
-        'branch_id',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
      * @var list<string>
      */
     protected $hidden = [
         'password',
-        'operation_password',
         'remember_token',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -52,22 +42,11 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'operation_password' => 'hashed',
         ];
     }
 
     /**
-     * Filial principal (legado - mantido por compatibilidade)
-     * 
-     * @return BelongsTo<Branch, User>
-     */
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class);
-    }
-
-    /**
-     * Todas as filiais que o usuário tem acesso
+     * Secretarias que o usuário tem acesso
      * 
      * @return BelongsToMany<Branch>
      */
@@ -79,9 +58,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Filial primária do usuário (via tabela pivot)
-     * 
-     * @return Branch|null
+     * Secretaria primária do usuário
      */
     public function getPrimaryBranch(): ?Branch
     {
@@ -89,14 +66,13 @@ class User extends Authenticatable
     }
 
     /**
-     * IDs de todas as filiais que o usuário tem acesso
+     * IDs de todas as secretarias que o usuário tem acesso
      * 
      * @return array<int>
      */
     public function getBranchIds(): array
     {
-        // Super Admin e Owner têm acesso a todas as filiais
-        if ($this->hasRole(['super-admin', 'owner'])) {
+        if ($this->hasRole('admin')) {
             return Branch::query()->pluck('id')->toArray();
         }
 
@@ -104,11 +80,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Verifica se o usuário tem acesso a uma filial específica
+     * Verifica se o usuário tem acesso a uma secretaria específica
      */
     public function hasAccessToBranch(int $branchId): bool
     {
-        if ($this->hasRole(['super-admin', 'owner'])) {
+        if ($this->hasRole('admin')) {
             return true;
         }
 
@@ -116,11 +92,13 @@ class User extends Authenticatable
     }
 
     /**
-     * Verifica se é owner (dono da loja)
+     * Servidor associado ao usuário (se for um servidor público)
+     * 
+     * @return HasOne<Servant>
      */
-    public function isOwner(): bool
+    public function servant(): HasOne
     {
-        return $this->hasRole('owner');
+        return $this->hasOne(Servant::class);
     }
 }
 

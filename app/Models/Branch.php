@@ -29,15 +29,7 @@ class Branch extends Model
     ];
 
     /**
-     * @return HasMany<Inventory>
-     */
-    public function inventories(): HasMany
-    {
-        return $this->hasMany(Inventory::class);
-    }
-
-    /**
-     * Usuários que têm acesso a esta filial
+     * Usuários que têm acesso a esta secretaria
      * 
      * @return BelongsToMany<User>
      */
@@ -46,5 +38,15 @@ class Branch extends Model
         return $this->belongsToMany(User::class, 'branch_user')
             ->withPivot('is_primary')
             ->withTimestamps();
+    }
+
+    /**
+     * Servidores lotados nesta secretaria
+     * 
+     * @return HasMany<Servant>
+     */
+    public function servants(): HasMany
+    {
+        return $this->hasMany(Servant::class, 'department_id');
     }
 }

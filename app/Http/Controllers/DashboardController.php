@@ -4,40 +4,79 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Actions\Dashboard\GetDashboardMetricsAction;
+use App\Enums\DailyRequestStatus;
+use App\Models\DailyRequest;
+use App\Models\Legislation;
+use App\Models\Servant;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function __construct(
-        private readonly GetDashboardMetricsAction $getDashboardMetricsAction
-    ) {
-    }
-
-    /**
-     * Get dashboard metrics.
-     */
-    public function __invoke(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
-        $user = $request->user();
-        
-        // Determina a filial ativa (header X-Branch-ID ou branch_id do usuário)
-        $activeBranchId = $request->header('X-Branch-ID') 
-            ? (int) $request->header('X-Branch-ID') 
-            : $user->branch_id;
+        $this->authorize('daily-requests.view');
 
-        // Super Admin pode ver dados de todas as filiais se não houver branch ativo
-        $branchId = null;
-        if ($user->hasRole('super-admin')) {
-            $branchId = $activeBranchId; // Pode ser null para ver tudo
-        } else {
-            // Gerentes e operadores sempre veem apenas sua filial
-            $branchId = $activeBranchId ?? $user->branch_id;
+        $user = auth()->user();
+
+        // Estatísticas gerais
+        $stats = [
+            'total_servants' => Servant::where('is_active', true)->count(),
+            'total_legislations' => Legislation::where('is_active', true)->count(),
+            'total_requests' => DailyRequest::count(),
+            
+            // Solicitações por status
+            'requests_by_status' => [
+                'draft' => DailyRequest::where('status', DailyRequestStatus::DRAFT)->count(),
+                'requested' => DailyRequest::where('status', DailyRequestStatus::REQUESTED)->count(),
+                'validated' => DailyRequest::where('status', DailyRequestStatus::VALIDATED)->count(),
+                'authorized' => DailyRequest::where('status', DailyRequestStatus::AUTHORIZED)->count(),
+                'paid' => DailyRequest::where('status', DailyRequestStatus::PAID)->count(),
+                'cancelled' => DailyRequest::where('status', DailyRequestStatus::CANCELLED)->count(),
+            ],
+            
+            // Valores financeiros
+            'financial' => [
+                'total_authorized' => DailyRequest::where('status', DailyRequestStatus::AUTHORIZED)
+                    ->orWhere('status', DailyRequestStatus::PAID)
+                    ->sum('total_value'),
+                'total_paid' => DailyRequest::where('status', DailyRequestStatus::PAID)
+                    ->sum('total_value'),
+                'pending_payment' => DailyRequest::where('status', DailyRequestStatus::AUTHORIZED)
+                    ->sum('total_value'),
+            ],
+            
+            // Solicitações recentes
+            'recent_requests' => DailyRequest::with(['servant', 'legislationSnapshot'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function ($request) {
+                    return [
+                        'id' => $request->id,
+                        'servant_name' => $request->servant->name,
+                        'destination' => $request->destination_city . '/' . $request->destination_state,
+                        'total_value' => $request->total_value,
+                        'status' => $request->status->value,
+                        'status_label' => $request->status->label(),
+                        'created_at' => $request->created_at,
+                    ];
+                }),
+        ];
+
+        // Estatísticas específicas por perfil
+        if ($user->can('daily-requests.validate')) {
+            $stats['pending_validation'] = DailyRequest::where('status', DailyRequestStatus::REQUESTED)->count();
         }
 
-        $metrics = $this->getDashboardMetricsAction->execute($branchId);
+        if ($user->can('daily-requests.authorize')) {
+            $stats['pending_authorization'] = DailyRequest::where('status', DailyRequestStatus::VALIDATED)->count();
+        }
 
-        return response()->json($metrics);
+        if ($user->can('daily-requests.pay')) {
+            $stats['pending_payment_count'] = DailyRequest::where('status', DailyRequestStatus::AUTHORIZED)->count();
+        }
+
+        return response()->json($stats);
     }
 }

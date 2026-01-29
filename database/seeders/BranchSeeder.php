@@ -11,11 +11,25 @@ class BranchSeeder extends Seeder
 {
     public function run(): void
     {
-        Branch::firstOrCreate(
-            ['name' => 'Filial Shopping'],
-            ['name' => 'Filial Shopping', 'is_main' => false]
-        );
+        /**
+         * SISCONDI - Secretarias Municipais
+         */
+        
+        $secretarias = [
+            ['name' => 'Secretaria de Educação', 'is_main' => false],
+            ['name' => 'Secretaria de Saúde', 'is_main' => false],
+            ['name' => 'Secretaria de Administração', 'is_main' => false],
+            ['name' => 'Secretaria de Obras', 'is_main' => false],
+            ['name' => 'Secretaria de Assistência Social', 'is_main' => false],
+        ];
 
-        $this->command->info('Branches: Matriz (from migration) + Filial Shopping');
+        foreach ($secretarias as $secretaria) {
+            Branch::firstOrCreate(
+                ['name' => $secretaria['name']],
+                $secretaria
+            );
+        }
+
+        $this->command->info('SISCONDI - Secretarias criadas: Gabinete do Prefeito (principal) + 5 secretarias');
     }
 }

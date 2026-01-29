@@ -18,8 +18,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // SISCONDI: Gabinete do Prefeito como secretaria principal
         DB::table('branches')->insert([
-            'name' => 'Matriz',
+            'name' => 'Gabinete do Prefeito',
             'is_main' => true,
             'created_at' => now(),
             'updated_at' => now(),

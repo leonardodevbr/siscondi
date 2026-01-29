@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 
+/**
+ * SISCONDI - Sistema de Concessão de Diárias
+ * API Routes
+ */
+
+// Autenticação e Configuração
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/users.php';
-require __DIR__.'/api/categories.php';
-require __DIR__.'/api/products.php';
-require __DIR__.'/api/customers.php';
-require __DIR__.'/api/suppliers.php';
-require __DIR__.'/api/branches.php';
-require __DIR__.'/api/sales.php';
-require __DIR__.'/api/stock.php';
-require __DIR__.'/api/dashboard.php';
-require __DIR__.'/api/cash-register.php';
-require __DIR__.'/api/reports.php';
-require __DIR__.'/api/payments.php';
-require __DIR__.'/api/expenses.php';
-require __DIR__.'/api/coupons.php';
 require __DIR__.'/api/config.php';
 require __DIR__.'/api/settings.php';
-require __DIR__.'/api/labels.php';
-require __DIR__.'/api/pos.php';
-require __DIR__.'/api/mp-point.php';
+
+// Estrutura Organizacional
+require __DIR__.'/api/branches.php'; // Secretarias
+
+// Módulo de Diárias
+require __DIR__.'/api/legislations.php'; // Cargos e Valores
+require __DIR__.'/api/servants.php'; // Servidores Públicos
+require __DIR__.'/api/daily-requests.php'; // Solicitações de Diárias
+
+// Dashboard
+require __DIR__.'/api/dashboard.php';

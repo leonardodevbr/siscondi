@@ -13,19 +13,16 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        /**
+         * SISCONDI - Sistema de Concessão de Diárias
+         * Seeders de Inicialização
+         */
+        
         $this->call([
             RolesAndPermissionsSeeder::class,
-            BranchSeeder::class,
+            BranchSeeder::class, // Secretarias
             UserSeeder::class,
-        ]);
-
-        $this->call([
             SettingSeeder::class,
-            CategorySeeder::class,
-            ExpenseCategorySeeder::class,
-            SupplierSeeder::class,
-            ProductSeeder::class,
-            CustomerSeeder::class,
         ]);
     }
 }
