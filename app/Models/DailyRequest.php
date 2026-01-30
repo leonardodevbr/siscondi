@@ -8,6 +8,7 @@ use App\Enums\DailyRequestStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DailyRequest extends Model
 {
@@ -113,6 +114,24 @@ class DailyRequest extends Model
     public function payer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payer_id');
+    }
+
+    /**
+     * Linha do tempo / auditoria de cada ação na solicitação
+     *
+     * @return HasMany<DailyRequestLog, DailyRequest>
+     */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(DailyRequestLog::class);
+    }
+
+    /**
+     * Verifica se o PDF pode ser gerado (apenas após assinatura do prefeito/concedente).
+     */
+    public function canGeneratePdf(): bool
+    {
+        return in_array($this->status, [DailyRequestStatus::AUTHORIZED, DailyRequestStatus::PAID]);
     }
 
     /**

@@ -24,6 +24,7 @@ class ConfigController extends Controller
 
         return response()->json([
             'app_name' => $appName,
+            'vapid_public_key' => config('webpush.vapid.public_key') ?: null,
             'municipality' => $municipality ? [
                 'id' => $municipality->id,
                 'name' => $municipality->name,

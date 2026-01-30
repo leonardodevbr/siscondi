@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Models\DailyRequest;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateDailyRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('daily-requests.edit') && $this->dailyRequest->isEditable();
+        $dailyRequest = DailyRequest::query()->find((int) $this->route('daily_request'));
+        return $dailyRequest
+            && $this->user()?->can('daily-requests.edit')
+            && $dailyRequest->isEditable();
     }
 
     /**

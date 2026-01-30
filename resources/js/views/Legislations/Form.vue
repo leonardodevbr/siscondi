@@ -89,11 +89,11 @@
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria Funcional</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-52">Cargos vinculados</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Classe da Diária</th>
                 <th v-for="(dest, idx) in form.destinations" :key="idx" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                   {{ dest || `Destino ${idx + 1}` }}
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[20rem]">Cargos vinculados</th>
                 <th class="px-4 py-3 w-12"></th>
               </tr>
             </thead>
@@ -101,6 +101,21 @@
               <tr v-for="(item, idx) in form.items" :key="idx">
                 <td class="px-4 py-3 align-top">
                   <input v-model="item.functional_category" type="text" placeholder="Ex: Prefeito e Vice-Prefeito" class="block w-full min-w-[12rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-600 whitespace-nowrap">
+                      {{ getCargoCountLabel(item) }}
+                    </span>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 shrink-0"
+                      @click="openCargoModal(idx)"
+                    >
+                      <PencilSquareIcon class="w-3.5 h-3.5" />
+                      Selecionar
+                    </button>
+                  </div>
                 </td>
                 <td class="px-4 py-3 align-top">
                   <input v-model="item.daily_class" type="text" placeholder="Ex: Classe A" class="block w-full min-w-[6rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100" />
@@ -116,15 +131,6 @@
                   />
                 </td>
                 <td class="px-4 py-3 align-top">
-                  <SelectInput
-                    v-model="item.cargo_ids"
-                    :options="cargoOptions"
-                    placeholder="Selecione os cargos"
-                    mode="multiple"
-                    :searchable="cargoOptions.length > 10"
-                  />
-                </td>
-                <td class="px-4 py-3 align-top">
                   <button type="button" @click="removeItem(idx)" class="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50" title="Remover">×</button>
                 </td>
               </tr>
@@ -133,6 +139,59 @@
         </div>
         <p v-if="form.items.length === 0" class="mt-2 text-sm text-gray-500">Nenhum item. Clique em "Adicionar item" para incluir uma linha da tabela de diárias.</p>
       </div>
+
+      <!-- Modal: Selecionar cargos -->
+      <Modal
+        :is-open="cargoModalOpen"
+        title="Selecionar cargos"
+        @close="closeCargoModal"
+      >
+        <div class="space-y-4">
+          <p v-if="cargoModalCategoryLabel" class="text-slate-600 text-sm font-medium border-b border-slate-200 pb-2 -mt-1">
+            {{ cargoModalCategoryLabel }}
+          </p>
+          <input
+            v-model="cargoSearch"
+            type="search"
+            placeholder="Pesquisar cargos..."
+            class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100"
+          />
+          <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+            <label
+              v-for="opt in filteredCargoOptions"
+              :key="opt.value"
+              class="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                :checked="cargoModalSelectedIds.includes(opt.value)"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                @change="toggleCargoModalSelection(opt.value)"
+              />
+              <span class="text-sm text-slate-800">{{ opt.label }}</span>
+            </label>
+            <p v-if="filteredCargoOptions.length === 0" class="px-3 py-4 text-sm text-slate-500">
+              Nenhum cargo encontrado.
+            </p>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
+              @click="closeCargoModal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              @click="applyCargoSelection"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div class="flex justify-end gap-3 pt-4">
         <router-link to="/legislations" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
@@ -147,13 +206,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { Bars3Icon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import Toggle from '@/components/Common/Toggle.vue'
-import SelectInput from '@/components/Common/SelectInput.vue'
+import Modal from '@/components/Common/Modal.vue'
 
 const DEFAULT_DESTINATIONS = ['Até 200 km', 'Acima 200 km', 'Capital Estado', 'Demais Capitais/DF', 'Exterior']
 
@@ -163,6 +222,10 @@ const { success, error: showError } = useAlert()
 const isEdit = ref(false)
 const cargos = ref([])
 const cargoOptions = ref([])
+const cargoModalOpen = ref(false)
+const cargoModalItemIndex = ref(null)
+const cargoSearch = ref('')
+const cargoModalSelectedIds = ref([])
 
 const form = ref({
   title: '',
@@ -299,6 +362,67 @@ const removeItem = (index) => {
   form.value.items.splice(index, 1)
 }
 
+function getCargoCount(item) {
+  return (Array.isArray(item.cargo_ids) ? item.cargo_ids : []).length
+}
+
+function getCargoCountLabel(item) {
+  const n = getCargoCount(item)
+  if (n === 0) return 'Nenhum'
+  if (n === 1) return '1 cargo'
+  return `${n} cargos`
+}
+
+const filteredCargoOptions = computed(() => {
+  const q = (cargoSearch.value || '').trim().toLowerCase()
+  const list = cargoOptions.value || []
+  if (!q) return list
+  return list.filter((o) => (o.label || '').toLowerCase().includes(q) || String(o.value || '').includes(q))
+})
+
+const cargoModalCategoryLabel = computed(() => {
+  const idx = cargoModalItemIndex.value
+  if (idx == null || !form.value.items[idx]) return ''
+  const item = form.value.items[idx]
+  const cat = (item.functional_category || '').trim()
+  const cls = (item.daily_class || '').trim()
+  if (cat && cls) return `Categoria: ${cat} — ${cls}`
+  if (cat) return `Categoria: ${cat}`
+  return ''
+})
+
+function openCargoModal(itemIndex) {
+  cargoModalItemIndex.value = itemIndex
+  const item = form.value.items[itemIndex]
+  const ids = Array.isArray(item?.cargo_ids) ? item.cargo_ids : []
+  cargoModalSelectedIds.value = ids.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
+  cargoSearch.value = ''
+  cargoModalOpen.value = true
+}
+
+function closeCargoModal() {
+  cargoModalOpen.value = false
+  cargoModalItemIndex.value = null
+  cargoModalSelectedIds.value = []
+  cargoSearch.value = ''
+}
+
+function toggleCargoModalSelection(id) {
+  const idx = cargoModalSelectedIds.value.indexOf(id)
+  if (idx === -1) {
+    cargoModalSelectedIds.value = [...cargoModalSelectedIds.value, id]
+  } else {
+    cargoModalSelectedIds.value = cargoModalSelectedIds.value.filter((x) => x !== id)
+  }
+}
+
+function applyCargoSelection() {
+  const idx = cargoModalItemIndex.value
+  if (idx == null || !form.value.items[idx]) return
+  form.value.items[idx].cargo_ids = [...cargoModalSelectedIds.value]
+  closeCargoModal()
+}
+
 const reaisToCents = (val) => Math.round(100 * (Number(val) || 0))
 
 const toPayload = () => {
@@ -308,11 +432,17 @@ const toPayload = () => {
     destinations.forEach((d, i) => {
       values[d] = reaisToCents(it.valueByIndex?.[i])
     })
-    return {
+    const payloadItem = {
       functional_category: it.functional_category || '',
       daily_class: it.daily_class || '',
       values
     }
+    if (it.id != null && it.id !== '') {
+      payloadItem.id = it.id
+    }
+    const cargoIds = Array.isArray(it.cargo_ids) ? it.cargo_ids : []
+    payloadItem.cargo_ids = cargoIds.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
+    return payloadItem
   })
   return {
     title: form.value.title,

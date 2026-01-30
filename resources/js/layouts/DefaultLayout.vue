@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
 import { useSettingsStore } from '@/stores/settings';
+import { usePushNotifications } from '@/composables/usePushNotifications';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -11,6 +12,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();
+const { register: registerSw } = usePushNotifications();
 
 const isSidebarOpen = ref(false);
 
@@ -35,6 +37,9 @@ onMounted(async () => {
       }
     } catch (error) {
       console.error('Erro ao carregar configurações públicas:', error);
+    }
+    if ('serviceWorker' in navigator) {
+      registerSw().catch(() => {});
     }
   }
 });

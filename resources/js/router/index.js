@@ -16,6 +16,7 @@ import ServantsIndex from '@/views/Servants/Index.vue';
 import ServantForm from '@/views/Servants/Form.vue';
 import DailyRequestsIndex from '@/views/DailyRequests/Index.vue';
 import DailyRequestForm from '@/views/DailyRequests/Form.vue';
+import DailyRequestShow from '@/views/DailyRequests/Show.vue';
 import DepartmentsIndex from '@/views/Departments/Index.vue';
 import UsersIndex from '@/views/Users/Index.vue';
 import UserForm from '@/views/Users/UserForm.vue';
@@ -81,6 +82,12 @@ const routes = [
         name: 'daily-requests.edit',
         component: DailyRequestForm,
         meta: { title: 'Editar Solicitação' },
+      },
+      {
+        path: 'daily-requests/:id',
+        name: 'daily-requests.show',
+        component: DailyRequestShow,
+        meta: { title: 'Detalhes da Solicitação' },
       },
       // Servidores
       {

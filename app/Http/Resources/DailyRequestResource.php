@@ -39,6 +39,7 @@ class DailyRequestResource extends JsonResource
             'paid_at' => $this->paid_at,
             'is_editable' => $this->isEditable(),
             'is_cancellable' => $this->isCancellable(),
+            'can_generate_pdf' => $this->canGeneratePdf(),
             'servant' => new ServantResource($this->whenLoaded('servant')),
             'legislation_item_snapshot' => new LegislationItemResource($this->whenLoaded('legislationItemSnapshot')),
             'requester' => new UserResource($this->whenLoaded('requester')),

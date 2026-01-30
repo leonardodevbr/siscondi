@@ -262,4 +262,31 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Usuário excluído com sucesso.']);
     }
+
+    /**
+     * Registra a inscrição de push do navegador para notificações Web Push.
+     */
+    public function storePushSubscription(Request $request): JsonResponse
+    {
+        $request->validate([
+            'endpoint' => 'required|string|max:500',
+            'keys' => 'required|array',
+            'keys.p256dh' => 'required|string',
+            'keys.auth' => 'required|string',
+        ]);
+
+        $user = auth()->user();
+        if (! $user) {
+            return response()->json(['message' => 'Não autenticado.'], 401);
+        }
+
+        $user->updatePushSubscription(
+            $request->input('endpoint'),
+            $request->input('keys.p256dh'),
+            $request->input('keys.auth'),
+            $request->userAgent()
+        );
+
+        return response()->json(['message' => 'Inscrição de notificação registrada.']);
+    }
 }

@@ -102,6 +102,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $validatorRole->syncPermissions([
             'daily-requests.view',
             'daily-requests.validate',
+            'daily-requests.pay',   // Secretário também pode dar baixa (marcar como pago)
             'servants.view',
             'servants.create',
             'servants.edit',

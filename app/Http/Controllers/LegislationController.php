@@ -89,7 +89,8 @@ class LegislationController extends Controller
                 'daily_class' => $item['daily_class'],
                 'values' => $item['values'] ?? [],
             ]);
-            $cargoIds = $item['cargo_ids'] ?? [];
+            $cargoIdsRaw = $item['cargo_ids'] ?? [];
+            $cargoIds = array_values(array_unique(array_map('intval', $cargoIdsRaw)));
             $legislationItem->cargos()->sync($cargoIds);
         }
 
@@ -114,27 +115,43 @@ class LegislationController extends Controller
 
         $legislation->update($data);
 
-        $existingIds = collect($itemsPayload)->pluck('id')->filter()->values()->all();
-        $legislation->items()->whereNotIn('id', $existingIds)->delete();
+        $keptItemIds = [];
 
         foreach ($itemsPayload as $item) {
-            $cargoIds = $item['cargo_ids'] ?? [];
+            $cargoIdsSent = array_key_exists('cargo_ids', $item);
+            $cargoIdsRaw = $item['cargo_ids'] ?? [];
+            $cargoIds = array_values(array_unique(array_map('intval', $cargoIdsRaw)));
             $attrs = [
                 'functional_category' => $item['functional_category'] ?? '',
                 'daily_class' => $item['daily_class'] ?? '',
                 'values' => $item['values'] ?? [],
             ];
+
+            $legislationItem = null;
             if (! empty($item['id'])) {
                 $legislationItem = $legislation->items()->find((int) $item['id']);
-                if ($legislationItem) {
-                    $legislationItem->update($attrs);
-                    $legislationItem->cargos()->sync($cargoIds);
-                    continue;
-                }
             }
-            $legislationItem = $legislation->items()->create($attrs);
-            $legislationItem->cargos()->sync($cargoIds);
+            if (! $legislationItem) {
+                $legislationItem = $legislation->items()
+                    ->where('functional_category', $attrs['functional_category'])
+                    ->where('daily_class', $attrs['daily_class'])
+                    ->first();
+            }
+
+            if ($legislationItem) {
+                $legislationItem->update($attrs);
+                if ($cargoIdsSent) {
+                    $legislationItem->cargos()->sync($cargoIds);
+                }
+                $keptItemIds[] = $legislationItem->id;
+            } else {
+                $legislationItem = $legislation->items()->create($attrs);
+                $legislationItem->cargos()->sync($cargoIds);
+                $keptItemIds[] = $legislationItem->id;
+            }
         }
+
+        $legislation->items()->whereNotIn('id', $keptItemIds)->delete();
 
         $legislation->load(['items', 'items.cargos']);
         return response()->json(new LegislationResource($legislation));

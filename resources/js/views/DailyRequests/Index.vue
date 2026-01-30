@@ -4,8 +4,9 @@
       <h1 class="text-2xl font-bold text-gray-900">Solicitações de Diárias</h1>
       <router-link
         to="/daily-requests/create"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
+        <PlusIcon class="h-5 w-5" />
         Nova Solicitação
       </router-link>
     </div>
@@ -52,22 +53,33 @@
                 {{ request.status_label }}
               </span>
             </td>
-            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right border-l border-gray-200 flex items-center justify-end gap-1">
-              <button
-                type="button"
-                class="inline-flex p-1.5 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
-                title="Ver PDF"
-                @click="openPdf(request.id)"
-              >
-                <DocumentArrowDownIcon class="h-5 w-5" />
-              </button>
-              <router-link
-                :to="`/daily-requests/${request.id}/edit`"
-                class="inline-flex p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
-                :title="request.is_editable ? 'Editar' : 'Ver'"
-              >
-                <PencilSquareIcon class="h-5 w-5" />
-              </router-link>
+            <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap border-l border-gray-200">
+              <div class="flex items-center justify-end gap-2">
+                <router-link
+                  :to="{ name: 'daily-requests.show', params: { id: request.id } }"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Ver detalhes"
+                >
+                  <EyeIcon class="h-4 w-4" />
+                  Detalhes
+                </router-link>
+                <button
+                  v-if="request.can_generate_pdf"
+                  type="button"
+                  class="inline-flex items-center p-1.5 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+                  title="Ver PDF"
+                  @click="openPdf(request.id)"
+                >
+                  <DocumentArrowDownIcon class="h-5 w-5" />
+                </button>
+                <span
+                  v-else
+                  class="inline-flex items-center p-1.5 text-slate-400 cursor-not-allowed"
+                  title="PDF disponível após assinatura do prefeito (concedente)"
+                >
+                  <DocumentArrowDownIcon class="h-5 w-5" />
+                </span>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -80,10 +92,18 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
-import { PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { useAuthStore } from '@/stores/auth'
+import { useAlert } from '@/composables/useAlert'
 import { formatCurrency } from '@/utils/format'
+import {
+  EyeIcon,
+  DocumentArrowDownIcon,
+  PlusIcon,
+} from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const { error: showError } = useAlert()
 const requests = ref([])
 const filters = ref({ status: '' })
 
@@ -91,22 +111,24 @@ const fetchRequests = async () => {
   try {
     const { data } = await api.get('/daily-requests', { params: filters.value })
     requests.value = data.data || data
-  } catch (error) {
-    console.error('Erro ao carregar solicitações:', error)
+  } catch (err) {
+    console.error('Erro ao carregar solicitações:', err)
+    showError('Erro', err.response?.data?.message || 'Não foi possível carregar as solicitações.')
   }
-}
-
-const editRequest = (id) => {
-  router.push(`/daily-requests/${id}/edit`)
 }
 
 const openPdf = async (id) => {
   try {
     const { data } = await api.get(`/daily-requests/${id}/pdf`, { responseType: 'blob' })
-    const url = URL.createObjectURL(data)
-    window.open(url, '_blank')
+    if (data instanceof Blob && data.size > 0) {
+      const url = URL.createObjectURL(data)
+      window.open(url, '_blank')
+    } else {
+      showError('Erro', 'PDF não disponível.')
+    }
   } catch (e) {
     console.error('Erro ao abrir PDF:', e)
+    showError('Erro', e.response?.status === 500 ? 'Falha ao gerar o PDF. Tente novamente.' : (e.response?.data?.message || 'Não foi possível abrir o PDF.'))
   }
 }
 

@@ -166,6 +166,63 @@
         </div>
       </div>
 
+      <!-- Ações de assinatura (apenas na visualização/detalhes) -->
+      <div v-if="isEdit && requestDetail" class="mt-8 pt-6 border-t border-slate-200">
+        <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          Assinaturas
+        </h3>
+        <div class="flex flex-wrap gap-2">
+          <template v-if="requestDetail.status === 'requested' && authStore.can('daily-requests.validate')">
+            <Button
+              type="button"
+              class="inline-flex items-center gap-2"
+              :loading="actionLoading === 'validate'"
+              @click="doValidate"
+            >
+              <CheckIcon class="h-4 w-4" />
+              Validar (Secretário)
+            </Button>
+          </template>
+          <template v-if="requestDetail.status === 'validated' && authStore.can('daily-requests.authorize')">
+            <Button
+              type="button"
+              class="inline-flex items-center gap-2"
+              :loading="actionLoading === 'authorize'"
+              @click="doAuthorize"
+            >
+              <CheckIcon class="h-4 w-4" />
+              Conceder (Prefeito)
+            </Button>
+          </template>
+          <template v-if="requestDetail.status === 'authorized' && authStore.can('daily-requests.pay')">
+            <Button
+              type="button"
+              class="inline-flex items-center gap-2"
+              :loading="actionLoading === 'pay'"
+              @click="doPay"
+            >
+              <BanknotesIcon class="h-4 w-4" />
+              Pagar (Tesouraria)
+            </Button>
+          </template>
+          <template v-if="requestDetail.is_cancellable && authStore.can('daily-requests.cancel')">
+            <Button
+              type="button"
+              variant="outline"
+              class="inline-flex items-center gap-2 text-red-700 border-red-200 hover:bg-red-50"
+              :loading="actionLoading === 'cancel'"
+              @click="doCancel"
+            >
+              <XMarkIcon class="h-4 w-4" />
+              Indeferir
+            </Button>
+          </template>
+          <p v-if="!hasAnySignatureAction" class="text-sm text-slate-500">
+            Nenhuma ação de assinatura disponível para você nesta solicitação.
+          </p>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t">
         <Button type="button" variant="outline" @click="$router.push({ name: 'daily-requests.index' })">
@@ -174,6 +231,28 @@
         <Button type="submit" :loading="saving">
           {{ isEdit ? 'Atualizar solicitação' : 'Enviar solicitação' }}
         </Button>
+      </div>
+
+      <!-- Linha do tempo (auditoria) – visível na edição -->
+      <div v-if="isEdit && route.params.id" class="mt-8 pt-6 border-t border-slate-200">
+        <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <ClockIcon class="h-5 w-5 text-slate-500" />
+          Linha do tempo
+        </h3>
+        <div v-if="timelineLoading" class="text-sm text-slate-500">Carregando...</div>
+        <ul v-else-if="timeline.length" class="space-y-3">
+          <li
+            v-for="log in timeline"
+            :key="log.id"
+            class="flex gap-3 text-sm"
+          >
+            <span class="shrink-0 text-slate-500">{{ formatTimelineDate(log.created_at) }}</span>
+            <span class="font-medium text-slate-800">{{ log.action_label }}</span>
+            <span v-if="log.user_name" class="text-slate-600">– {{ log.user_name }}</span>
+            <span v-if="log.ip" class="text-slate-400 text-xs">(IP: {{ log.ip }})</span>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-slate-500">Nenhum registro na linha do tempo.</p>
       </div>
     </form>
   </div>
@@ -188,20 +267,41 @@ import { formatCurrency } from '@/utils/format'
 import Input from '@/components/Common/Input.vue'
 import Button from '@/components/Common/Button.vue'
 import SelectInput from '@/components/Common/SelectInput.vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   ArrowLeftIcon,
   UserCircleIcon,
   MapPinIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
+  ClockIcon,
+  CheckIcon,
+  BanknotesIcon,
+  XMarkIcon,
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
-const { success, error: showError } = useAlert()
+const authStore = useAuthStore()
+const { success, error: showError, confirm } = useAlert()
 const isEdit = computed(() => !!route.params.id && route.params.id !== 'create')
 const loading = ref(false)
 const saving = ref(false)
+const actionLoading = ref(null)
+const requestDetail = ref(null)
+const timeline = ref([])
+const timelineLoading = ref(false)
+
+const hasAnySignatureAction = computed(() => {
+  if (!requestDetail.value) return false
+  const r = requestDetail.value
+  return (
+    (r.status === 'requested' && authStore.can('daily-requests.validate')) ||
+    (r.status === 'validated' && authStore.can('daily-requests.authorize')) ||
+    (r.status === 'authorized' && authStore.can('daily-requests.pay')) ||
+    (r.is_cancellable && authStore.can('daily-requests.cancel'))
+  )
+})
 
 const form = ref({
   servant_id: null,
@@ -286,6 +386,7 @@ async function loadRequest() {
   try {
     const { data } = await api.get(`/daily-requests/${route.params.id}`)
     const r = data?.data ?? data
+    requestDetail.value = r
     form.value = {
       servant_id: r.servant_id ?? null,
       destination_type: r.destination_type ?? '',
@@ -296,11 +397,89 @@ async function loadRequest() {
       quantity_days: Number(r.quantity_days) ?? 1,
       reason: r.reason ?? '',
     }
+    if (isEdit.value) fetchTimeline()
   } catch (e) {
     showError('Erro', 'Não foi possível carregar a solicitação.')
     router.push({ name: 'daily-requests.index' })
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchTimeline() {
+  if (!route.params.id || route.params.id === 'create') return
+  timelineLoading.value = true
+  try {
+    const { data } = await api.get(`/daily-requests/${route.params.id}/timeline`)
+    timeline.value = data?.data ?? data ?? []
+  } catch {
+    timeline.value = []
+  } finally {
+    timelineLoading.value = false
+  }
+}
+
+function formatTimelineDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+async function doValidate() {
+  if (!route.params.id) return
+  actionLoading.value = 'validate'
+  try {
+    await api.post(`/daily-requests/${route.params.id}/validate`)
+    success('Sucesso', 'Solicitação validada.')
+    await loadRequest()
+  } catch (err) {
+    showError('Erro', err.response?.data?.message || 'Não foi possível validar.')
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+async function doAuthorize() {
+  if (!route.params.id) return
+  actionLoading.value = 'authorize'
+  try {
+    await api.post(`/daily-requests/${route.params.id}/authorize`)
+    success('Sucesso', 'Solicitação concedida.')
+    await loadRequest()
+  } catch (err) {
+    showError('Erro', err.response?.data?.message || 'Não foi possível conceder.')
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+async function doPay() {
+  if (!route.params.id) return
+  actionLoading.value = 'pay'
+  try {
+    await api.post(`/daily-requests/${route.params.id}/pay`)
+    success('Sucesso', 'Pagamento registrado.')
+    await loadRequest()
+  } catch (err) {
+    showError('Erro', err.response?.data?.message || 'Não foi possível registrar o pagamento.')
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+async function doCancel() {
+  if (!route.params.id) return
+  const ok = await confirm('Indeferir solicitação', 'Deseja realmente indeferir/cancelar esta solicitação?')
+  if (!ok) return
+  actionLoading.value = 'cancel'
+  try {
+    await api.post(`/daily-requests/${route.params.id}/cancel`)
+    success('Sucesso', 'Solicitação indeferida.')
+    await loadRequest()
+  } catch (err) {
+    showError('Erro', err.response?.data?.message || 'Não foi possível indeferir.')
+  } finally {
+    actionLoading.value = null
   }
 }
 

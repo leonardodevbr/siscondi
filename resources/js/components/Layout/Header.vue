@@ -1,5 +1,6 @@
 <script setup>
 import UserMenu from '@/components/Common/UserMenu.vue';
+import NotificationsPanel from '@/components/Layout/NotificationsPanel.vue';
 
 const props = defineProps({
   userName: {
@@ -38,7 +39,8 @@ const emit = defineEmits(['toggleSidebar', 'logout']);
       </button>
     </div>
 
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2">
+      <NotificationsPanel />
       <UserMenu :user-name="props.userName" @logout="emit('logout')" />
     </div>
   </header>
