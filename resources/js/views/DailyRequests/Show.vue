@@ -166,23 +166,47 @@
 
       <!-- Linha do tempo -->
       <div class="mt-8 pt-6 border-t border-slate-200">
-        <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <h3 class="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2">
           <ClockIcon class="h-5 w-5 text-slate-500" />
           Linha do tempo
         </h3>
         <div v-if="timelineLoading" class="text-sm text-slate-500">Carregando...</div>
-        <ul v-else-if="timeline.length" class="space-y-3">
-          <li
-            v-for="log in timeline"
+        <div v-else-if="timeline.length" class="relative pl-8">
+          <!-- Linha vertical -->
+          <div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-200" />
+          <div
+            v-for="(log, index) in timeline"
             :key="log.id"
-            class="flex gap-3 text-sm"
+            class="relative flex gap-4 mb-8 last:mb-0"
           >
-            <span class="shrink-0 text-slate-500">{{ formatTimelineDate(log.created_at) }}</span>
-            <span class="font-medium text-slate-800">{{ log.action_label }}</span>
-            <span v-if="log.user_name" class="text-slate-600">– {{ log.user_name }}</span>
-            <span v-if="log.ip" class="text-slate-400 text-xs">(IP: {{ log.ip }})</span>
-          </li>
-        </ul>
+            <!-- Ponto -->
+            <div
+              class="absolute left-0 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center shrink-0"
+              :class="index === 0 ? 'border-blue-500 bg-blue-50' : ''"
+            >
+              <div
+                class="w-2 h-2 rounded-full"
+                :class="index === 0 ? 'bg-blue-500' : 'bg-slate-400'"
+              />
+            </div>
+            <!-- Conteúdo agrupado -->
+            <div class="flex-1 min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 p-4 shadow-sm">
+              <div class="mb-2">
+                <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ formatTimelineDate(log.created_at) }}</span>
+              </div>
+              <p class="font-semibold text-slate-800 mb-3">{{ log.action_label }}</p>
+              <div class="space-y-1 text-sm">
+                <p v-if="log.user_name" class="text-slate-700">
+                  <span class="text-slate-500 font-medium">Responsável:</span> {{ log.user_name }}
+                </p>
+                <p v-if="log.ip" class="text-slate-500 text-xs">
+                  <span class="font-medium">IP:</span> {{ log.ip }}
+                </p>
+              </div>
+              <p v-if="log.metadata?.description" class="mt-3 pt-3 border-t border-slate-200 text-sm text-slate-600 italic">{{ log.metadata.description }}</p>
+            </div>
+          </div>
+        </div>
         <p v-else class="text-sm text-slate-500">Nenhum registro na linha do tempo.</p>
       </div>
     </div>

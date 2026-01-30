@@ -405,7 +405,8 @@ class DailyRequestController extends Controller
         $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
 
-        if (! $dailyRequest->status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
+        $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
+        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser validada no status atual.',
             ], 422);
@@ -438,7 +439,8 @@ class DailyRequestController extends Controller
         $this->authorize('daily-requests.authorize');
         $this->ensureCanAccess($dailyRequest);
 
-        if (! $dailyRequest->status->canTransitionTo(DailyRequestStatus::AUTHORIZED)) {
+        $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
+        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::AUTHORIZED)) {
             return response()->json([
                 'message' => 'Esta solicitação não pode ser autorizada no status atual.',
             ], 422);
@@ -483,10 +485,15 @@ class DailyRequestController extends Controller
             $rawStatus = $dailyRequest->getRawOriginal('status');
             $status = is_string($rawStatus) ? DailyRequestStatus::tryFrom($rawStatus) : null;
         }
+        if ($status === null && $dailyRequest->authorized_at) {
+            $dailyRequest->status = DailyRequestStatus::AUTHORIZED;
+            $dailyRequest->save();
+            $status = DailyRequestStatus::AUTHORIZED;
+        }
         if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::PAID)) {
             return response()->json([
                 'message' => $status === null
-                    ? 'Status da solicitação inválido ou inexistente. Valor no banco: ' . ($dailyRequest->getRawOriginal('status') ?? 'null')
+                    ? 'Status da solicitação inválido ou inexistente. Verifique se a solicitação foi concedida pelo prefeito.'
                     : 'Esta solicitação não pode ser paga no status atual.',
             ], 422);
         }
