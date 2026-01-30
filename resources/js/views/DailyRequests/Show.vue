@@ -270,11 +270,11 @@
                 <dt class="text-slate-500">Período</dt>
                 <dd class="font-medium text-slate-800">{{ formatDate(request.departure_date) }} a {{ formatDate(request.return_date) }}</dd>
               </div>
-              <div class="flex justify-between items-baseline gap-2">
+              <div>
                 <dt class="text-slate-500">Quantidade de diárias</dt>
                 <dd class="font-medium text-slate-800">{{ formatQuantityDays(request.quantity_days) }}</dd>
               </div>
-              <div class="flex justify-between items-baseline gap-2">
+              <div>
                 <dt class="text-slate-500">Valor total</dt>
                 <dd class="font-semibold text-slate-800">{{ formatCurrency(request.total_value) }}</dd>
               </div>
@@ -288,11 +288,11 @@
           <!-- Preview da assinatura do usuário logado (quando tiver imagem cadastrada) -->
           <div class="rounded-lg border border-slate-200 p-3 bg-slate-50/80">
             <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Sua assinatura</p>
-            <div v-if="authStore.user?.signature_url" class="flex items-center gap-3">
+            <div v-if="authStore.user?.signature_url" class="flex items-center flex-col gap-3">
               <img
                 :src="authStore.user.signature_url"
                 alt="Sua assinatura"
-                class="max-h-16 object-contain border border-slate-100 rounded"
+                class="max-h-16 object-contain bg-white p-1 w-full border border-slate-100 rounded"
               />
               <p class="text-xs text-slate-500">Esta imagem será registrada no documento ao confirmar.</p>
             </div>
