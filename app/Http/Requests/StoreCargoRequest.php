@@ -22,7 +22,7 @@ class StoreCargoRequest extends FormRequest
             'municipality_id' => ['nullable', 'integer', 'exists:municipalities,id'],
             'name' => ['required', 'string', 'max:255'],
             'symbol' => ['required', 'string', 'max:50'],
-            'role' => ['nullable', 'string', 'max:50', 'in:admin,requester,validator,authorizer,payer,super-admin'],
+            'role' => ['nullable', 'string', 'max:50', 'in:admin,requester,validator,authorizer,payer,beneficiary,super-admin'],
         ];
     }
 }

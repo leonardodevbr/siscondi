@@ -7,9 +7,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreServantRequest;
 use App\Http\Requests\UpdateServantRequest;
 use App\Http\Resources\ServantResource;
+use App\Models\Department;
 use App\Models\Servant;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ServantController extends Controller
 {
@@ -58,9 +61,36 @@ class ServantController extends Controller
     {
         $data = $request->validated();
         $cargoIds = $data['cargo_ids'] ?? [];
-        unset($data['cargo_ids']);
-        $servant = Servant::create($data);
-        $servant->cargos()->sync($cargoIds);
+        $password = $data['password'] ?? null;
+        unset($data['cargo_ids'], $data['password']);
+
+        $servant = DB::transaction(function () use ($data, $cargoIds, $password): Servant {
+            $userId = null;
+            if (! empty($data['email']) && $password !== null) {
+                $department = Department::find($data['department_id']);
+                $municipalityId = $department?->municipality_id;
+
+                $newUser = User::query()->create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => $password,
+                    'municipality_id' => $municipalityId,
+                ]);
+                $newUser->syncRoles(['beneficiary']);
+                if ($data['department_id']) {
+                    $newUser->departments()->attach($data['department_id'], ['is_primary' => true]);
+                    $newUser->update(['primary_department_id' => $data['department_id']]);
+                }
+                $userId = $newUser->id;
+            }
+
+            $data['user_id'] = $userId;
+            $servant = Servant::create($data);
+            $servant->cargos()->sync($cargoIds);
+
+            return $servant;
+        });
+
         $servant->load(['legislationItem', 'department', 'user', 'cargos']);
 
         return response()->json(new ServantResource($servant), 201);
@@ -82,6 +112,14 @@ class ServantController extends Controller
         $data = $request->validated();
         $cargoIds = $data['cargo_ids'] ?? null;
         unset($data['cargo_ids']);
+
+        if (array_key_exists('email', $data) && $servant->user_id) {
+            $user = $servant->user;
+            if ($user && $user->email !== $data['email']) {
+                $user->update(['email' => $data['email']]);
+            }
+        }
+
         $servant->update($data);
         if ($cargoIds !== null) {
             $servant->cargos()->sync($cargoIds);

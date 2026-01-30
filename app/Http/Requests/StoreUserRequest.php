@@ -30,7 +30,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', 'in:admin,requester,validator,authorizer,payer,super-admin'],
+            'roles.*' => ['string', 'in:admin,requester,validator,authorizer,payer,beneficiary,super-admin'],
             'department_ids' => ['sometimes', 'array'],
             'department_ids.*' => ['integer', 'exists:departments,id'],
             'primary_department_id' => ['sometimes', 'nullable', 'integer', 'exists:departments,id'],

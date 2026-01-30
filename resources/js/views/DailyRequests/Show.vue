@@ -171,25 +171,29 @@
           Linha do tempo
         </h3>
         <div v-if="timelineLoading" class="text-sm text-slate-500">Carregando...</div>
-        <div v-else-if="timeline.length" class="relative pl-8">
-          <!-- Linha vertical -->
-          <div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-200" />
+        <div v-else-if="timeline.length" class="flex flex-col">
           <div
             v-for="(log, index) in timeline"
             :key="log.id"
-            class="relative flex gap-4 mb-8 last:mb-0"
+            class="flex gap-3 mb-8 last:mb-0"
           >
-            <!-- Ponto -->
-            <div
-              class="absolute left-0 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center shrink-0"
-              :class="index === 0 ? 'border-blue-500 bg-blue-50' : ''"
-            >
+            <!-- Coluna esquerda: bolinha na ponta da linha + trecho da linha -->
+            <div class="relative w-7 shrink-0 flex flex-col items-center">
               <div
-                class="w-2 h-2 rounded-full"
-                :class="index === 0 ? 'bg-blue-500' : 'bg-slate-400'"
+                class="relative z-10 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center shrink-0"
+                :class="index === 0 ? 'border-blue-500 bg-blue-50' : ''"
+              >
+                <div
+                  class="w-2 h-2 rounded-full"
+                  :class="index === 0 ? 'bg-blue-500' : 'bg-slate-400'"
+                />
+              </div>
+              <div
+                v-if="index < timeline.length - 1"
+                class="w-0.5 flex-1 min-h-4 bg-slate-200"
               />
             </div>
-            <!-- Conteúdo agrupado -->
+            <!-- Card à direita da linha -->
             <div class="flex-1 min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 p-4 shadow-sm">
               <div class="mb-2">
                 <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ formatTimelineDate(log.created_at) }}</span>

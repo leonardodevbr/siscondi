@@ -93,14 +93,22 @@ const saving = ref(false)
 
 const isSuperAdmin = computed(() => authStore.hasRole('super-admin'))
 
-const roleOptions = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'requester', label: 'Requerente' },
-  { value: 'validator', label: 'Validador' },
-  { value: 'authorizer', label: 'Concedente' },
-  { value: 'payer', label: 'Pagador' },
-  { value: 'super-admin', label: 'Super Admin' },
-]
+const roles = ref([])
+const roleLabels = {
+  admin: 'Administrador',
+  requester: 'Requerente',
+  validator: 'Validador',
+  authorizer: 'Concedente',
+  payer: 'Pagador',
+  beneficiary: 'Beneficiário',
+  'super-admin': 'Super Admin',
+}
+const roleOptions = computed(() =>
+  (roles.value || []).map((r) => ({
+    value: r.name,
+    label: roleLabels[r.name] ?? r.name,
+  }))
+)
 
 const form = ref({
   name: '',
@@ -117,10 +125,14 @@ const municipalityOptions = computed(() =>
 
 const fetchData = async () => {
   try {
+    const [municipalitiesRes, rolesRes] = await Promise.all([
+      isSuperAdmin.value ? api.get('/municipalities?all=1') : Promise.resolve({ data: {} }),
+      api.get('/config/roles'),
+    ])
     if (isSuperAdmin.value) {
-      const { data } = await api.get('/municipalities?all=1')
-      municipalities.value = data?.data ?? data ?? []
+      municipalities.value = municipalitiesRes.data?.data ?? municipalitiesRes.data ?? []
     }
+    roles.value = rolesRes.data?.data ?? rolesRes.data ?? []
   } catch (e) {
     console.error(e)
   }
@@ -134,6 +146,7 @@ const fetchCargo = async () => {
       symbol: payload.symbol ?? '',
       name: payload.name ?? '',
       municipality_id: payload.municipality_id ?? null,
+      role: payload.role ?? null,
       legislation_item_ids: payload.legislation_item_ids ?? []
     }
   } catch (e) {

@@ -152,6 +152,18 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.export',
         ]);
 
+        // ========================================
+        // ROLE: BENEFICIARY (Beneficiário de diárias)
+        // Usuário gerado para um servidor: pode acessar o sistema mas não pode criar
+        // solicitações para si mesmo (apenas recebe diárias; outro usuário solicita por ele).
+        // ========================================
+        $beneficiaryRole = Role::firstOrCreate(['name' => 'beneficiary']);
+        $beneficiaryRole->syncPermissions([
+            'daily-requests.view',
+            'servants.view',
+            'departments.view',
+        ]);
+
         // Super Admin: acesso total (igual admin, para compatibilidade)
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdminRole->syncPermissions(Permission::all());

@@ -137,6 +137,31 @@
           <Input v-model="form.phone" label="Telefone" placeholder="(00) 00000-0000" />
         </div>
 
+        <!-- Senha apenas no cadastro: gera usuário de acesso com o mesmo e-mail -->
+        <template v-if="!isEdit">
+          <div>
+            <Input
+              v-model="form.password"
+              label="Senha (acesso ao sistema)"
+              type="password"
+              :required="!!form.email"
+              autocomplete="new-password"
+              placeholder="Preencha se quiser criar usuário de acesso"
+            />
+            <p class="mt-1 text-xs text-slate-500">Se o e-mail for preenchido, um usuário será criado com este e-mail e esta senha.</p>
+          </div>
+          <div>
+            <Input
+              v-model="form.password_confirmation"
+              label="Confirmação da Senha"
+              type="password"
+              :required="!!form.email"
+              autocomplete="new-password"
+              placeholder="Repita a senha"
+            />
+          </div>
+        </template>
+
         <div class="lg:col-span-2 pt-2">
           <Toggle v-model="form.is_active" label="Servidor Ativo" />
         </div>
@@ -248,6 +273,8 @@ const form = ref({
   account_type: null,
   email: '',
   phone: '',
+  password: '',
+  password_confirmation: '',
   is_active: true
 })
 
@@ -286,6 +313,7 @@ const roleLabels = {
   validator: 'Validador',
   authorizer: 'Concedente',
   payer: 'Pagador',
+  beneficiary: 'Beneficiário',
   'super-admin': 'Super Admin',
 }
 
@@ -325,6 +353,8 @@ const handleSubmit = async () => {
     payload.cpf = (form.value.cpf || '').replace(/\D/g, '').slice(0, 11)
     payload.cargo_ids = form.value.cargo_ids || []
     if (isEdit.value) {
+      delete payload.password
+      delete payload.password_confirmation
       await api.put(`/servants/${route.params.id}`, payload)
     } else {
       await api.post('/servants', payload)

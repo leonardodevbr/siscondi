@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class StoreServantRequest extends FormRequest
 {
@@ -31,9 +32,10 @@ class StoreServantRequest extends FormRequest
             'agency_number' => ['nullable', 'string', 'max:10'],
             'account_number' => ['nullable', 'string', 'max:20'],
             'account_type' => ['nullable', 'in:corrente,poupanca'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
+            'password' => ['required_with:email', 'nullable', 'string', 'confirmed', Password::defaults()],
             'cargo_ids' => ['required', 'array', 'min:1'],
             'cargo_ids.*' => ['integer', 'exists:cargos,id'],
         ];

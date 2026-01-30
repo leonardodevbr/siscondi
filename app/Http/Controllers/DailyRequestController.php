@@ -187,6 +187,18 @@ class DailyRequestController extends Controller
     public function store(StoreDailyRequestRequest $request): JsonResponse
     {
         $servant = Servant::with('cargos.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
+        $user = auth()->user();
+
+        // Usuário pode criar solicitação para si mesmo (servidor vinculado a ele) apenas se não for só beneficiário
+        if ($user && $user->servant && (int) $user->servant->id === (int) $request->servant_id) {
+            $roles = $user->getRoleNames();
+            if ($roles->count() === 1 && $roles->contains('beneficiary')) {
+                return response()->json([
+                    'message' => 'Beneficiários não podem criar solicitação para si mesmos. Peça a outro usuário (requerente, secretário, etc.) para criar a solicitação por você.',
+                ], 422);
+            }
+        }
+
         $effectiveItem = $servant->getEffectiveLegislationItem();
         if (! $effectiveItem) {
             return response()->json([

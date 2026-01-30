@@ -178,7 +178,7 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $user = $this->departmentScope()->with('roles', 'departments')->findOrFail((int) $id);
+        $user = $this->departmentScope()->with('roles', 'departments', 'servant')->findOrFail((int) $id);
 
         $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin']);
         if ($request->filled('password')) {
@@ -226,6 +226,10 @@ class UserController extends Controller
                 $user->syncRoles($data['roles']);
             }
             $user->update($payload);
+
+            if (array_key_exists('email', $payload) && $user->servant) {
+                $user->servant->update(['email' => $payload['email']]);
+            }
         });
 
         if ($request->hasFile('signature')) {

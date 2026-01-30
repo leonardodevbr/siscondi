@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Models\Servant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,20 +20,31 @@ class UpdateServantRequest extends FormRequest
      */
     public function rules(): array
     {
+        $servantId = $this->route('servant');
+        $linkedUserId = is_numeric($servantId)
+            ? Servant::query()->whereKey($servantId)->value('user_id')
+            : null;
+
         return [
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'legislation_item_id' => ['sometimes', 'nullable', 'exists:legislation_items,id'],
             'department_id' => ['sometimes', 'exists:departments,id'],
             'name' => ['sometimes', 'string', 'max:255'],
-            'cpf' => ['sometimes', 'string', 'size:11', Rule::unique('servants', 'cpf')->ignore($this->servant)],
+            'cpf' => ['sometimes', 'string', 'size:11', Rule::unique('servants', 'cpf')->ignore($servantId)],
             'rg' => ['sometimes', 'string', 'max:20'],
             'organ_expeditor' => ['sometimes', 'string', 'max:20'],
-            'matricula' => ['sometimes', 'string', 'max:50', Rule::unique('servants', 'matricula')->ignore($this->servant)],
+            'matricula' => ['sometimes', 'string', 'max:50', Rule::unique('servants', 'matricula')->ignore($servantId)],
             'bank_name' => ['sometimes', 'nullable', 'string', 'max:100'],
             'agency_number' => ['sometimes', 'nullable', 'string', 'max:10'],
             'account_number' => ['sometimes', 'nullable', 'string', 'max:20'],
             'account_type' => ['sometimes', 'nullable', 'in:corrente,poupanca'],
-            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'email' => [
+                'sometimes',
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($linkedUserId),
+            ],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'is_active' => ['sometimes', 'boolean'],
             'cargo_ids' => ['sometimes', 'array', 'min:1'],

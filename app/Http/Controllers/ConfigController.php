@@ -8,9 +8,21 @@ use App\Models\Municipality;
 use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Config;
+use Spatie\Permission\Models\Role;
 
 class ConfigController extends Controller
 {
+    /**
+     * Lista todas as roles do banco para uso em selects (cargos, usuários, etc.).
+     */
+    public function roles(): JsonResponse
+    {
+        $roles = Role::query()->orderBy('name')->get(['id', 'name']);
+
+        return response()->json([
+            'data' => $roles->map(fn ($r) => ['id' => $r->id, 'name' => $r->name])->values()->all(),
+        ]);
+    }
     /**
      * Configurações públicas para o frontend (nome do sistema, dados do município).
      * Nome do sistema: settings app_name ou .env APP_NAME.

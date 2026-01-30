@@ -276,6 +276,7 @@ const roleOptions = [
   { value: 'validator', label: 'Validador' },
   { value: 'authorizer', label: 'Concedente' },
   { value: 'payer', label: 'Pagador' },
+  { value: 'beneficiary', label: 'Beneficiário (servidor com acesso)' },
   { value: 'super-admin', label: 'Super Admin' },
 ];
 
