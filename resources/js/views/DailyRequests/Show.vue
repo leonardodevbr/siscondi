@@ -116,13 +116,13 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
             class="rounded-lg border p-4 transition-colors"
-            :class="request.requester?.signature_url
+            :class="request.requester
               ? 'bg-green-50 border-green-200'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
               class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.requester?.signature_url ? 'text-green-700' : 'text-slate-500'"
+              :class="request.requester ? 'text-green-700' : 'text-slate-500'"
             >
               Requerente
             </p>
@@ -143,13 +143,13 @@
           </div>
           <div
             class="rounded-lg border p-4 transition-colors"
-            :class="request.validator?.signature_url
+            :class="request.validator
               ? 'bg-green-50 border-green-200'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
               class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.validator?.signature_url ? 'text-green-700' : 'text-slate-500'"
+              :class="request.validator ? 'text-green-700' : 'text-slate-500'"
             >
               Validador
             </p>
@@ -167,13 +167,13 @@
           </div>
           <div
             class="rounded-lg border p-4 transition-colors"
-            :class="request.authorizer?.signature_url
+            :class="request.authorizer
               ? 'bg-green-50 border-green-200'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
               class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.authorizer?.signature_url ? 'text-green-700' : 'text-slate-500'"
+              :class="request.authorizer ? 'text-green-700' : 'text-slate-500'"
             >
               Concedente
             </p>
@@ -285,14 +285,18 @@
             </dl>
           </div>
 
-          <!-- Preview da assinatura do usuário logado -->
-          <div v-if="authStore.user?.signature_url" class="rounded border border-slate-200 p-3 bg-slate-50">
+          <!-- Preview da assinatura do usuário logado (quando tiver imagem cadastrada) -->
+          <div class="rounded-lg border border-slate-200 p-3 bg-slate-50/80">
             <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Sua assinatura</p>
-            <img
-              :src="authStore.user.signature_url"
-              alt="Sua assinatura"
-              class="max-h-16 object-contain"
-            />
+            <div v-if="authStore.user?.signature_url" class="flex items-center gap-3">
+              <img
+                :src="authStore.user.signature_url"
+                alt="Sua assinatura"
+                class="max-h-16 object-contain border border-slate-100 rounded"
+              />
+              <p class="text-xs text-slate-500">Esta imagem será registrada no documento ao confirmar.</p>
+            </div>
+            <p v-else class="text-sm text-slate-500">Você não tem imagem de assinatura cadastrada. Para incluir nos documentos, cadastre em Usuários (edição do seu usuário). <router-link v-if="authStore.can('users.edit')" :to="{ name: 'users.index' }" class="text-blue-600 hover:underline">Ir para Usuários</router-link></p>
           </div>
 
           <!-- Senha e PIN quando o usuário tem cadastrado -->

@@ -38,6 +38,7 @@ const fetchStats = async () => {
 
 const goToNewRequest = () => router.push('/daily-requests/create');
 const goToRequests = () => router.push('/daily-requests');
+const goToRequestsByStatus = (status) => router.push({ path: '/daily-requests', query: { status } });
 const goToServants = () => router.push('/servants');
 const goToLegislations = () => router.push('/legislations');
 
@@ -95,30 +96,30 @@ onMounted(() => {
       <div class="card p-5">
         <h3 class="text-base font-semibold text-slate-800 mb-4">Solicitações por Status</h3>
         <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <div class="text-center p-3 bg-gray-50 rounded">
+          <button type="button" @click="goToRequestsByStatus('draft')" class="text-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-gray-600">{{ stats.requests_by_status?.draft || 0 }}</p>
             <p class="text-xs text-gray-600 mt-1">Rascunho</p>
-          </div>
-          <div class="text-center p-3 bg-blue-50 rounded">
+          </button>
+          <button type="button" @click="goToRequestsByStatus('requested')" class="text-center p-3 bg-blue-50 rounded hover:bg-blue-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-blue-600">{{ stats.requests_by_status?.requested || 0 }}</p>
             <p class="text-xs text-blue-600 mt-1">Solicitado</p>
-          </div>
-          <div class="text-center p-3 bg-yellow-50 rounded">
+          </button>
+          <button type="button" @click="goToRequestsByStatus('validated')" class="text-center p-3 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-yellow-600">{{ stats.requests_by_status?.validated || 0 }}</p>
             <p class="text-xs text-yellow-600 mt-1">Validado</p>
-          </div>
-          <div class="text-center p-3 bg-green-50 rounded">
+          </button>
+          <button type="button" @click="goToRequestsByStatus('authorized')" class="text-center p-3 bg-green-50 rounded hover:bg-green-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-green-600">{{ stats.requests_by_status?.authorized || 0 }}</p>
             <p class="text-xs text-green-600 mt-1">Concedido</p>
-          </div>
-          <div class="text-center p-3 bg-purple-50 rounded">
+          </button>
+          <button type="button" @click="goToRequestsByStatus('paid')" class="text-center p-3 bg-purple-50 rounded hover:bg-purple-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-purple-600">{{ stats.requests_by_status?.paid || 0 }}</p>
             <p class="text-xs text-purple-600 mt-1">Pago</p>
-          </div>
-          <div class="text-center p-3 bg-red-50 rounded">
+          </button>
+          <button type="button" @click="goToRequestsByStatus('cancelled')" class="text-center p-3 bg-red-50 rounded hover:bg-red-100 transition-colors cursor-pointer">
             <p class="text-2xl font-bold text-red-600">{{ stats.requests_by_status?.cancelled || 0 }}</p>
             <p class="text-xs text-red-600 mt-1">Cancelado</p>
-          </div>
+          </button>
         </div>
       </div>
 

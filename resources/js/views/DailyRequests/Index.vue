@@ -89,8 +89,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useAlert } from '@/composables/useAlert'
@@ -102,10 +102,11 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { error: showError } = useAlert()
 const requests = ref([])
-const filters = ref({ status: '' })
+const filters = ref({ status: route.query.status || '' })
 
 const fetchRequests = async () => {
   try {
@@ -149,7 +150,20 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString('pt-BR')
 }
 
+const applyQueryFilter = () => {
+  const status = route.query.status
+  if (status && filters.value.status !== status) {
+    filters.value.status = status
+  }
+}
+
 onMounted(() => {
+  applyQueryFilter()
+  fetchRequests()
+})
+
+watch(() => route.query.status, (newStatus) => {
+  filters.value.status = newStatus || ''
   fetchRequests()
 })
 </script>
