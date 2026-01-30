@@ -21,23 +21,24 @@
         .page {
             width: 210mm;
             min-height: 297mm;
+            max-height: 297mm;
             margin: 0 auto;
-            padding: 15mm 15mm;
+            padding: 10mm 12mm;
             background: #fff;
         }
         
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-bottom: 8pt;
+            margin-bottom: 4pt;
         }
         
         td { 
-            padding: 5pt 8pt; 
+            padding: 3pt 6pt; 
             vertical-align: top; 
             border: 1px solid #000; 
             font-size: 10pt;
-            line-height: 1.3;
+            line-height: 1.25;
         }
         
         .no-border {
@@ -121,13 +122,15 @@
             text-align: center;
         }
         
-        .subsection-title {
-            background: #e8e8e8;
-            color: #000;
+        /* Label de assinatura: uma linha apenas */
+        .signature-label {
             font-weight: bold;
             font-size: 10pt;
-            padding: 4pt 8pt;
-            text-align: center;
+            padding: 2pt 6pt;
+            vertical-align: middle;
+            line-height: 1.2;
+            width: 1%;
+            white-space: nowrap;
         }
         
         /* Larguras específicas */
@@ -142,11 +145,11 @@
         .w-50 { width: 50%; }
         .w-60 { width: 60%; }
         
-        /* Linha de assinatura */
+        /* Linha de assinatura - compacta para caber em 1 página */
         .signature-line {
             border-top: 1px solid #000;
-            margin-top: 30pt;
-            padding-top: 3pt;
+            margin-top: 10pt;
+            padding-top: 2pt;
             text-align: center;
             font-size: 9pt;
         }
@@ -154,12 +157,12 @@
         .signature-name {
             text-align: center;
             font-size: 9pt;
-            margin-top: 2pt;
+            margin-top: 1pt;
         }
         
         /* Imagem de assinatura */
         img.signature-img { 
-            max-height: 32px; 
+            max-height: 28px; 
             display: block;
             margin: 0 auto;
         }
@@ -193,7 +196,9 @@
         <!-- Linha 1: Brasão | Dados | Logo -->
         <tr>
             <td class="header-logo">
-                @if(!empty($municipality_logo_url))
+                @if(!empty($municipality_logo_data))
+                    <img src="{{ $municipality_logo_data }}" alt="Brasão">
+                @elseif(!empty($municipality_logo_url))
                     <img src="{{ $municipality_logo_url }}" alt="Brasão">
                 @endif
             </td>
@@ -206,7 +211,9 @@
                 <div>EMAIL: {{ $department?->email ?? 'social@cafarnaum.ba.gov.br' }}</div>
             </td>
             <td class="header-year">
-                @if(!empty($department_logo_url))
+                @if(!empty($department_logo_data))
+                    <img src="{{ $department_logo_data }}" alt="Logo Secretaria">
+                @elseif(!empty($department_logo_url))
                     <img src="{{ $department_logo_url }}" alt="Logo Secretaria">
                 @endif
             </td>
@@ -240,29 +247,29 @@
                 <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} - Ba, {{ $dailyRequest->authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
             </td>
         </tr>
-        <!-- Linha 3: Responsável (centralizado) e Assinatura Autorizador -->
+        <!-- 1ª assinatura: Responsável pela solicitação (quem REQUEREU) — uma linha -->
         <tr>
-            <td class="subsection-title">Responsável pela solicitação:</td>
-            <td style="vertical-align: top; padding-top: 25pt;">
-                @if(!empty($authorizer_signature_url))
-                    <div class="signature-line"><img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img"></div>
-                @else
-                    <div class="signature-line">{{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}</div>
-                @endif
-                <div class="signature-name">{{ strtoupper($dailyRequest->authorizer?->role ?? 'SECRETÁRIO DE ASSISTÊNCIA SOCIAL') }}</div>
-            </td>
-        </tr>
-        <!-- Linha 4: Assinatura do responsável -->
-        <tr>
-            <td style="vertical-align: top; padding-top: 25pt;">
+            <td class="signature-label">Responsável pela solicitação:</td>
+            <td style="vertical-align: middle; padding: 2pt 6pt;">
                 @if(!empty($requester_signature_url))
                     <div class="signature-line"><img src="{{ $requester_signature_url }}" alt="Assinatura" class="signature-img"></div>
                 @else
                     <div class="signature-line">{{ strtoupper($dailyRequest->requester?->name ?? '–') }}</div>
                 @endif
-                <div class="signature-name">{{ strtoupper($dailyRequest->requester?->role ?? 'SECRETÁRIO') }}</div>
+                <div class="signature-name">{{ strtoupper($dailyRequest->requester?->cargo?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}</div>
             </td>
-            <td></td>
+        </tr>
+        <!-- 2ª assinatura: Secretário (Autorização de concessão) -->
+        <tr>
+            <td class="signature-label">Autorização de concessão:</td>
+            <td style="vertical-align: middle; padding: 2pt 6pt;">
+                @if(!empty($validator_signature_url))
+                    <div class="signature-line"><img src="{{ $validator_signature_url }}" alt="Assinatura" class="signature-img"></div>
+                @else
+                    <div class="signature-line">{{ strtoupper($dailyRequest->validator?->name ?? '–') }}</div>
+                @endif
+                <div class="signature-name">{{ strtoupper($dailyRequest->validator?->cargo?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO') }}</div>
+            </td>
         </tr>
     </table>
 
@@ -337,25 +344,25 @@
             <td class="w-50 section-title">AUTORIZAÇÃO DE PAGAMENTO</td>
             <td class="w-50 section-title">DECLARAÇÃO DO SERVIDOR</td>
         </tr>
-        <!-- Linha 2: Conteúdo -->
+        <!-- Linha 2: Conteúdo - 3ª assinatura Prefeito | 4ª assinatura Beneficiário (física no impresso) -->
         <tr>
             <td style="vertical-align: top;">
                 <div>Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
-                <div style="margin-top: 6pt;">{{ $municipality?->name ?? 'Cafarnaum' }} – Ba, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
-                <div style="margin-top: 25pt;">
-                    @if(!empty($payer_signature_url))
-                        <div class="signature-line"><img src="{{ $payer_signature_url }}" alt="Assinatura" class="signature-img"></div>
+                <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} – Ba, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
+                <div style="margin-top: 10pt;">
+                    @if(!empty($authorizer_signature_url))
+                        <div class="signature-line"><img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img"></div>
                     @else
-                        <div class="signature-line">{{ strtoupper($dailyRequest->payer?->name ?? '–') }}</div>
+                        <div class="signature-line">{{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}</div>
                     @endif
                     <div class="signature-name">PREFEITO</div>
                 </div>
             </td>
             <td style="vertical-align: top;">
                 <div>Declaro para os devidos fins, que estarei afastado(a) do Município de {{ $municipality?->name ?? 'Cafarnaum' }}, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
-                <div style="margin-top: 25pt;">
-                    <div class="signature-line">{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</div>
-                    <div class="signature-name">SERVIDOR(A)</div>
+                <div style="margin-top: 10pt;">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">{{ strtoupper($dailyRequest->servant?->name ?? '–') }} — SERVIDOR(A) (assinatura física no impresso)</div>
                 </div>
             </td>
         </tr>

@@ -97,28 +97,78 @@
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatCurrency(request.total_value) }}</p>
         </div>
 
-        <!-- Motivo -->
-        <div class="lg:col-span-2 border-t border-slate-200 pt-6">
-          <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <DocumentTextIcon class="h-5 w-5 text-slate-500" />
-            Motivo da viagem
-          </h3>
-          <p class="text-slate-700 whitespace-pre-wrap">{{ request.reason || '—' }}</p>
+        <!-- Motivo (uma linha quando possível) -->
+        <div class="lg:col-span-2 border-t border-slate-200 pt-4">
+          <p class="text-sm text-slate-700">
+            <span class="font-medium text-slate-800">Motivo da viagem:</span>
+            {{ request.reason || '—' }}
+          </p>
         </div>
       </div>
 
-      <!-- Assinaturas (conforme usuário logado) -->
+      <!-- Assinaturas: detalhes de quem assinou + ações -->
       <div class="mt-8 pt-6 border-t border-slate-200">
         <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
           Assinaturas
         </h3>
+
+        <!-- Resumo das três assinaturas: Requerente, Validador (Secretário), Concedente (Prefeito). Tesouraria só dá baixa e registra na linha do tempo, sem assinatura. -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Requerente</p>
+            <template v-if="request.requester">
+              <p class="font-medium text-slate-800">{{ request.requester.name }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
+              <img
+                v-if="request.requester.signature_url"
+                :src="request.requester.signature_url"
+                alt="Assinatura do requerente"
+                class="mt-2 max-h-14 object-contain"
+              />
+            </template>
+            <template v-else>
+              <p class="text-sm text-slate-500">—</p>
+              <p v-if="request.created_at" class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
+            </template>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Validador (Secretário)</p>
+            <template v-if="request.validator">
+              <p class="font-medium text-slate-800">{{ request.validator.name }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.validated_at) }}</p>
+              <img
+                v-if="request.validator.signature_url"
+                :src="request.validator.signature_url"
+                alt="Assinatura do validador"
+                class="mt-2 max-h-14 object-contain"
+              />
+            </template>
+            <p v-else class="text-sm text-slate-500">Pendente</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Concedente (Prefeito)</p>
+            <template v-if="request.authorizer">
+              <p class="font-medium text-slate-800">{{ request.authorizer.name }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.authorized_at) }}</p>
+              <img
+                v-if="request.authorizer.signature_url"
+                :src="request.authorizer.signature_url"
+                alt="Assinatura do concedente"
+                class="mt-2 max-h-14 object-contain"
+              />
+            </template>
+            <p v-else class="text-sm text-slate-500">Pendente</p>
+          </div>
+        </div>
+
+        <!-- Ações de assinatura -->
         <div class="flex flex-wrap gap-2">
           <template v-if="request.status === 'requested' && authStore.can('daily-requests.validate')">
             <Button
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'validate'"
-              @click="doValidate"
+              @click="openSignModal('validate')"
             >
               <CheckIcon class="h-4 w-4" />
               Validar (Secretário)
@@ -129,7 +179,7 @@
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'authorize'"
-              @click="doAuthorize"
+              @click="openSignModal('authorize')"
             >
               <CheckIcon class="h-4 w-4" />
               Conceder (Prefeito)
@@ -140,7 +190,7 @@
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'pay'"
-              @click="doPay"
+              @click="openSignModal('pay')"
             >
               <BanknotesIcon class="h-4 w-4" />
               Pagar (Tesouraria)
@@ -163,6 +213,89 @@
           </p>
         </div>
       </div>
+
+      <!-- Modal de confirmação para assinar (senha/PIN + preview da assinatura) -->
+      <Modal
+        :is-open="signModalOpen"
+        :title="signModalTitle"
+        :closable="!actionLoading"
+        @close="closeSignModal"
+      >
+        <div class="space-y-4">
+          <p class="text-slate-600">{{ signModalSummary }}</p>
+
+          <!-- Resumo detalhado da solicitação -->
+          <div v-if="request" class="rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Resumo da solicitação</p>
+            <dl class="grid grid-cols-1 gap-2">
+              <div>
+                <dt class="text-slate-500">Servidor</dt>
+                <dd class="font-medium text-slate-800">{{ request.servant?.name ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Destino</dt>
+                <dd class="font-medium text-slate-800">{{ request.destination_type ?? '—' }} — {{ request.destination_city ?? '' }} / {{ request.destination_state ?? '' }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Período</dt>
+                <dd class="font-medium text-slate-800">{{ formatDate(request.departure_date) }} a {{ formatDate(request.return_date) }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline gap-2">
+                <dt class="text-slate-500">Quantidade de diárias</dt>
+                <dd class="font-medium text-slate-800">{{ request.quantity_days ?? '—' }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline gap-2">
+                <dt class="text-slate-500">Valor total</dt>
+                <dd class="font-semibold text-slate-800">{{ formatCurrency(request.total_value) }}</dd>
+              </div>
+              <div v-if="request.reason">
+                <dt class="text-slate-500 mb-0.5">Motivo</dt>
+                <dd class="text-slate-700 text-xs leading-relaxed line-clamp-3">{{ request.reason }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Preview da assinatura do usuário logado -->
+          <div v-if="authStore.user?.signature_url" class="rounded border border-slate-200 p-3 bg-slate-50">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Sua assinatura</p>
+            <img
+              :src="authStore.user.signature_url"
+              alt="Sua assinatura"
+              class="max-h-16 object-contain"
+            />
+          </div>
+
+          <!-- Senha e PIN quando o usuário tem cadastrado -->
+          <template v-if="authStore.user?.requires_operation_credentials_to_sign">
+            <Input
+              v-if="authStore.user?.has_operation_pin"
+              v-model="signModalPin"
+              label="PIN de autorização"
+              type="text"
+              inputmode="numeric"
+              placeholder="Informe seu PIN"
+              autocomplete="off"
+            />
+            <Input
+              v-if="authStore.user?.has_operation_password"
+              v-model="signModalPassword"
+              label="Senha de operação"
+              type="password"
+              placeholder="Informe sua senha de operação"
+              autocomplete="off"
+            />
+          </template>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" :disabled="actionLoading" @click="closeSignModal">
+              Cancelar
+            </Button>
+            <Button :loading="actionLoading" @click="confirmSign">
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <!-- Linha do tempo -->
       <div class="mt-8 pt-6 border-t border-slate-200">
@@ -224,6 +357,8 @@ import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
 import { formatCurrency } from '@/utils/format'
 import Button from '@/components/Common/Button.vue'
+import Input from '@/components/Common/Input.vue'
+import Modal from '@/components/Common/Modal.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   ArrowLeftIcon,
@@ -248,6 +383,28 @@ const request = ref(null)
 const actionLoading = ref(null)
 const timeline = ref([])
 const timelineLoading = ref(false)
+
+const signModalOpen = ref(false)
+const signModalAction = ref(null)
+const signModalPin = ref('')
+const signModalPassword = ref('')
+
+const signModalTitle = computed(() => {
+  const a = signModalAction.value
+  if (a === 'validate') return 'Confirmar validação'
+  if (a === 'authorize') return 'Confirmar concessão'
+  if (a === 'pay') return 'Confirmar pagamento'
+  return 'Confirmar'
+})
+
+const signModalSummary = computed(() => {
+  const id = request.value?.id
+  const a = signModalAction.value
+  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar (Secretário). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder (Prefeito). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento (Tesouraria). Revise os dados e confirme com sua senha/PIN se configurado.`
+  return ''
+})
 
 const hasAnySignatureAction = computed(() => {
   if (!request.value) return false
@@ -278,9 +435,70 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('pt-BR')
 }
 
+function formatDateTime(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 function formatTimelineDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function openSignModal(action) {
+  signModalAction.value = action
+  signModalPin.value = ''
+  signModalPassword.value = ''
+  signModalOpen.value = true
+}
+
+function closeSignModal() {
+  signModalOpen.value = false
+  signModalAction.value = null
+  signModalPin.value = ''
+  signModalPassword.value = ''
+}
+
+async function confirmSign() {
+  const action = signModalAction.value
+  const id = route.params.id
+  if (!id || !action) return
+
+  const needsCreds = authStore.user?.requires_operation_credentials_to_sign
+  if (needsCreds) {
+    if (authStore.user?.has_operation_pin && !signModalPin.value?.trim()) {
+      showError('Campo obrigatório', 'Informe seu PIN de autorização.')
+      return
+    }
+    if (authStore.user?.has_operation_password && !signModalPassword.value) {
+      showError('Campo obrigatório', 'Informe sua senha de operação.')
+      return
+    }
+  }
+
+  actionLoading.value = action
+  try {
+    const payload = {}
+    if (authStore.user?.has_operation_pin && signModalPin.value?.trim()) payload.operation_pin = signModalPin.value.trim()
+    if (authStore.user?.has_operation_password && signModalPassword.value) payload.operation_password = signModalPassword.value
+
+    const url = `/daily-requests/${id}/${action === 'validate' ? 'validate' : action === 'authorize' ? 'authorize' : 'pay'}`
+    await api.post(url, payload)
+
+    if (action === 'validate') success('Sucesso', 'Solicitação validada.')
+    else if (action === 'authorize') success('Sucesso', 'Solicitação concedida.')
+    else success('Sucesso', 'Pagamento registrado.')
+
+    closeSignModal()
+    await loadRequest()
+  } catch (err) {
+    const msg = err.response?.data?.message ?? err.response?.data?.errors
+      ? Object.values(err.response.data.errors).flat().join(' ')
+      : 'Não foi possível concluir a ação.'
+    showError('Erro', msg)
+  } finally {
+    actionLoading.value = null
+  }
 }
 
 async function loadRequest() {
@@ -329,50 +547,6 @@ async function openPdf() {
   }
 }
 
-async function doValidate() {
-  const id = route.params.id
-  if (!id) return
-  actionLoading.value = 'validate'
-  try {
-    await api.post(`/daily-requests/${id}/validate`)
-    success('Sucesso', 'Solicitação validada.')
-    await loadRequest()
-  } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível validar.')
-  } finally {
-    actionLoading.value = null
-  }
-}
-
-async function doAuthorize() {
-  const id = route.params.id
-  if (!id) return
-  actionLoading.value = 'authorize'
-  try {
-    await api.post(`/daily-requests/${id}/authorize`)
-    success('Sucesso', 'Solicitação concedida.')
-    await loadRequest()
-  } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível conceder.')
-  } finally {
-    actionLoading.value = null
-  }
-}
-
-async function doPay() {
-  const id = route.params.id
-  if (!id) return
-  actionLoading.value = 'pay'
-  try {
-    await api.post(`/daily-requests/${id}/pay`)
-    success('Sucesso', 'Pagamento registrado.')
-    await loadRequest()
-  } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível registrar o pagamento.')
-  } finally {
-    actionLoading.value = null
-  }
-}
 
 async function doCancel() {
   const id = route.params.id

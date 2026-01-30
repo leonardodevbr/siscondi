@@ -17,10 +17,45 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class DailyRequestController extends Controller
 {
+    /**
+     * Exige e valida senha/PIN de operação do usuário logado quando ele tem esses dados cadastrados.
+     */
+    private function ensureSignerOperationCredentials(Request $request): void
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->requiresOperationCredentialsToSign()) {
+            return;
+        }
+
+        $messages = [];
+
+        if ($user->hasOperationPin()) {
+            $pin = trim((string) $request->input('operation_pin', ''));
+            $expectedPin = $user->getRawOriginal('operation_pin') ?? $user->attributes['operation_pin'] ?? '';
+            if ($pin === '' || $pin !== (string) $expectedPin) {
+                $messages['operation_pin'] = ['PIN de autorização incorreto.'];
+            }
+        }
+
+        if ($user->hasOperationPassword()) {
+            $plain = $request->input('operation_password');
+            $stored = $user->getRawOriginal('operation_password') ?? $user->operation_password ?? null;
+            if ($plain === null || $plain === '' || ! Hash::check($plain, $stored)) {
+                $messages['operation_password'] = ['Senha de operação incorreta.'];
+            }
+        }
+
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
+        }
+    }
+
     private function ensureCanAccess(DailyRequest $dailyRequest): void
     {
         $user = auth()->user();
@@ -312,14 +347,31 @@ class DailyRequestController extends Controller
 
         $baseUrl = rtrim(config('app.url'), '/');
 
+        $logoToBase64 = function (?string $path): ?string {
+            if (! $path || ! Storage::disk('public')->exists($path)) {
+                return null;
+            }
+            $contents = Storage::disk('public')->get($path);
+            $mime = Storage::disk('public')->mimeType($path) ?: 'image/png';
+            return 'data:' . $mime . ';base64,' . base64_encode($contents);
+        };
+
         $municipalityLogoUrl = null;
+        $municipalityLogoData = null;
         if ($municipality?->logo_path && Storage::disk('public')->exists($municipality->logo_path)) {
-            $municipalityLogoUrl = $baseUrl . '/storage/' . ltrim($municipality->logo_path, '/');
+            $municipalityLogoData = $logoToBase64($municipality->logo_path);
+            if (! $municipalityLogoData) {
+                $municipalityLogoUrl = $baseUrl . '/storage/' . ltrim($municipality->logo_path, '/');
+            }
         }
 
         $departmentLogoUrl = null;
+        $departmentLogoData = null;
         if ($department?->logo_path && Storage::disk('public')->exists($department->logo_path)) {
-            $departmentLogoUrl = $baseUrl . '/storage/' . ltrim($department->logo_path, '/');
+            $departmentLogoData = $logoToBase64($department->logo_path);
+            if (! $departmentLogoData) {
+                $departmentLogoUrl = $baseUrl . '/storage/' . ltrim($department->logo_path, '/');
+            }
         }
 
         $signatureUrlFor = function (?User $u): ?string {
@@ -348,8 +400,11 @@ class DailyRequestController extends Controller
             'cargo_funcao' => trim((string) $cargoFuncao) ?: '–',
             'ano_exercicio' => (string) now()->year,
             'municipality_logo_url' => $municipalityLogoUrl,
+            'municipality_logo_data' => $municipalityLogoData,
             'department_logo_url' => $departmentLogoUrl,
+            'department_logo_data' => $departmentLogoData,
             'requester_signature_url' => $signatureUrlFor($dailyRequest->requester),
+            'validator_signature_url' => $signatureUrlFor($dailyRequest->validator),
             'authorizer_signature_url' => $signatureUrlFor($dailyRequest->authorizer),
             'payer_signature_url' => $signatureUrlFor($dailyRequest->payer),
             'cidade_uf' => $cidadeUf,
@@ -413,6 +468,8 @@ class DailyRequestController extends Controller
      */
     public function validate(Request $request, string|int $dailyRequest): JsonResponse
     {
+        $this->ensureSignerOperationCredentials($request);
+
         $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
@@ -428,6 +485,15 @@ class DailyRequestController extends Controller
         $dailyRequest->validator_id = auth()->id();
         $dailyRequest->validated_at = now();
         $dailyRequest->save();
+
+        DailyRequestLog::logAction(
+            $dailyRequest,
+            'validated',
+            (int) auth()->id(),
+            $request->ip(),
+            $request->userAgent(),
+            ['description' => 'Validado pelo secretário']
+        );
 
         $dailyRequest->load([
             'servant.legislationItem',
@@ -489,6 +555,8 @@ class DailyRequestController extends Controller
      */
     public function pay(Request $request, DailyRequest $dailyRequest): JsonResponse
     {
+        $this->ensureSignerOperationCredentials($request);
+
         $this->authorize('daily-requests.pay');
         $this->ensureCanAccess($dailyRequest);
 

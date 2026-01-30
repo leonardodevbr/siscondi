@@ -175,12 +175,21 @@ export const useAuthStore = defineStore('auth', {
       const response = await api.post('/set-primary-department', { department_id: departmentId });
       const user = response.data?.user ?? response.data;
       if (user) {
-        this.user = user;
-        window.localStorage.setItem('user', JSON.stringify(user));
+        this.user = { ...user, primary_department_id: user.primary_department_id ?? departmentId };
+        window.localStorage.setItem('user', JSON.stringify(this.user));
       }
       const appStore = useAppStore();
       if (user?.department) {
-        appStore.setDepartment({ id: user.department.id, name: user.department.name });
+        appStore.currentDepartment = { id: user.department.id, name: user.department.name };
+        window.localStorage.setItem('currentDepartment', JSON.stringify(appStore.currentDepartment));
+        window.localStorage.setItem('selected_department_id', String(user.department.id));
+      } else if (departmentId) {
+        const dept = appStore.departments?.find((d) => Number(d.id) === Number(departmentId));
+        if (dept) {
+          appStore.currentDepartment = { id: dept.id, name: dept.name };
+          window.localStorage.setItem('currentDepartment', JSON.stringify(appStore.currentDepartment));
+          window.localStorage.setItem('selected_department_id', String(departmentId));
+        }
       }
     },
   },

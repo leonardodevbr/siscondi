@@ -70,44 +70,36 @@
           </h3>
         </div>
 
-        <div>
-          <Input
-            v-model="form.destination_city"
-            label="Cidade de destino *"
-            required
-            placeholder="Ex: Salvador"
-          />
-        </div>
-
-        <div>
-          <Input
-            v-model="form.destination_state"
-            label="Estado (UF) *"
-            type="text"
-            required
-            maxlength="2"
-            placeholder="UF"
-          />
-        </div>
-
-        <div>
-          <Input
-            v-model="form.departure_date"
-            label="Data de saída *"
-            type="date"
-            required
-            @update:model-value="calculateDays"
-          />
-        </div>
-
-        <div>
-          <Input
-            v-model="form.return_date"
-            label="Data de retorno *"
-            type="date"
-            required
-            @update:model-value="calculateDays"
-          />
+        <div class="lg:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div>
+            <Input
+              v-model="form.destination_city"
+              label="Cidade de destino *"
+              required
+              placeholder="Ex: Salvador"
+            />
+          </div>
+          <div>
+            <Input
+              v-model="form.destination_state"
+              label="Estado (UF) *"
+              type="text"
+              required
+              maxlength="2"
+              placeholder="UF"
+            />
+          </div>
+          <div>
+            <DateRangePicker
+              label="Período (saída e retorno)"
+              :departure-date="form.departure_date"
+              :return-date="form.return_date"
+              required
+              placeholder="Selecione as datas de saída e retorno"
+              @update:departure-date="form.departure_date = $event; calculateDays()"
+              @update:return-date="form.return_date = $event; calculateDays()"
+            />
+          </div>
         </div>
 
         <!-- Quantidade e valor -->
@@ -177,7 +169,7 @@
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'validate'"
-              @click="doValidate"
+              @click="openSignModal('validate')"
             >
               <CheckIcon class="h-4 w-4" />
               Validar (Secretário)
@@ -188,7 +180,7 @@
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'authorize'"
-              @click="doAuthorize"
+              @click="openSignModal('authorize')"
             >
               <CheckIcon class="h-4 w-4" />
               Conceder (Prefeito)
@@ -199,7 +191,7 @@
               type="button"
               class="inline-flex items-center gap-2"
               :loading="actionLoading === 'pay'"
-              @click="doPay"
+              @click="openSignModal('pay')"
             >
               <BanknotesIcon class="h-4 w-4" />
               Pagar (Tesouraria)
@@ -295,6 +287,8 @@ import { formatCurrency } from '@/utils/format'
 import Input from '@/components/Common/Input.vue'
 import Button from '@/components/Common/Button.vue'
 import SelectInput from '@/components/Common/SelectInput.vue'
+import DateRangePicker from '@/components/Common/DateRangePicker.vue'
+import Modal from '@/components/Common/Modal.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   ArrowLeftIcon,
@@ -319,6 +313,28 @@ const actionLoading = ref(null)
 const requestDetail = ref(null)
 const timeline = ref([])
 const timelineLoading = ref(false)
+
+const signModalOpen = ref(false)
+const signModalAction = ref(null)
+const signModalPin = ref('')
+const signModalPassword = ref('')
+
+const signModalTitle = computed(() => {
+  const a = signModalAction.value
+  if (a === 'validate') return 'Confirmar validação'
+  if (a === 'authorize') return 'Confirmar concessão'
+  if (a === 'pay') return 'Confirmar pagamento'
+  return 'Confirmar'
+})
+
+const signModalSummary = computed(() => {
+  const id = route.params.id
+  const a = signModalAction.value
+  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar (Secretário). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder (Prefeito). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento (Tesouraria). Revise os dados e confirme com sua senha/PIN se configurado.`
+  return ''
+})
 
 const hasAnySignatureAction = computed(() => {
   if (!requestDetail.value) return false
@@ -458,43 +474,55 @@ function formatTimelineDate(iso) {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-async function doValidate() {
-  if (!route.params.id) return
-  actionLoading.value = 'validate'
-  try {
-    await api.post(`/daily-requests/${route.params.id}/validate`)
-    success('Sucesso', 'Solicitação validada.')
-    await loadRequest()
-  } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível validar.')
-  } finally {
-    actionLoading.value = null
-  }
+function openSignModal(action) {
+  signModalAction.value = action
+  signModalPin.value = ''
+  signModalPassword.value = ''
+  signModalOpen.value = true
 }
 
-async function doAuthorize() {
-  if (!route.params.id) return
-  actionLoading.value = 'authorize'
-  try {
-    await api.post(`/daily-requests/${route.params.id}/authorize`)
-    success('Sucesso', 'Solicitação concedida.')
-    await loadRequest()
-  } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível conceder.')
-  } finally {
-    actionLoading.value = null
-  }
+function closeSignModal() {
+  signModalOpen.value = false
+  signModalAction.value = null
+  signModalPin.value = ''
+  signModalPassword.value = ''
 }
 
-async function doPay() {
-  if (!route.params.id) return
-  actionLoading.value = 'pay'
+async function confirmSign() {
+  const action = signModalAction.value
+  const id = route.params.id
+  if (!id || !action) return
+
+  const needsCreds = authStore.user?.requires_operation_credentials_to_sign
+  if (needsCreds) {
+    if (authStore.user?.has_operation_pin && !signModalPin.value?.trim()) {
+      showError('Campo obrigatório', 'Informe seu PIN de autorização.')
+      return
+    }
+    if (authStore.user?.has_operation_password && !signModalPassword.value) {
+      showError('Campo obrigatório', 'Informe sua senha de operação.')
+      return
+    }
+  }
+
+  actionLoading.value = action
   try {
-    await api.post(`/daily-requests/${route.params.id}/pay`)
-    success('Sucesso', 'Pagamento registrado.')
+    const payload = {}
+    if (authStore.user?.has_operation_pin && signModalPin.value?.trim()) payload.operation_pin = signModalPin.value.trim()
+    if (authStore.user?.has_operation_password && signModalPassword.value) payload.operation_password = signModalPassword.value
+
+    const url = `/daily-requests/${id}/${action === 'validate' ? 'validate' : action === 'authorize' ? 'authorize' : 'pay'}`
+    await api.post(url, payload)
+
+    if (action === 'validate') success('Sucesso', 'Solicitação validada.')
+    else if (action === 'authorize') success('Sucesso', 'Solicitação concedida.')
+    else success('Sucesso', 'Pagamento registrado.')
+
+    closeSignModal()
     await loadRequest()
   } catch (err) {
-    showError('Erro', err.response?.data?.message || 'Não foi possível registrar o pagamento.')
+    const msg = err.response?.data?.message ?? (err.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(' ') : 'Não foi possível concluir a ação.')
+    showError('Erro', msg)
   } finally {
     actionLoading.value = null
   }

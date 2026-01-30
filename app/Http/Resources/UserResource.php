@@ -55,6 +55,9 @@ class UserResource extends JsonResource
             'needs_primary_department' => $this->needsPrimaryDepartmentChoice(),
             'signature_path' => $this->signature_path,
             'signature_url' => $this->signature_path ? asset('storage/'.$this->signature_path) : null,
+            'has_operation_pin' => $this->resource->hasOperationPin(),
+            'has_operation_password' => $this->resource->hasOperationPassword(),
+            'requires_operation_credentials_to_sign' => $this->resource->requiresOperationCredentialsToSign(),
         ];
     }
 }

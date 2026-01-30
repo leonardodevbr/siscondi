@@ -20,6 +20,19 @@
     </div>
 
     <form class="card p-6" @submit.prevent="handleSubmit">
+      <!-- Erros de validação da API -->
+      <div
+        v-if="formErrors && Object.keys(formErrors).length > 0"
+        class="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm"
+      >
+        <p class="font-medium mb-1">Corrija os erros abaixo:</p>
+        <ul class="list-disc list-inside space-y-0.5">
+          <li v-for="(msgs, field) in (formErrors || {})" :key="field">
+            <template v-for="(msg, i) in (Array.isArray(msgs) ? msgs : [msgs])" :key="i">{{ msg }}</template>
+          </li>
+        </ul>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Dados Pessoais -->
         <div class="lg:col-span-2">
@@ -147,6 +160,7 @@
               :required="!!form.email"
               autocomplete="new-password"
               placeholder="Preencha se quiser criar usuário de acesso"
+              :error="(Array.isArray(formErrors?.password) ? formErrors.password[0] : formErrors?.password) || ''"
             />
             <p class="mt-1 text-xs text-slate-500">Se o e-mail for preenchido, um usuário será criado com este e-mail e esta senha.</p>
           </div>
@@ -158,6 +172,7 @@
               :required="!!form.email"
               autocomplete="new-password"
               placeholder="Repita a senha"
+              :error="(Array.isArray(formErrors?.password_confirmation) ? formErrors.password_confirmation[0] : formErrors?.password_confirmation) || ''"
             />
           </div>
         </template>
@@ -257,6 +272,7 @@ const { success, error: showError } = useAlert()
 const isEdit = ref(false)
 const saving = ref(false)
 const linkedUser = ref(null)
+const formErrors = ref({})
 
 const form = ref({
   name: '',
@@ -343,6 +359,7 @@ const fetchServant = async () => {
 }
 
 const handleSubmit = async () => {
+  formErrors.value = {}
   if (!form.value.cargo_ids?.length) {
     showError('Erro', 'Selecione pelo menos um cargo.')
     return
@@ -362,8 +379,15 @@ const handleSubmit = async () => {
     await success('Salvo', 'Servidor salvo com sucesso.')
     router.push({ name: 'servants.index' })
   } catch (error) {
-    console.error('Erro ao salvar:', error)
-    showError('Erro', 'Erro ao salvar servidor.')
+    const data = error.response?.data
+    if (data?.errors && typeof data.errors === 'object') {
+      formErrors.value = {}
+      for (const [key, val] of Object.entries(data.errors)) {
+        formErrors.value[key] = Array.isArray(val) ? val : [val]
+      }
+    }
+    const msg = data?.message ?? (data?.errors ? Object.values(data.errors).flat().join(' ') : null) ?? 'Erro ao salvar servidor.'
+    showError('Erro', msg)
   } finally {
     saving.value = false
   }

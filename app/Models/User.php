@@ -163,4 +163,32 @@ class User extends Authenticatable
     {
         return $this->hasOne(Servant::class);
     }
+
+    /**
+     * Verifica se o usuário tem PIN de operação definido (para confirmação ao assinar).
+     */
+    public function hasOperationPin(): bool
+    {
+        $pin = $this->getRawOriginal('operation_pin') ?? $this->attributes['operation_pin'] ?? null;
+
+        return $pin !== null && trim((string) $pin) !== '';
+    }
+
+    /**
+     * Verifica se o usuário tem senha de operação definida (para confirmação ao assinar).
+     */
+    public function hasOperationPassword(): bool
+    {
+        $stored = $this->getRawOriginal('operation_password') ?? $this->attributes['operation_password'] ?? null;
+
+        return $stored !== null && (string) $stored !== '';
+    }
+
+    /**
+     * Verifica se o usuário exige confirmação com senha e/ou PIN ao assinar.
+     */
+    public function requiresOperationCredentialsToSign(): bool
+    {
+        return $this->hasOperationPin() || $this->hasOperationPassword();
+    }
 }
