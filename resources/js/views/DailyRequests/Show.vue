@@ -90,7 +90,7 @@
         </div>
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Quantidade de diárias</p>
-          <p class="mt-1 text-slate-900">{{ request.quantity_days }}</p>
+          <p class="mt-1 text-slate-900">{{ formatQuantityDays(request.quantity_days) }}</p>
         </div>
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Valor total</p>
@@ -114,8 +114,18 @@
 
         <!-- Resumo das três assinaturas: Requerente, Validador, Concedente. Tesouraria só dá baixa e registra na linha do tempo, sem assinatura. -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Requerente</p>
+          <div
+            class="rounded-lg border p-4 transition-colors"
+            :class="request.requester?.signature_url
+              ? 'bg-green-50 border-green-200'
+              : 'bg-slate-50/50 border-slate-200'"
+          >
+            <p
+              class="text-xs font-medium uppercase tracking-wide mb-2"
+              :class="request.requester?.signature_url ? 'text-green-700' : 'text-slate-500'"
+            >
+              Requerente
+            </p>
             <template v-if="request.requester">
               <p class="font-medium text-slate-800">{{ request.requester.name }}</p>
               <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
@@ -131,8 +141,18 @@
               <p v-if="request.created_at" class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
             </template>
           </div>
-          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Validador</p>
+          <div
+            class="rounded-lg border p-4 transition-colors"
+            :class="request.validator?.signature_url
+              ? 'bg-green-50 border-green-200'
+              : 'bg-slate-50/50 border-slate-200'"
+          >
+            <p
+              class="text-xs font-medium uppercase tracking-wide mb-2"
+              :class="request.validator?.signature_url ? 'text-green-700' : 'text-slate-500'"
+            >
+              Validador
+            </p>
             <template v-if="request.validator">
               <p class="font-medium text-slate-800">{{ request.validator.name }}</p>
               <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.validated_at) }}</p>
@@ -145,8 +165,18 @@
             </template>
             <p v-else class="text-sm text-slate-500">Pendente</p>
           </div>
-          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Concedente</p>
+          <div
+            class="rounded-lg border p-4 transition-colors"
+            :class="request.authorizer?.signature_url
+              ? 'bg-green-50 border-green-200'
+              : 'bg-slate-50/50 border-slate-200'"
+          >
+            <p
+              class="text-xs font-medium uppercase tracking-wide mb-2"
+              :class="request.authorizer?.signature_url ? 'text-green-700' : 'text-slate-500'"
+            >
+              Concedente
+            </p>
             <template v-if="request.authorizer">
               <p class="font-medium text-slate-800">{{ request.authorizer.name }}</p>
               <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.authorized_at) }}</p>
@@ -242,7 +272,7 @@
               </div>
               <div class="flex justify-between items-baseline gap-2">
                 <dt class="text-slate-500">Quantidade de diárias</dt>
-                <dd class="font-medium text-slate-800">{{ request.quantity_days ?? '—' }}</dd>
+                <dd class="font-medium text-slate-800">{{ formatQuantityDays(request.quantity_days) }}</dd>
               </div>
               <div class="flex justify-between items-baseline gap-2">
                 <dt class="text-slate-500">Valor total</dt>
@@ -355,7 +385,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatQuantityDays } from '@/utils/format'
 import Button from '@/components/Common/Button.vue'
 import Input from '@/components/Common/Input.vue'
 import Modal from '@/components/Common/Modal.vue'

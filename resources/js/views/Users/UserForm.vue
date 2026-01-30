@@ -133,52 +133,20 @@
           <p class="mt-1 text-xs text-slate-500">Vincule diretamente os perfis de acesso ao usuário. Servidores (usuários com cargo) herdam as roles do cargo e podem ter roles adicionais.</p>
         </div>
 
-        <!-- Assinatura (mesmo estilo do Brasão/Logo) -->
+        <!-- Assinatura (mesmo componente do Brasão/Logo) -->
         <div class="lg:col-span-2 border-t pt-6">
           <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <DocumentDuplicateIcon class="h-5 w-5 text-slate-500" />
             Assinatura
           </h3>
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-slate-700">Imagem da assinatura</label>
-            <div
-              :class="[
-                'relative border-2 border-dashed rounded-lg overflow-hidden transition-colors cursor-pointer',
-                signatureDisplayUrl ? 'border-slate-300' : 'border-slate-300 hover:border-blue-400',
-                'h-32 w-32'
-              ]"
-              @click="triggerSignatureInput()"
-            >
-              <input
-                ref="signatureInputRef"
-                type="file"
-                accept="image/*"
-                class="hidden"
-                @change="onSignatureFileChange"
-              >
-              <div v-if="!signatureDisplayUrl" class="flex flex-col items-center justify-center h-full p-4 text-slate-400">
-                <PhotoIcon class="h-8 w-8 mb-2" />
-                <span class="text-xs text-center">Clique para enviar imagem</span>
-              </div>
-              <div v-else class="relative h-full w-full min-h-[120px]">
-                <img
-                  :src="signatureDisplayUrl"
-                  alt="Assinatura"
-                  class="h-full w-full object-contain max-h-40"
-                  @error="signatureImageError = true"
-                >
-                <button
-                  type="button"
-                  class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 z-10"
-                  title="Remover assinatura"
-                  @click.stop="removeSignature"
-                >
-                  <XMarkIcon class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <p class="text-xs text-slate-500">Imagem (PNG/JPG), máx. 2 MB. Exibida em PDFs de diárias.</p>
-          </div>
+          <LogoUpload
+            v-model="form.signature_path"
+            type="user"
+            :entity-id="userId ?? ''"
+            label="Imagem da assinatura"
+            size-class="h-32 w-32"
+          />
+          <p class="mt-1 text-xs text-slate-500">Imagem (PNG/JPG), máx. 2 MB. Exibida em PDFs de diárias.</p>
         </div>
 
         <!-- Secretarias (apenas Super Admin) -->
@@ -305,6 +273,7 @@ import { useAppStore } from '@/stores/app';
 import Input from '@/components/Common/Input.vue';
 import Button from '@/components/Common/Button.vue';
 import SelectInput from '@/components/Common/SelectInput.vue';
+import LogoUpload from '@/components/Common/LogoUpload.vue';
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -313,8 +282,6 @@ import {
   BuildingStorefrontIcon,
   DocumentDuplicateIcon,
   CheckCircleIcon,
-  PhotoIcon,
-  XMarkIcon,
 } from '@heroicons/vue/24/outline';
 
 const route = useRoute();
@@ -366,6 +333,7 @@ const form = ref({
   primary_department_id: null,
   roles: [],
   servant_id: null,
+  signature_path: '',
 });
 
 const servants = ref([]);
@@ -395,50 +363,6 @@ const linkedServantName = computed(() => {
   const opt = servantOptions.value.find((o) => o.value === id || o.value == id);
   return opt ? opt.label : '';
 });
-
-const APPROVER_ROLES = ['validator', 'authorizer', 'payer', 'admin', 'super-admin'];
-const canUploadSignature = computed(() => {
-  const roles = form.value.roles;
-  return Array.isArray(roles) && roles.some((r) => APPROVER_ROLES.includes(r));
-});
-const signatureInputRef = ref(null);
-const signatureFile = ref(null);
-const signaturePreviewUrl = ref(null);
-const initialSignatureUrl = ref(null);
-const signatureImageError = ref(false);
-
-const signatureDisplayUrl = computed(() => {
-  if (signatureImageError.value) return null;
-  return signaturePreviewUrl.value || initialSignatureUrl.value || null;
-});
-
-function triggerSignatureInput() {
-  signatureInputRef.value?.click();
-}
-
-function onSignatureFileChange(e) {
-  const file = e.target.files?.[0];
-  signatureFile.value = file || null;
-  signatureImageError.value = false;
-  if (signaturePreviewUrl.value) {
-    URL.revokeObjectURL(signaturePreviewUrl.value);
-    signaturePreviewUrl.value = null;
-  }
-  if (file) {
-    signaturePreviewUrl.value = URL.createObjectURL(file);
-  }
-  e.target.value = '';
-}
-
-function removeSignature() {
-  signatureFile.value = null;
-  signatureImageError.value = false;
-  if (signaturePreviewUrl.value) {
-    URL.revokeObjectURL(signaturePreviewUrl.value);
-    signaturePreviewUrl.value = null;
-  }
-}
-
 
 async function fetchServants() {
   try {
@@ -488,14 +412,9 @@ async function loadUser() {
       primary_department_id: user.primary_department_id ?? user.department_id ?? null,
       roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
       servant_id: user.servant_id ?? user.servant?.id ?? null,
+      signature_path: user.signature_path ?? '',
     };
     initialServant.value = user.servant ? { id: user.servant.id, name: user.servant.name, matricula: user.servant.matricula } : null;
-    const base = window.location.origin;
-    const path = user.signature_path ? user.signature_path.replace(/^\//, '') : '';
-    initialSignatureUrl.value = user.signature_url || (path ? `${base}/storage/${path}` : null);
-    signaturePreviewUrl.value = null;
-    signatureFile.value = null;
-    signatureImageError.value = false;
   } catch (error) {
     toast.error('Erro ao carregar usuário.');
     router.push({ name: 'users.index' });
@@ -559,6 +478,7 @@ async function submit() {
       email: form.value.email,
       roles: form.value.roles,
       servant_id: form.value.servant_id ?? null,
+      signature_path: form.value.signature_path || null,
     };
 
     if (authStore.user?.is_super_admin) {
@@ -587,34 +507,12 @@ async function submit() {
       }
     }
 
-    const hasSignature = signatureFile.value;
-    if (hasSignature) {
-      const formData = new FormData();
-      Object.entries(payload).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach((v) => formData.append(key + '[]', v));
-        } else if (value != null && value !== '') {
-          formData.append(key, value);
-        }
-      });
-      formData.set('servant_id', payload.servant_id ?? '');
-      formData.append('signature', signatureFile.value);
-
-      if (userId.value) {
-        await api.put(`/users/${userId.value}`, formData);
-        toast.success('Usuário atualizado com sucesso.');
-      } else {
-        await api.post('/users', formData);
-        toast.success('Usuário criado com sucesso.');
-      }
+    if (userId.value) {
+      await userStore.updateUser(userId.value, payload);
+      toast.success('Usuário atualizado com sucesso.');
     } else {
-      if (userId.value) {
-        await userStore.updateUser(userId.value, payload);
-        toast.success('Usuário atualizado com sucesso.');
-      } else {
-        await userStore.createUser(payload);
-        toast.success('Usuário criado com sucesso.');
-      }
+      await userStore.createUser(payload);
+      toast.success('Usuário criado com sucesso.');
     }
 
     router.push({ name: 'users.index' });

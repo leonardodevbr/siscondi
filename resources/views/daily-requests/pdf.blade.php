@@ -310,7 +310,11 @@
         </tr>
         <!-- Linha 2: Nº diárias, V. unitário, V. total, Finalidade (tudo inline) -->
         <tr>
-            <td class="w-15"><strong>Nº DE DIÁRIAS:</strong><br>{{ number_format((float) $dailyRequest->quantity_days, 1, ',', '.') }}</td>
+            @php
+                $qDays = (float) $dailyRequest->quantity_days;
+                $quantityDaysDisplay = ($qDays == floor($qDays)) ? (string) (int) $qDays : number_format($qDays, 1, ',', '.');
+            @endphp
+            <td class="w-15"><strong>Nº DE DIÁRIAS:</strong><br>{{ $quantityDaysDisplay }}</td>
             <td class="w-20"><strong>V. UNITÁRIO R$:</strong><br>{{ number_format(($dailyRequest->unit_value ?? 0) / 100, 2, ',', '.') }}</td>
             <td class="w-20"><strong>V. TOTAL R$:</strong><br>{{ number_format(($dailyRequest->total_value ?? 0) / 100, 2, ',', '.') }}</td>
             <td class="w-45"><strong>FINALIDADE:</strong> Custeio de despesas com locomoção, hospedagem e alimentação.</td>

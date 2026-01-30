@@ -194,7 +194,7 @@ class UserController extends Controller
             ? User::query()->with('roles', 'departments', 'servant')->findOrFail($userId)
             : $this->departmentScope()->with('roles', 'departments', 'servant')->findOrFail($userId);
 
-        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin', 'roles', 'servant_id']);
+        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -266,6 +266,15 @@ class UserController extends Controller
             if ($path) {
                 $user->update(['signature_path' => $path]);
             }
+        } elseif ($request->has('signature_path')) {
+            $newPath = $request->input('signature_path');
+            if ($newPath === null || $newPath === '') {
+                $disk = Storage::disk('public');
+                if ($user->signature_path && $disk->exists($user->signature_path)) {
+                    $disk->delete($user->signature_path);
+                }
+                $user->update(['signature_path' => null]);
+            }
         }
 
         $user->refresh()->load('roles', 'departments', 'servant');
@@ -275,8 +284,11 @@ class UserController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $user = $this->departmentScope()->findOrFail((int) $id);
         $authUser = auth()->user();
+        $userId = (int) $id;
+        $user = ($authUser && $authUser->hasRole('super-admin'))
+            ? User::query()->findOrFail($userId)
+            : $this->departmentScope()->findOrFail($userId);
 
         if ($user->id === $authUser->id) {
             throw ValidationException::withMessages([

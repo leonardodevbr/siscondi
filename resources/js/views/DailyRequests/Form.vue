@@ -130,7 +130,7 @@
           </div>
           <p v-if="form.servant_id && form.destination_type" class="mt-1 text-xs text-slate-500">
             <template v-if="unitValueForDestination">
-              {{ formatCurrency(unitValueForDestination) }} × {{ form.quantity_days }} diária(s) = {{ formatCurrency(calculatedTotal) }}
+              {{ formatCurrency(unitValueForDestination) }} × {{ formatQuantityDays(form.quantity_days) }} diária(s) = {{ formatCurrency(calculatedTotal) }}
             </template>
             <template v-else>
               Selecione um servidor com valor de diária definido para este destino para ver o total.
@@ -283,7 +283,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatQuantityDays } from '@/utils/format'
 import Input from '@/components/Common/Input.vue'
 import Button from '@/components/Common/Button.vue'
 import SelectInput from '@/components/Common/SelectInput.vue'

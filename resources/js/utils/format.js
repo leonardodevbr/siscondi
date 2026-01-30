@@ -88,3 +88,16 @@ export function formatCpf(value) {
   if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
+
+/**
+ * Formata quantidade de diárias: inteiro sem decimal quando for valor inteiro (ex: 3), caso contrário com uma casa decimal (ex: 2,5).
+ * @param {number|string} value - Quantidade de diárias (ex: 3, 3.0, 2.5)
+ * @returns {string} Valor formatado (ex: "3", "2,5")
+ */
+export function formatQuantityDays(value) {
+  if (value == null || value === '') return '—';
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (Number.isNaN(num)) return '—';
+  if (num === Math.floor(num)) return String(Math.round(num));
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +42,46 @@ class UploadController extends Controller
         return response()->json([
             'path' => $path,
             'url' => Storage::disk('public')->url($path),
+        ]);
+    }
+
+    /**
+     * Upload de assinatura do usuário.
+     * Grava em storage/app/public/signatures e atualiza user.signature_path.
+     * POST /upload/signature com: file (imagem), id (user id).
+     */
+    public function signature(Request $request): JsonResponse
+    {
+        $authUser = $request->user();
+        if (! $authUser || ! $authUser->can('users.edit')) {
+            abort(403, 'Sem permissão para enviar assinatura.');
+        }
+
+        $request->validate([
+            'file' => ['required', 'file', 'image', 'max:2048'],
+            'id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $userId = (int) $request->input('id');
+        $user = User::query()->findOrFail($userId);
+
+        $file = $request->file('file');
+        $disk = Storage::disk('public');
+
+        if ($user->signature_path && $disk->exists($user->signature_path)) {
+            $disk->delete($user->signature_path);
+        }
+
+        $path = $file->store('signatures', 'public');
+        if (! $path) {
+            return response()->json(['message' => 'Falha ao salvar o arquivo.'], 422);
+        }
+
+        $user->update(['signature_path' => $path]);
+
+        return response()->json([
+            'path' => $path,
+            'url' => $disk->url($path),
         ]);
     }
 }

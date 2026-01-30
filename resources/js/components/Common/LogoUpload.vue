@@ -19,7 +19,7 @@
       />
       <div v-if="!previewUrl" class="flex flex-col items-center justify-center h-full p-4 text-slate-400">
         <PhotoIcon class="h-8 w-8 mb-2" />
-        <span class="text-xs text-center">{{ entityId ? 'Clique para enviar imagem' : 'Salve o registro antes de enviar o logo' }}</span>
+        <span class="text-xs text-center">{{ entityId ? 'Clique para enviar imagem' : (type === 'user' ? 'Salve o usuário antes de enviar a assinatura' : 'Salve o registro antes de enviar o logo') }}</span>
       </div>
       <div v-else class="relative h-full w-full min-h-[120px]">
         <img
@@ -32,7 +32,7 @@
           v-if="entityId"
           type="button"
           class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 z-10"
-          title="Remover logo"
+          :title="type === 'user' ? 'Remover assinatura' : 'Remover logo'"
           @click.stop="remove"
         >
           <XMarkIcon class="h-4 w-4" />
@@ -50,7 +50,7 @@ import { PhotoIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  type: { type: String, required: true, validator: (v) => ['department', 'municipality'].includes(v) },
+  type: { type: String, required: true, validator: (v) => ['department', 'municipality', 'user'].includes(v) },
   entityId: { type: [String, Number], default: '' },
   label: { type: String, default: 'Brasão / Logo' },
   sizeClass: { type: String, default: 'h-32 w-32' },
@@ -100,14 +100,13 @@ async function handleFileSelect(event) {
     formData.append('file', file);
     formData.append('type', props.type);
     formData.append('id', String(props.entityId));
-    const { data } = await api.post('/upload/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const url = props.type === 'user' ? '/upload/signature' : '/upload/logo';
+    const { data } = await api.post(url, formData);
     const path = data?.path ?? data?.data?.path ?? data;
     if (path) emit('update:modelValue', path);
     else toast.error('Resposta inválida do servidor.');
   } catch (err) {
-    toast.error(err.response?.data?.message ?? 'Erro ao enviar logo.');
+    toast.error(err.response?.data?.message ?? (props.type === 'user' ? 'Erro ao enviar assinatura.' : 'Erro ao enviar logo.'));
   }
   event.target.value = '';
 }
