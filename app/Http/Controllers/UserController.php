@@ -8,6 +8,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Department;
+use App\Models\Servant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -149,12 +150,21 @@ class UserController extends Controller
             return $user->load('roles', 'departments', 'cargo');
         });
 
-        if ($request->hasFile('signature')) {
-            $path = $request->file('signature')->store('signatures', 'public');
-            $user->update(['signature_path' => $path]);
+        if ($request->filled('servant_id')) {
+            $servant = Servant::find((int) $request->input('servant_id'));
+            if ($servant) {
+                $servant->update(['user_id' => $user->id, 'email' => $user->email]);
+            }
         }
 
-        return response()->json(new UserResource($user->fresh()), 201);
+        if ($request->hasFile('signature')) {
+            $path = $request->file('signature')->store('signatures', 'public');
+            if ($path) {
+                $user->update(['signature_path' => $path]);
+            }
+        }
+
+        return response()->json(new UserResource($user->fresh()->load('servant')), 201);
     }
 
     public function show(string $id): JsonResponse
@@ -163,14 +173,14 @@ class UserController extends Controller
         $userId = (int) $id;
 
         if ($authUser && $authUser->id === $userId) {
-            $user = User::query()->with('roles', 'departments')->findOrFail($userId);
+            $user = User::query()->with('roles', 'departments', 'servant')->findOrFail($userId);
             return response()->json(new UserResource($user));
         }
 
         if ($authUser && $authUser->hasRole('super-admin')) {
-            $user = User::query()->with('roles', 'departments')->findOrFail($userId);
+            $user = User::query()->with('roles', 'departments', 'servant')->findOrFail($userId);
         } else {
-            $user = $this->departmentScope()->where('id', '!=', $authUser->id)->with('roles', 'departments')->findOrFail($userId);
+            $user = $this->departmentScope()->where('id', '!=', $authUser->id)->with('roles', 'departments', 'servant')->findOrFail($userId);
         }
 
         return response()->json(new UserResource($user));
@@ -178,9 +188,13 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $user = $this->departmentScope()->with('roles', 'departments', 'servant')->findOrFail((int) $id);
+        $authUser = auth()->user();
+        $userId = (int) $id;
+        $user = ($authUser && $authUser->hasRole('super-admin'))
+            ? User::query()->with('roles', 'departments', 'servant')->findOrFail($userId)
+            : $this->departmentScope()->with('roles', 'departments', 'servant')->findOrFail($userId);
 
-        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin']);
+        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin', 'roles', 'servant_id']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -227,20 +241,34 @@ class UserController extends Controller
             }
             $user->update($payload);
 
-            if (array_key_exists('email', $payload) && $user->servant) {
+            if ($request->has('servant_id')) {
+                Servant::where('user_id', $user->id)->update(['user_id' => null]);
+                if ($request->filled('servant_id')) {
+                    $servant = Servant::find((int) $request->input('servant_id'));
+                    if ($servant) {
+                        $servant->update(['user_id' => $user->id]);
+                        if (array_key_exists('email', $payload)) {
+                            $servant->update(['email' => $payload['email']]);
+                        }
+                    }
+                }
+            } elseif (array_key_exists('email', $payload) && $user->servant) {
                 $user->servant->update(['email' => $payload['email']]);
             }
         });
 
         if ($request->hasFile('signature')) {
-            if ($user->signature_path && Storage::disk('public')->exists($user->signature_path)) {
-                Storage::disk('public')->delete($user->signature_path);
+            $disk = Storage::disk('public');
+            if ($user->signature_path && $disk->exists($user->signature_path)) {
+                $disk->delete($user->signature_path);
             }
             $path = $request->file('signature')->store('signatures', 'public');
-            $user->update(['signature_path' => $path]);
+            if ($path) {
+                $user->update(['signature_path' => $path]);
+            }
         }
 
-        $user->refresh()->load('roles', 'departments');
+        $user->refresh()->load('roles', 'departments', 'servant');
 
         return response()->json(new UserResource($user));
     }

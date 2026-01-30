@@ -172,7 +172,7 @@
               @click="openSignModal('validate')"
             >
               <CheckIcon class="h-4 w-4" />
-              Validar (Secretário)
+              Validar
             </Button>
           </template>
           <template v-if="requestDetail.status === 'validated' && authStore.can('daily-requests.authorize')">
@@ -183,7 +183,7 @@
               @click="openSignModal('authorize')"
             >
               <CheckIcon class="h-4 w-4" />
-              Conceder (Prefeito)
+              Conceder
             </Button>
           </template>
           <template v-if="requestDetail.status === 'authorized' && authStore.can('daily-requests.pay')">
@@ -194,7 +194,7 @@
               @click="openSignModal('pay')"
             >
               <BanknotesIcon class="h-4 w-4" />
-              Pagar (Tesouraria)
+              Pagar
             </Button>
           </template>
           <template v-if="requestDetail.is_cancellable && authStore.can('daily-requests.cancel')">
@@ -330,9 +330,9 @@ const signModalTitle = computed(() => {
 const signModalSummary = computed(() => {
   const id = route.params.id
   const a = signModalAction.value
-  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar (Secretário). Revise os dados e confirme com sua senha/PIN se configurado.`
-  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder (Prefeito). Revise os dados e confirme com sua senha/PIN se configurado.`
-  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento (Tesouraria). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar. Revise os dados e confirme a ação.`
+  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder. Revise os dados e confirme a ação.`
+  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento. Revise os dados e confirme a ação.`
   return ''
 })
 

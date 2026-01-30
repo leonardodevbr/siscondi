@@ -464,7 +464,7 @@ class DailyRequestController extends Controller
     }
 
     /**
-     * Validador (Secretário) valida a solicitação
+     * Validador valida a solicitação
      */
     public function validate(Request $request, string|int $dailyRequest): JsonResponse
     {
@@ -677,8 +677,8 @@ class DailyRequestController extends Controller
     {
         return match ($action) {
             'requested' => 'Solicitação registrada',
-            'validated' => 'Validado (Secretário)',
-            'authorized' => 'Concedido (Prefeito)',
+            'validated' => 'Validado',
+            'authorized' => 'Concedido',
             'paid' => 'Pagamento registrado',
             'cancelled' => 'Indeferido/Cancelado',
             default => $action,

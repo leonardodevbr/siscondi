@@ -53,8 +53,16 @@ class UserResource extends JsonResource
             'department_ids' => $this->whenLoaded('departments', fn () => $this->departments->pluck('id')->toArray()),
             'primary_department_id' => $this->primary_department_id ?? $primaryDepartment?->id,
             'needs_primary_department' => $this->needsPrimaryDepartmentChoice(),
-            'signature_path' => $this->signature_path,
-            'signature_url' => $this->signature_path ? asset('storage/'.$this->signature_path) : null,
+            'signature_path' => $this->resource->signature_path ?? null,
+            'signature_url' => $this->resource->signature_path
+                ? rtrim(config('app.url'), '/').'/storage/'.ltrim($this->resource->signature_path, '/')
+                : null,
+            'servant' => $this->whenLoaded('servant', fn () => $this->servant ? [
+                'id' => $this->servant->id,
+                'name' => $this->servant->name,
+                'matricula' => $this->servant->matricula,
+            ] : null),
+            'servant_id' => $this->whenLoaded('servant', fn () => $this->servant?->id),
             'has_operation_pin' => $this->resource->hasOperationPin(),
             'has_operation_password' => $this->resource->hasOperationPassword(),
             'requires_operation_credentials_to_sign' => $this->resource->requiresOperationCredentialsToSign(),

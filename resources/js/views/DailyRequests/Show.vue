@@ -112,7 +112,7 @@
           Assinaturas
         </h3>
 
-        <!-- Resumo das três assinaturas: Requerente, Validador (Secretário), Concedente (Prefeito). Tesouraria só dá baixa e registra na linha do tempo, sem assinatura. -->
+        <!-- Resumo das três assinaturas: Requerente, Validador, Concedente. Tesouraria só dá baixa e registra na linha do tempo, sem assinatura. -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
             <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Requerente</p>
@@ -132,7 +132,7 @@
             </template>
           </div>
           <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Validador (Secretário)</p>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Validador</p>
             <template v-if="request.validator">
               <p class="font-medium text-slate-800">{{ request.validator.name }}</p>
               <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.validated_at) }}</p>
@@ -146,7 +146,7 @@
             <p v-else class="text-sm text-slate-500">Pendente</p>
           </div>
           <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Concedente (Prefeito)</p>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Concedente</p>
             <template v-if="request.authorizer">
               <p class="font-medium text-slate-800">{{ request.authorizer.name }}</p>
               <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.authorized_at) }}</p>
@@ -171,7 +171,7 @@
               @click="openSignModal('validate')"
             >
               <CheckIcon class="h-4 w-4" />
-              Validar (Secretário)
+              Validar
             </Button>
           </template>
           <template v-if="request.status === 'validated' && authStore.can('daily-requests.authorize')">
@@ -182,7 +182,7 @@
               @click="openSignModal('authorize')"
             >
               <CheckIcon class="h-4 w-4" />
-              Conceder (Prefeito)
+              Conceder
             </Button>
           </template>
           <template v-if="request.status === 'authorized' && authStore.can('daily-requests.pay')">
@@ -193,7 +193,7 @@
               @click="openSignModal('pay')"
             >
               <BanknotesIcon class="h-4 w-4" />
-              Pagar (Tesouraria)
+              Pagar
             </Button>
           </template>
           <template v-if="request.is_cancellable && authStore.can('daily-requests.cancel')">
@@ -400,9 +400,9 @@ const signModalTitle = computed(() => {
 const signModalSummary = computed(() => {
   const id = request.value?.id
   const a = signModalAction.value
-  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar (Secretário). Revise os dados e confirme com sua senha/PIN se configurado.`
-  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder (Prefeito). Revise os dados e confirme com sua senha/PIN se configurado.`
-  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento (Tesouraria). Revise os dados e confirme com sua senha/PIN se configurado.`
+  if (a === 'validate') return `Solicitação #${id ?? '—'} — Validar. Revise os dados e confirme a ação.`
+  if (a === 'authorize') return `Solicitação #${id ?? '—'} — Conceder. Revise os dados e confirme a ação.`
+  if (a === 'pay') return `Solicitação #${id ?? '—'} — Registrar pagamento. Revise os dados e confirme a ação.`
   return ''
 })
 

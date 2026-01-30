@@ -45,6 +45,7 @@ class StoreUserRequest extends FormRequest
                 },
             ],
             'signature' => ['nullable', 'file', 'image', 'max:2048'],
+            'servant_id' => ['sometimes', 'nullable', 'integer', 'exists:servants,id'],
         ];
     }
 

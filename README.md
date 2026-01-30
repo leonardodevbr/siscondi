@@ -12,10 +12,10 @@ O SISCONDI é um sistema completo para gerenciar todo o fluxo de concessão de d
 - **Cadastro de Servidores**: Registro completo dos funcionários públicos com dados pessoais e bancários
 - **Solicitações de Diárias**: Criação e acompanhamento de pedidos de diárias
 - **Fluxo de Aprovação**: Sistema de workflow com 4 etapas:
-  1. **Solicitação** (Requerente)
-  2. **Validação** (Secretário)
-  3. **Autorização** (Prefeito)
-  4. **Pagamento** (Tesoureiro)
+  1. **Solicitação**
+  2. **Validação**
+  3. **Autorização**
+  4. **Pagamento**
 - **Relatórios**: Geração de relatórios e documentos para auditoria
 
 ## 👥 Perfis de Acesso
@@ -28,11 +28,11 @@ O SISCONDI é um sistema completo para gerenciar todo o fluxo de concessão de d
 - Cria solicitações de diárias
 - Acompanha suas próprias solicitações
 
-### 3. Validador (Secretário)
+### 3. Validador  
 - Valida solicitações da sua secretaria
 - Gerencia servidores lotados na secretaria
 
-### 4. Concedente (Prefeito)
+### 4. Concedente
 - Autoriza/concede diárias validadas
 - Gerencia legislações e secretarias
 - Acesso a relatórios gerenciais
@@ -165,9 +165,9 @@ Após executar os seeders, será criado um usuário admin:
 - `GET /api/daily-requests/{id}` - Detalhes
 - `PUT /api/daily-requests/{id}` - Atualizar
 - `DELETE /api/daily-requests/{id}` - Deletar
-- `POST /api/daily-requests/{id}/validate` - Validar (Secretário)
-- `POST /api/daily-requests/{id}/authorize` - Autorizar (Prefeito)
-- `POST /api/daily-requests/{id}/pay` - Pagar (Tesoureiro)
+- `POST /api/daily-requests/{id}/validate` - Validar
+- `POST /api/daily-requests/{id}/authorize` - Autorizar
+- `POST /api/daily-requests/{id}/pay` - Pagar
 - `POST /api/daily-requests/{id}/cancel` - Cancelar
 
 ### Secretarias

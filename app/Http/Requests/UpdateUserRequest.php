@@ -47,6 +47,7 @@ class UpdateUserRequest extends FormRequest
                 },
             ],
             'signature' => ['sometimes', 'nullable', 'file', 'image', 'max:2048'],
+            'servant_id' => ['sometimes', 'nullable', 'integer', 'exists:servants,id'],
         ];
     }
 
