@@ -374,12 +374,41 @@ class DailyRequestController extends Controller
             }
         }
 
-        $signatureUrlFor = function (?User $u): ?string {
-            if (! $u?->signature_path || ! Storage::disk('public')->exists($u->signature_path)) {
-                return null;
+        $requesterSignatureUrl = null;
+        $requesterSignatureData = null;
+        if ($dailyRequest->requester?->signature_path && Storage::disk('public')->exists($dailyRequest->requester->signature_path)) {
+            $requesterSignatureData = $logoToBase64($dailyRequest->requester->signature_path);
+            if (! $requesterSignatureData) {
+                $requesterSignatureUrl = $baseUrl . '/storage/' . ltrim($dailyRequest->requester->signature_path, '/');
             }
-            return rtrim(config('app.url'), '/') . '/storage/' . ltrim($u->signature_path, '/');
-        };
+        }
+
+        $validatorSignatureUrl = null;
+        $validatorSignatureData = null;
+        if ($dailyRequest->validator?->signature_path && Storage::disk('public')->exists($dailyRequest->validator->signature_path)) {
+            $validatorSignatureData = $logoToBase64($dailyRequest->validator->signature_path);
+            if (! $validatorSignatureData) {
+                $validatorSignatureUrl = $baseUrl . '/storage/' . ltrim($dailyRequest->validator->signature_path, '/');
+            }
+        }
+
+        $authorizerSignatureUrl = null;
+        $authorizerSignatureData = null;
+        if ($dailyRequest->authorizer?->signature_path && Storage::disk('public')->exists($dailyRequest->authorizer->signature_path)) {
+            $authorizerSignatureData = $logoToBase64($dailyRequest->authorizer->signature_path);
+            if (! $authorizerSignatureData) {
+                $authorizerSignatureUrl = $baseUrl . '/storage/' . ltrim($dailyRequest->authorizer->signature_path, '/');
+            }
+        }
+
+        $payerSignatureUrl = null;
+        $payerSignatureData = null;
+        if ($dailyRequest->payer?->signature_path && Storage::disk('public')->exists($dailyRequest->payer->signature_path)) {
+            $payerSignatureData = $logoToBase64($dailyRequest->payer->signature_path);
+            if (! $payerSignatureData) {
+                $payerSignatureUrl = $baseUrl . '/storage/' . ltrim($dailyRequest->payer->signature_path, '/');
+            }
+        }
 
         $cidadeUf = trim(($municipality?->name ?? '') . ' - ' . strtoupper($municipality?->state ?? 'BA'));
         if ($cidadeUf === ' - ') {
@@ -403,10 +432,10 @@ class DailyRequestController extends Controller
             'municipality_logo_data' => $municipalityLogoData,
             'department_logo_url' => $departmentLogoUrl,
             'department_logo_data' => $departmentLogoData,
-            'requester_signature_url' => $signatureUrlFor($dailyRequest->requester),
-            'validator_signature_url' => $signatureUrlFor($dailyRequest->validator),
-            'authorizer_signature_url' => $signatureUrlFor($dailyRequest->authorizer),
-            'payer_signature_url' => $signatureUrlFor($dailyRequest->payer),
+            'requester_signature_url' => $requesterSignatureData,
+            'validator_signature_url' => $validatorSignatureData,
+            'authorizer_signature_url' => $authorizerSignatureData,
+            'payer_signature_url' => $payerSignatureData,
             'cidade_uf' => $cidadeUf,
             'data_autorizacao' => $dataAutorizacao,
             'data_pagamento' => $dataPagamento,

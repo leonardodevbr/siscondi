@@ -29,7 +29,7 @@
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-bottom: 4pt;
+            margin-bottom: 15pt;
         }
         
         td { 
@@ -95,7 +95,7 @@
         
         /* Título do documento - Linha 2 da Tabela 1 */
         .doc-title {
-            width: 80%;
+            width: 77%;
             text-align: center;
             font-weight: bold;
             font-size: 11pt;
@@ -104,7 +104,7 @@
         }
         
         .doc-year {
-            width: 15%;
+            width: 18%;
             text-align: right;
             font-size: 11pt;
             padding: 4pt;
@@ -121,8 +121,8 @@
             background: #bfbfbf;
             color: #000;
             font-weight: bold;
-            font-size: 10pt;
-            padding: 4pt 8pt;
+            font-size: 9pt;
+            padding: 3pt 8pt;
             text-align: center;
         }
         
@@ -159,7 +159,7 @@
         }
         
         .signature-name {
-            text-align: center;
+            text-align: center; 
             font-size: 9pt;
             margin-top: 1pt;
         }
@@ -265,7 +265,7 @@
                             <div class="signature-name">
                                 {{ strtoupper($dailyRequest->requester?->name ?? '–') }}
                                 <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->requester?->cargo?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
+                                    {{ strtoupper($dailyRequest->requester?->cargos[0]?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
                                 </div>
                             </div>
                         </td>
@@ -294,7 +294,7 @@
                                     <div class="signature-name">
                                         {{ strtoupper($dailyRequest->validator?->name ?? '–') }}
                                         <div class="signature-cargo">
-                                            {{ strtoupper($dailyRequest->validator?->cargo?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO(A)') }}
+                                            {{ strtoupper($dailyRequest->validator?->cargos[0]?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO(A)') }}
                                         </div>
                                     </div>
                                 </div>
@@ -310,28 +310,20 @@
     <table>
         <!-- Linha 1: Título -->
         <tr>
-            <td colspan="5" class="section-title">SERVIDOR</td>
+            <td colspan="4" class="section-title">SERVIDOR</td>
         </tr>
         <!-- Linha 2: Beneficiário, Cargo, Matrícula -->
         <tr>
-            <td class="w-20"><strong>Beneficiário:</strong></td>
-            <td class="w-30">{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</td>
-            <td class="w-20"><strong>Cargo/função:</strong></td>
-            <td class="w-15">{{ strtoupper($dailyRequest->servant?->role ?? 'SECRETÁRIO') }}</td>
+            <td colspan="2"><strong>Beneficiário:</strong><br>{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</td>
+            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->role ?? 'SECRETÁRIO') }}</td>
             <td class="w-15"><strong>Matrícula:</strong><br>{{ $dailyRequest->servant?->registration_number ?? '–' }}</td>
         </tr>
         <!-- Linha 3: CPF, Identidade, Dados bancários (com rowspan) -->
         <tr>
-            <td><strong>CPF:</strong></td>
-            <td>{{ $dailyRequest->servant?->formatted_cpf ?? '–' }}</td>
-            <td><strong>Identidade:</strong></td>
-            <td>{{ trim(($dailyRequest->servant?->rg ?? '') . ' ' . ($dailyRequest->servant?->organ_expeditor ?? '')) ?: '–' }}</td>
-            <td rowspan="2" style="vertical-align: top;"><strong>Dados bancários:</strong><br>{{ ($dailyRequest->servant?->agency_number ? 'AG. ' . $dailyRequest->servant->agency_number . ' / ' : '') . ($dailyRequest->servant?->account_number ? 'CC: ' . $dailyRequest->servant->account_number : '') ?: '–' }}</td>
-        </tr>
-        <!-- Linha 4: E-mail -->
-        <tr>
-            <td><strong>E-mail:</strong></td>
-            <td colspan="3">{{ $dailyRequest->servant?->email ?? '–' }}</td>
+            <td><strong>CPF:</strong><br>{{ $dailyRequest->servant?->formatted_cpf ?? '–' }}</td>
+            <td><strong>Identidade:</strong><br>{{ trim(($dailyRequest->servant?->rg ?? '') . ' ' . ($dailyRequest->servant?->organ_expeditor ?? '')) ?: '–' }}</td>
+            <td><strong>E-mail:</strong><br>{{ $dailyRequest->servant?->email ?? '–' }}</td>
+            <td class="w-25" style="vertical-align: top;"><strong>Dados bancários:</strong><br>{{ ($dailyRequest->servant?->agency_number ? 'AG. ' . $dailyRequest->servant->agency_number . ' / ' : '') . ($dailyRequest->servant?->account_number ? 'CC: ' . $dailyRequest->servant->account_number : '') ?: '–' }}</td>
         </tr>
     </table>
 
@@ -347,10 +339,10 @@
                 $qDays = (float) $dailyRequest->quantity_days;
                 $quantityDaysDisplay = ($qDays == floor($qDays)) ? (string) (int) $qDays : number_format($qDays, 1, ',', '.');
             @endphp
-            <td class="w-15"><strong>Nº DE DIÁRIAS:</strong><br>{{ $quantityDaysDisplay }}</td>
-            <td class="w-20"><strong>V. UNITÁRIO R$:</strong><br>{{ number_format(($dailyRequest->unit_value ?? 0) / 100, 2, ',', '.') }}</td>
-            <td class="w-20"><strong>V. TOTAL R$:</strong><br>{{ number_format(($dailyRequest->total_value ?? 0) / 100, 2, ',', '.') }}</td>
-            <td class="w-45"><strong>FINALIDADE:</strong> Custeio de despesas com locomoção, hospedagem e alimentação.</td>
+            <td class="w-20" style="text-align: center;"><strong>Nº DE DIÁRIAS:</strong><br>R$ {{ $quantityDaysDisplay }}</td>
+            <td class="w-20" style="text-align: center;"><strong>V. UNITÁRIO:</strong><br>R$ {{ number_format(($dailyRequest->unit_value ?? 0) / 100, 2, ',', '.') }}</td>
+            <td class="w-20" style="text-align: center;"><strong>V. TOTAL:</strong><br>R$ {{ number_format(($dailyRequest->total_value ?? 0) / 100, 2, ',', '.') }}</td>
+            <td class="w-35"><strong>FINALIDADE:</strong> Custeio de despesas com locomoção, hospedagem e alimentação.</td>
         </tr>
     </table>
 
@@ -383,10 +375,10 @@
         </tr>
         <!-- Linha 2: Conteúdo - 3ª assinatura Prefeito | 4ª assinatura Beneficiário (física no impresso) -->
         <tr>
-            <td style="vertical-align: top;">
-                <div>Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
+            <td style="vertical-align: top; text-align: center;">
+                <div style="margin-top: 10pt;">Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
                 <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} – Ba, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
-                <div style="margin-top: 10pt;">
+                <div style="margin-top: 6pt;">
                     @if(!empty($authorizer_signature_url))
                         <img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img">
                         <div style="margin-top: 2px;" class="signature-line"></div>
@@ -396,16 +388,19 @@
                     <div class="signature-name">
                         {{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}
                         <div class="signature-cargo">
-                            {{ strtoupper($dailyRequest->authorizer?->cargo?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
+                            {{ strtoupper($dailyRequest->authorizer?->cargos[0]?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
                         </div>
                     </div>
                 </div>
             </td>
-            <td style="vertical-align: top;">
-                <div>Declaro para os devidos fins, que estarei afastado(a) do Município de {{ $municipality?->name ?? 'Cafarnaum' }}, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
-                <div style="margin-top: 10pt;">
-                    <div class="signature-line"></div>
-                    <div class="signature-name">{{ strtoupper($dailyRequest->servant?->name ?? '–') }} — SERVIDOR(A) (assinatura física no impresso)</div>
+            <td style="vertical-align: top; text-align: center;">
+                <div style="margin-top: 6pt;">Declaro para os devidos fins, que estarei afastado(a) do Município de {{ $municipality?->name ?? 'Cafarnaum' }}, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
+                <div class="signature-line"></div>
+                <div class="signature-name">
+                    {{ strtoupper($dailyRequest->servant?->name ?? '–') }}
+                    <div class="signature-cargo">
+                        {{ strtoupper($dailyRequest->servant?->cargos[0]?->name ?? $dailyRequest->servant?->role ?? 'SERVIDOR(A)') }}
+                    </div>
                 </div>
             </td>
         </tr>
