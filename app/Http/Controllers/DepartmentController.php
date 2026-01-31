@@ -17,17 +17,9 @@ class DepartmentController extends Controller
     {
         $this->authorize('departments.view');
 
-        $user = auth()->user();
         $query = Department::query();
 
-        if ($user && ! $user->hasRole('super-admin')) {
-            $municipality = $user->getMunicipality();
-            if ($municipality) {
-                $query->where('municipality_id', $municipality->id);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
-        }
+        // Removida filtragem por município para permitir acesso total
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -46,14 +38,8 @@ class DepartmentController extends Controller
     public function store(StoreDepartmentRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $user = auth()->user();
-        if ($user && ! $user->hasRole('super-admin')) {
-            $municipality = $user->getMunicipality();
-            if (! $municipality) {
-                return response()->json(['message' => 'Usuário sem município vinculado (secretaria principal).'], 422);
-            }
-            $data['municipality_id'] = $municipality->id;
-        }
+        
+        // Removida restrição de município para permitir criação livre
 
         $department = Department::create($data);
 
@@ -69,14 +55,8 @@ class DepartmentController extends Controller
 
     private function ensureDepartmentScope(Department $department): void
     {
-        $user = auth()->user();
-        if ($user && $user->hasRole('super-admin')) {
-            return;
-        }
-        $municipality = $user?->getMunicipality();
-        if (! $municipality || $department->municipality_id !== $municipality->id) {
-            abort(403, 'Secretaria fora do seu município.');
-        }
+        // Removida restrição de acesso por município
+        return;
     }
 
     public function show(string|int $department): JsonResponse
@@ -93,10 +73,8 @@ class DepartmentController extends Controller
         $department = Department::query()->findOrFail((int) $department);
         $this->ensureDepartmentScope($department);
         $data = $request->validated();
-        $user = auth()->user();
-        if ($user && ! $user->hasRole('super-admin')) {
-            unset($data['municipality_id']);
-        }
+        
+        // Removida restrição de município para permitir atualização livre
 
         if (! empty($data['is_main']) && $department->municipality_id) {
             Department::query()

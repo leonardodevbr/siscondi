@@ -45,27 +45,8 @@ class UserController extends Controller
 
     private function departmentScope(): \Illuminate\Database\Eloquent\Builder
     {
-        $user = auth()->user();
-        if ($user && $user->hasRole('super-admin')) {
-            return User::query();
-        }
-
-        $headerId = request()->header('X-Department-ID');
-        if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
-            $departmentId = (int) $headerId;
-            if ($user && ($user->hasRole(['super-admin', 'owner']) || $user->hasAccessToDepartment($departmentId))) {
-                if (Department::whereKey($departmentId)->exists()) {
-                    return User::query()->whereHas('departments', function ($q) use ($departmentId): void {
-                        $q->where('departments.id', $departmentId);
-                    });
-                }
-            }
-        }
-
-        $departmentId = $this->getEffectiveDepartmentId('Secretaria não identificada para listar usuários.');
-        return User::query()->whereHas('departments', function ($q) use ($departmentId): void {
-            $q->where('departments.id', $departmentId);
-        });
+        // Removida restrição de departamento para permitir acesso total
+        return User::query();
     }
 
     public function index(Request $request): JsonResponse
@@ -95,24 +76,18 @@ class UserController extends Controller
         $primaryDepartmentId = null;
         $roles = $request->validated('roles');
 
-        if (in_array('super-admin', $roles, true)) {
-            $departmentIds = Department::query()->pluck('id')->toArray();
-            $primaryDepartmentId = $departmentIds[0] ?? null;
-        } elseif ($authUser && $authUser->hasRole('super-admin')) {
-            if ($request->filled('department_ids')) {
-                $departmentIds = $request->input('department_ids');
-                $validDepartments = Department::whereIn('id', $departmentIds)->pluck('id')->toArray();
-                if (count($validDepartments) !== count($departmentIds)) {
-                    throw ValidationException::withMessages(['department_ids' => ['Uma ou mais secretarias são inválidas.']]);
-                }
+        // Removida restrição para permitir atribuição de secretarias livremente
+
+        if ($request->filled('department_ids')) {
+            $departmentIds = $request->input('department_ids');
+            $validDepartments = Department::whereIn('id', $departmentIds)->pluck('id')->toArray();
+            if (count($validDepartments) !== count($departmentIds)) {
+                throw ValidationException::withMessages(['department_ids' => ['Uma ou mais secretarias são inválidas.']]);
             }
-            $primaryDepartmentId = $request->filled('primary_department_id')
-                ? (int) $request->input('primary_department_id')
-                : ($departmentIds[0] ?? null);
-        } else {
-            $primaryDepartmentId = $this->getEffectiveDepartmentId('Secretaria não identificada para criar usuário.');
-            $departmentIds = [$primaryDepartmentId];
         }
+        $primaryDepartmentId = $request->filled('primary_department_id')
+            ? (int) $request->input('primary_department_id')
+            : ($departmentIds[0] ?? null);
 
         $municipalityId = null;
         if (! empty($departmentIds)) {
@@ -219,7 +194,7 @@ class UserController extends Controller
                 $payload['operation_pin'] = $data['operation_pin'] !== null && $data['operation_pin'] !== '' ? $data['operation_pin'] : null;
             }
 
-            if ($authUser && $authUser->hasRole('super-admin') && $request->filled('department_ids')) {
+            if ($request->filled('department_ids')) {
                 $departmentIds = $request->input('department_ids');
                 $primaryDepartmentId = $request->filled('primary_department_id')
                     ? (int) $request->input('primary_department_id')
@@ -293,41 +268,10 @@ class UserController extends Controller
             ]);
         }
 
-        if ($authUser && $authUser->hasRole('owner') && $user->hasRole('super-admin')) {
-            throw ValidationException::withMessages([
-                'user' => ['Gestor(a) Geral não pode excluir Super Admin.'],
-            ]);
-        }
+        // Removida restrição de exclusão baseada em perfis
 
         $user->delete();
 
         return response()->json(['message' => 'Usuário excluído com sucesso.']);
-    }
-
-    /**
-     * Registra a inscrição de push do navegador para notificações Web Push.
-     */
-    public function storePushSubscription(Request $request): JsonResponse
-    {
-        $request->validate([
-            'endpoint' => 'required|string|max:500',
-            'keys' => 'required|array',
-            'keys.p256dh' => 'required|string',
-            'keys.auth' => 'required|string',
-        ]);
-
-        $user = auth()->user();
-        if (! $user) {
-            return response()->json(['message' => 'Não autenticado.'], 401);
-        }
-
-        $user->updatePushSubscription(
-            $request->input('endpoint'),
-            $request->input('keys.p256dh'),
-            $request->input('keys.auth'),
-            $request->userAgent()
-        );
-
-        return response()->json(['message' => 'Inscrição de notificação registrada.']);
     }
 }

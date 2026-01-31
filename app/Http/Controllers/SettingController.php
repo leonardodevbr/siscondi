@@ -13,9 +13,8 @@ class SettingController extends Controller
 {
     private function ensureSuperAdmin(): void
     {
-        if (! auth()->user()?->hasRole('super-admin')) {
-            abort(403, 'Apenas Super Admin pode acessar as configurações do sistema.');
-        }
+        // Removida restrição para permitir acesso por todos
+        return;
     }
 
     public function index(): JsonResponse

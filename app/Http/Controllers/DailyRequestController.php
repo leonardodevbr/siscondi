@@ -58,32 +58,8 @@ class DailyRequestController extends Controller
 
     private function ensureCanAccess(DailyRequest $dailyRequest): void
     {
-        $user = auth()->user();
-        if (! $user) {
-            abort(403, 'Não autenticado.');
-        }
-        if ($user->hasRole('super-admin')) {
-            return;
-        }
-        if ($dailyRequest->servant?->user_id === $user->id) {
-            return;
-        }
-        // Quem pode "Pagar" acessa qualquer solicitação já autorizada (só confirma e finaliza o fluxo)
-        if ($user->can('daily-requests.pay') && $dailyRequest->status === DailyRequestStatus::AUTHORIZED) {
-            return;
-        }
-        $departmentIds = $user->getDepartmentIds();
-        if (empty($departmentIds)) {
-            abort(403, 'Sem secretarias vinculadas.');
-        }
-        $requesterInScope = $dailyRequest->requester
-            ? $dailyRequest->requester->departments()->whereIn('departments.id', $departmentIds)->exists()
-            : false;
-        $servantDeptId = $dailyRequest->servant?->department_id;
-        $servantInScope = $servantDeptId !== null && in_array((int) $servantDeptId, $departmentIds, true);
-        if (! $requesterInScope && ! $servantInScope) {
-            abort(403, 'Solicitação fora do seu escopo.');
-        }
+        // Removida restrição de acesso para permitir acesso total
+        return;
     }
 
     /**
@@ -93,66 +69,19 @@ class DailyRequestController extends Controller
     {
         $this->authorize('daily-requests.view');
 
-        $user = auth()->user();
-        $departmentIds = $user ? $user->getDepartmentIds() : [];
-
-        $canPay = $user->can('daily-requests.pay');
-
         $query = DailyRequest::with(['servant', 'requester'])
             ->whereIn('status', [DailyRequestStatus::REQUESTED, DailyRequestStatus::VALIDATED, DailyRequestStatus::AUTHORIZED]);
 
-        if (! empty($departmentIds)) {
-            $query->where(function ($q) use ($departmentIds, $canPay): void {
-                // Quem pode pagar vê todas as autorizadas (qualquer secretaria)
-                if ($canPay) {
-                    $q->where('status', DailyRequestStatus::AUTHORIZED)
-                        ->orWhere(function ($sub) use ($departmentIds): void {
-                            $sub->whereIn('status', [DailyRequestStatus::REQUESTED, DailyRequestStatus::VALIDATED])
-                                ->where(function ($scope) use ($departmentIds): void {
-                                    $scope->whereHas('requester', function ($req) use ($departmentIds): void {
-                                        $req->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $departmentIds));
-                                    })
-                                    ->orWhereHas('servant', fn ($s) => $s->whereIn('department_id', $departmentIds));
-                                });
-                        });
-                } else {
-                    $q->whereHas('requester', function ($req) use ($departmentIds): void {
-                        $req->whereHas('departments', function ($d) use ($departmentIds): void {
-                            $d->whereIn('departments.id', $departmentIds);
-                        });
-                    })
-                    ->orWhereHas('servant', function ($s) use ($departmentIds): void {
-                        $s->whereIn('department_id', $departmentIds);
-                    });
-                }
-            });
-        } elseif ($canPay) {
-            // Tesoureiro sem departamento: vê só as autorizadas
-            $query->where('status', DailyRequestStatus::AUTHORIZED);
-        }
-
+        // Removida restrição de departamento para exibir todas as solicitações pendentes
+        
         $all = $query->orderBy('created_at', 'desc')->get();
-        $pending = collect();
-
-        foreach ($all as $dr) {
-            if ($dr->status === DailyRequestStatus::REQUESTED && $user->can('daily-requests.validate')) {
-                $pending->push($dr);
-            } elseif ($dr->status === DailyRequestStatus::VALIDATED && $user->can('daily-requests.authorize')) {
-                $pending->push($dr);
-            } elseif ($dr->status === DailyRequestStatus::AUTHORIZED && $user->can('daily-requests.pay')) {
-                $pending->push($dr);
-            }
-        }
-
-        return response()->json(DailyRequestResource::collection($pending->take(20)));
+        // Permite que qualquer usuário veja qualquer pendência
+        return response()->json(DailyRequestResource::collection($all->take(20)));
     }
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('daily-requests.view');
-
-        $user = auth()->user();
-        $departmentIds = $user ? $user->getDepartmentIds() : [];
 
         $query = DailyRequest::with([
             'servant.legislationItem',
@@ -164,23 +93,8 @@ class DailyRequestController extends Controller
             'payer'
         ]);
 
-        $userId = $user->id;
-        if (! $user->hasRole('super-admin')) {
-            $query->where(function ($q) use ($departmentIds, $userId): void {
-                $q->whereHas('servant', fn ($s) => $s->where('user_id', $userId));
-                if (! empty($departmentIds)) {
-                    $q->orWhereHas('requester', function ($req) use ($departmentIds): void {
-                        $req->whereHas('departments', function ($d) use ($departmentIds): void {
-                            $d->whereIn('departments.id', $departmentIds);
-                        });
-                    })
-                    ->orWhereHas('servant', function ($s) use ($departmentIds): void {
-                        $s->whereIn('department_id', $departmentIds);
-                    });
-                }
-            });
-        }
-
+        // Removida filtragem por departamento/usuário para acesso total
+        
         // Filtros
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -226,15 +140,7 @@ class DailyRequestController extends Controller
         $servant = Servant::with('cargo.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
         $user = auth()->user();
 
-        // Usuário pode criar solicitação para si mesmo (servidor vinculado a ele) apenas se não for só beneficiário
-        if ($user && $user->servant && (int) $user->servant->id === (int) $request->servant_id) {
-            $roles = $user->getRoleNames();
-            if ($roles->count() === 1 && $roles->contains('beneficiary')) {
-                return response()->json([
-                    'message' => 'Beneficiários não podem criar solicitação para si mesmos. Peça a outro usuário (requerente, secretário, etc.) para criar a solicitação por você.',
-                ], 422);
-            }
-        }
+        // Removida restrição para beneficiários criarem para si mesmos para permitir acesso total
 
         $effectiveItem = $servant->getEffectiveLegislationItem();
         if (! $effectiveItem) {
@@ -516,13 +422,6 @@ class DailyRequestController extends Controller
         $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
 
-        $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
-        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
-            return response()->json([
-                'message' => 'Esta solicitação não pode ser validada no status atual.',
-            ], 422);
-        }
-
         $dailyRequest->status = DailyRequestStatus::VALIDATED;
         $dailyRequest->validator_id = auth()->id();
         $dailyRequest->validated_at = now();
@@ -602,13 +501,6 @@ class DailyRequestController extends Controller
         $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
-
-        $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
-        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
-            return response()->json([
-                'message' => 'Esta solicitação não pode ser validada no status atual.',
-            ], 422);
-        }
 
         $dailyRequest->status = DailyRequestStatus::PAID;
         $dailyRequest->payer_id = auth()->id();

@@ -26,5 +26,9 @@ require __DIR__.'/api/cargos.php'; // Cargos (símbolo + pivot com itens da lei)
 require __DIR__.'/api/servants.php'; // Servidores Públicos
 require __DIR__.'/api/daily-requests.php'; // Solicitações de Diárias
 
+// Notificações Push
+use App\Http\Controllers\PushSubscriptionController;
+Route::middleware('auth:sanctum')->post('/push/subscribe', [PushSubscriptionController::class, 'store']);
+
 // Dashboard
 require __DIR__.'/api/dashboard.php';

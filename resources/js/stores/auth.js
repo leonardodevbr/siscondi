@@ -17,10 +17,8 @@ export const useAuthStore = defineStore('auth', {
      * @returns {boolean}
      */
     can: (state) => (permissionName) => {
-      if (!state.user) return false;
-      if (state.user.is_super_admin === true) return true;
-      const perms = state.user.permissions || [];
-      return Array.isArray(perms) && perms.includes(permissionName);
+      // Temporariamente liberado para todos os perfis
+      return Boolean(state.user);
     },
     /**
      * Verifica se o usuário tem uma role específica.
@@ -28,13 +26,8 @@ export const useAuthStore = defineStore('auth', {
      * @returns {boolean}
      */
     hasRole: (state) => (roleName) => {
-      if (!state.user) return false;
-      const roles = state.user.roles || [];
-      const roleNames = Array.isArray(roleName) ? roleName : [roleName];
-      return roles.some((r) => {
-        const name = typeof r === 'string' ? r : r?.name;
-        return roleNames.includes(name);
-      });
+      // Temporariamente liberado para todos os perfis
+      return Boolean(state.user);
     },
     isSuperAdmin: (state) => {
       if (!state.user) return false;

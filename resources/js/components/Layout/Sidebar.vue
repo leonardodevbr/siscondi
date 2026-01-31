@@ -29,26 +29,8 @@ const authStore = useAuthStore();
 
 /** Item visível se não tem permission (ex.: Dashboard) ou se user pode (can) a permissão. */
 function itemVisible(item) {
-  // Verifica role específica (ex.: apenas super-admin)
-  if (item.role) {
-    return authStore.hasRole(item.role);
-  }
-  
-  // Exclui roles específicas (ex.: vendedor não vê movimentações)
-  if (item.excludeRoles && Array.isArray(item.excludeRoles)) {
-    const userRoles = authStore.user?.roles || [];
-    const hasExcludedRole = userRoles.some((r) => {
-      const roleName = typeof r === 'string' ? r : r?.name;
-      return item.excludeRoles.includes(roleName);
-    });
-    if (hasExcludedRole) {
-      return false;
-    }
-  }
-  
-  // Verifica permissão
-  if (item.permission == null || item.permission === '') return true;
-  return authStore.can(item.permission);
+  // Temporariamente liberado para todos os itens do menu
+  return true;
 }
 
 const menuGroups = computed(() => {

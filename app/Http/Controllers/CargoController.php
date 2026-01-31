@@ -17,17 +17,9 @@ class CargoController extends Controller
     {
         $this->authorize('cargos.view');
 
-        $user = auth()->user();
         $query = Cargo::query()->with('legislationItems');
 
-        if ($user && ! $user->hasRole('super-admin')) {
-            $municipality = $user->getMunicipality();
-            if ($municipality) {
-                $query->where('municipality_id', $municipality->id);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
-        }
+        // Removida filtragem por município para permitir acesso total
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -49,14 +41,8 @@ class CargoController extends Controller
     public function store(StoreCargoRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $user = auth()->user();
-        if ($user && ! $user->hasRole('super-admin')) {
-            $municipality = $user->getMunicipality();
-            if (! $municipality) {
-                return response()->json(['message' => 'Usuário sem município vinculado.'], 422);
-            }
-            $data['municipality_id'] = $municipality->id;
-        }
+        
+        // Removida restrição de município para permitir criação livre
 
         $cargo = Cargo::create($data);
 
@@ -65,14 +51,8 @@ class CargoController extends Controller
 
     private function ensureCargoScope(Cargo $cargo): void
     {
-        $user = auth()->user();
-        if ($user && $user->hasRole('super-admin')) {
-            return;
-        }
-        $municipality = $user?->getMunicipality();
-        if (! $municipality || $cargo->municipality_id !== $municipality->id) {
-            abort(403, 'Cargo fora do seu município.');
-        }
+        // Removida restrição de acesso por município
+        return;
     }
 
     public function show(string|int $cargo): JsonResponse
@@ -89,10 +69,8 @@ class CargoController extends Controller
         $cargo = Cargo::query()->findOrFail((int) $cargo);
         $this->ensureCargoScope($cargo);
         $data = $request->validated();
-        $user = auth()->user();
-        if ($user && ! $user->hasRole('super-admin')) {
-            unset($data['municipality_id']);
-        }
+        
+        // Removida restrição de município para permitir atualização livre
 
         $cargo->update($data);
 
