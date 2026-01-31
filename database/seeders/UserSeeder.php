@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
             ['email' => 'superadmin@siscondi.gov.br'],
             [
                 'name' => 'Super Administrador',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('123$qweR---'),
                 'municipality_id' => $municipalityId,
             ]
         );
@@ -54,7 +54,7 @@ class UserSeeder extends Seeder
         $admin = User::create([
             'name' => 'Administrador',
             'email' => 'admin@siscondi.gov.br',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('123$qweR---'),
             'municipality_id' => $municipalityId,
         ]);
         $admin->assignRole($adminRole);
@@ -63,7 +63,7 @@ class UserSeeder extends Seeder
         $requester = User::create([
             'name' => 'Maria Requerente',
             'email' => 'requerente@siscondi.gov.br',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('123$qweR---'),
             'municipality_id' => $municipalityId,
         ]);
         $requester->assignRole($requesterRole);
@@ -72,7 +72,7 @@ class UserSeeder extends Seeder
         $validator = User::create([
             'name' => 'José Secretário',
             'email' => 'secretario@siscondi.gov.br',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('123$qweR---'),
             'municipality_id' => $municipalityId,
         ]);
         $validator->assignRole($validatorRole);
@@ -81,7 +81,7 @@ class UserSeeder extends Seeder
         $authorizer = User::create([
             'name' => 'Carlos Prefeito',
             'email' => 'prefeito@siscondi.gov.br',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('123$qweR---'),
             'municipality_id' => $municipalityId,
         ]);
         $authorizer->assignRole($authorizerRole);
@@ -90,7 +90,7 @@ class UserSeeder extends Seeder
         $payer = User::create([
             'name' => 'Ana Tesoureira',
             'email' => 'tesoureiro@siscondi.gov.br',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('123$qweR---'),
             'municipality_id' => $municipalityId,
         ]);
         $payer->assignRole($payerRole);
