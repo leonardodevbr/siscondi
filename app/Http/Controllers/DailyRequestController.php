@@ -165,19 +165,21 @@ class DailyRequestController extends Controller
         ]);
 
         $userId = $user->id;
-        $query->where(function ($q) use ($departmentIds, $userId): void {
-            $q->whereHas('servant', fn ($s) => $s->where('user_id', $userId));
-            if (! empty($departmentIds)) {
-                $q->orWhereHas('requester', function ($req) use ($departmentIds): void {
-                    $req->whereHas('departments', function ($d) use ($departmentIds): void {
-                        $d->whereIn('departments.id', $departmentIds);
+        if (! $user->hasRole('super-admin')) {
+            $query->where(function ($q) use ($departmentIds, $userId): void {
+                $q->whereHas('servant', fn ($s) => $s->where('user_id', $userId));
+                if (! empty($departmentIds)) {
+                    $q->orWhereHas('requester', function ($req) use ($departmentIds): void {
+                        $req->whereHas('departments', function ($d) use ($departmentIds): void {
+                            $d->whereIn('departments.id', $departmentIds);
+                        });
+                    })
+                    ->orWhereHas('servant', function ($s) use ($departmentIds): void {
+                        $s->whereIn('department_id', $departmentIds);
                     });
-                })
-                ->orWhereHas('servant', function ($s) use ($departmentIds): void {
-                    $s->whereIn('department_id', $departmentIds);
-                });
-            }
-        });
+                }
+            });
+        }
 
         // Filtros
         if ($request->filled('search')) {

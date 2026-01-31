@@ -46,6 +46,10 @@ class UserController extends Controller
     private function departmentScope(): \Illuminate\Database\Eloquent\Builder
     {
         $user = auth()->user();
+        if ($user && $user->hasRole('super-admin')) {
+            return User::query();
+        }
+
         $headerId = request()->header('X-Department-ID');
         if ($headerId !== null && $headerId !== '' && (int) $headerId > 0) {
             $departmentId = (int) $headerId;
@@ -67,9 +71,7 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $query = ($user && $user->hasRole('super-admin'))
-            ? User::query()
-            : $this->departmentScope();
+        $query = $this->departmentScope();
 
         $query->with('roles', 'departments');
 
@@ -177,22 +179,19 @@ class UserController extends Controller
             return response()->json(new UserResource($user));
         }
 
-        if ($authUser && $authUser->hasRole('super-admin')) {
-            $user = User::query()->with('roles', 'departments', 'servant')->findOrFail($userId);
-        } else {
-            $user = $this->departmentScope()->where('id', '!=', $authUser->id)->with('roles', 'departments', 'servant')->findOrFail($userId);
-        }
+        $user = $this->departmentScope()
+            ->with('roles', 'departments', 'servant')
+            ->findOrFail($userId);
 
         return response()->json(new UserResource($user));
     }
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $authUser = auth()->user();
         $userId = (int) $id;
-        $user = ($authUser && $authUser->hasRole('super-admin'))
-            ? User::query()->with('roles', 'departments', 'servant')->findOrFail($userId)
-            : $this->departmentScope()->with('roles', 'departments', 'servant')->findOrFail($userId);
+        $user = $this->departmentScope()
+            ->with('roles', 'departments', 'servant')
+            ->findOrFail($userId);
 
         $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
         if ($request->filled('password')) {
@@ -286,9 +285,7 @@ class UserController extends Controller
     {
         $authUser = auth()->user();
         $userId = (int) $id;
-        $user = ($authUser && $authUser->hasRole('super-admin'))
-            ? User::query()->findOrFail($userId)
-            : $this->departmentScope()->findOrFail($userId);
+        $user = $this->departmentScope()->findOrFail($userId);
 
         if ($user->id === $authUser->id) {
             throw ValidationException::withMessages([

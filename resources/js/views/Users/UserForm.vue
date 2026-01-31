@@ -356,11 +356,11 @@ const servantOptions = computed(() => {
 const linkedServantName = computed(() => {
   const id = form.value.servant_id;
   if (id == null || id === '') return '';
-  const s = servants.value.find((x) => x.id === id) || initialServant.value;
-  if (s && (s.id === id || s.id == id)) {
-    return `${s.name ?? ''}${s.matricula ? ` (mat. ${s.matricula})` : ''}`.trim() || `#${id}`;
-  }
-  const opt = servantOptions.value.find((o) => o.value === id || o.value == id);
+    const s = servants.value.find((x) => x.id == id) || initialServant.value;
+    if (s && (s.id == id)) {
+      return `${s.name ?? ''}${s.matricula ? ` (mat. ${s.matricula})` : ''}`.trim() || `#${id}`;
+    }
+    const opt = servantOptions.value.find((o) => o.value == id);
   return opt ? opt.label : '';
 });
 
@@ -407,14 +407,14 @@ async function loadUser() {
       password: '',
       password_confirmation: '',
       operation_password: '',
-      operation_pin: '',
+      operation_pin: user.operation_pin ?? '',
       department_ids: user.department_ids ?? [],
       primary_department_id: user.primary_department_id ?? user.department_id ?? null,
       roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
-      servant_id: user.servant_id ?? user.servant?.id ?? null,
+      servant_id: user.servant_id ? parseInt(user.servant_id) : (user.servant?.id ? parseInt(user.servant.id) : null),
       signature_path: user.signature_path ?? '',
     };
-    initialServant.value = user.servant ? { id: user.servant.id, name: user.servant.name, matricula: user.servant.matricula } : null;
+    initialServant.value = user.servant ? { id: parseInt(user.servant.id), name: user.servant.name, matricula: user.servant.matricula } : null;
   } catch (error) {
     toast.error('Erro ao carregar usuário.');
     router.push({ name: 'users.index' });
@@ -518,11 +518,18 @@ async function submit() {
     router.push({ name: 'users.index' });
   } catch (err) {
     const data = err.response?.data;
-    const msg = data?.message
-      ?? (data?.errors && typeof data.errors === 'object'
-        ? Object.values(data.errors).flat().join(' ')
-        : null)
-      ?? 'Erro ao salvar usuário.';
+    let msg = 'Erro ao salvar usuário.';
+    
+    if (data?.errors) {
+      if (typeof data.errors === 'object') {
+        msg = Object.values(data.errors).flat().join(' ');
+      } else if (typeof data.errors === 'string') {
+        msg = data.errors;
+      }
+    } else if (data?.message) {
+      msg = data.message;
+    }
+    
     toast.error(msg);
   } finally {
     saving.value = false;

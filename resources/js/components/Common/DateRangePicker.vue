@@ -7,8 +7,7 @@
       {{ label }}
       <span v-if="required" class="text-red-500">*</span>
     </label>
-    <Popover v-slot="{ open, close }" class="relative block">
-      <div class="hidden" :data-close="(closeRef = close)"></div>
+    <Popover v-slot="{ open }" class="relative block">
       <PopoverButton
         type="button"
         class="input-base w-full flex items-center justify-between text-left"
@@ -19,92 +18,111 @@
         </span>
         <CalendarDaysIcon class="h-5 w-5 shrink-0 text-slate-400" />
       </PopoverButton>
-      <PopoverPanel
-        class="absolute right-0 z-50 mt-1 w-auto min-w-max rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
-        @mouseleave="hoveredDay = null"
+
+      <transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="translate-y-1 opacity-0"
+        enter-to-class="translate-y-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="translate-y-0 opacity-100"
+        leave-to-class="translate-y-1 opacity-0"
       >
-        <div class="flex items-center justify-between mb-4">
-          <button
-            v-if="tempStart || tempEnd"
-            type="button"
-            class="text-xs text-slate-500 hover:text-slate-700"
-            @click="clearSelection"
-          >
-            Limpar
-          </button>
-        </div>
-        <div class="flex gap-8">
-          <!-- Mês 1 -->
-          <div class="flex flex-col">
-            <div class="flex items-center justify-between mb-2">
-              <button
-                type="button"
-                class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600"
-                @click="prevMonth"
-              >
-                <ChevronLeftIcon class="h-5 w-5" />
-              </button>
-              <span class="text-sm font-medium text-slate-800">{{ monthLabel(calendarStart) }}</span>
-              <button
-                type="button"
-                class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600"
-                @click="nextMonth"
-              >
-                <ChevronRightIcon class="h-5 w-5" />
-              </button>
-            </div>
-            <div class="grid grid-cols-7 gap-0.5 text-center">
-              <div
-                v-for="w in weekDays"
-                :key="w"
-                class="text-xs font-medium text-slate-500 py-1"
-              >
-                {{ w }}
+        <PopoverPanel
+          v-slot="{ close }"
+          class="absolute left-0 lg:left-auto lg:right-0 z-50 mt-1 w-screen max-w-sm sm:max-w-md md:max-w-lg lg:min-w-max rounded-xl border border-slate-200 bg-white p-4 shadow-xl focus:outline-none"
+          @mouseleave="hoveredDay = null"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-semibold text-slate-800">Selecione o período</span>
+            <button
+              v-if="tempStart || tempEnd"
+              type="button"
+              class="text-xs font-medium text-blue-600 hover:text-blue-700 p-1"
+              @click="clearSelection"
+            >
+              Limpar seleção
+            </button>
+          </div>
+          <div class="flex flex-col md:flex-row gap-6 md:gap-8">
+            <!-- Mês 1 -->
+            <div class="flex flex-col shrink-0">
+              <div class="flex items-center justify-between mb-2">
+                <button
+                  type="button"
+                  class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+                  @click="prevMonth"
+                >
+                  <ChevronLeftIcon class="h-5 w-5" />
+                </button>
+                <span class="text-sm font-bold text-slate-800">{{ monthLabel(calendarStart) }}</span>
+                <button
+                  type="button"
+                  class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+                  @click="nextMonth"
+                >
+                  <ChevronRightIcon class="h-5 w-5" />
+                </button>
               </div>
-              <button
-                v-for="(day, idx) in calendarDays"
-                :key="idx"
-                type="button"
-                class="w-9 h-9 rounded-lg text-sm transition-colors"
-                :class="dayClasses(day, calendarStart)"
-                :disabled="isDisabled(day, calendarStart)"
-                @click="onDayClick(day)"
-                @mouseenter="hoveredDay = day"
-                @mouseleave="hoveredDay = null"
-              >
-                {{ day.getDate() }}
-              </button>
+              <div class="grid grid-cols-7 gap-1 text-center">
+                <div
+                  v-for="w in weekDays"
+                  :key="w"
+                  class="text-[10px] font-bold text-slate-400 py-1 uppercase"
+                >
+                  {{ w }}
+                </div>
+                <button
+                  v-for="(day, idx) in calendarDays"
+                  :key="idx"
+                  type="button"
+                  class="w-9 h-9 rounded-lg text-sm transition-all duration-200"
+                  :class="dayClasses(day, calendarStart)"
+                  :disabled="isDisabled(day, calendarStart)"
+                  @click="onDayClick(day, close)"
+                  @mouseenter="hoveredDay = day"
+                >
+                  {{ day.getDate() }}
+                </button>
+              </div>
+            </div>
+            <!-- Mês 2 -->
+            <div class="flex flex-col shrink-0">
+              <div class="flex items-center justify-center mb-2">
+                <span class="text-sm font-bold text-slate-800 py-1.5">{{ monthLabel(calendarStartNext) }}</span>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center">
+                <div
+                  v-for="w in weekDays"
+                  :key="'2-' + w"
+                  class="text-[10px] font-bold text-slate-400 py-1 uppercase"
+                >
+                  {{ w }}
+                </div>
+                <button
+                  v-for="(day, idx) in calendarDaysNext"
+                  :key="'n-' + idx"
+                  type="button"
+                  class="w-9 h-9 rounded-lg text-sm transition-all duration-200"
+                  :class="dayClasses(day, calendarStartNext)"
+                  :disabled="isDisabled(day, calendarStartNext)"
+                  @click="onDayClick(day, close)"
+                  @mouseenter="hoveredDay = day"
+                >
+                  {{ day.getDate() }}
+                </button>
+              </div>
             </div>
           </div>
-          <!-- Mês 2 -->
-          <div class="flex flex-col">
-            <span class="text-sm font-medium text-slate-800 mb-2 mt-9">{{ monthLabel(calendarStartNext) }}</span>
-            <div class="grid grid-cols-7 gap-0.5 text-center">
-              <div
-                v-for="w in weekDays"
-                :key="'2-' + w"
-                class="text-xs font-medium text-slate-500 py-1"
-              >
-                {{ w }}
-              </div>
-              <button
-                v-for="(day, idx) in calendarDaysNext"
-                :key="'n-' + idx"
-                type="button"
-                class="w-9 h-9 rounded-lg text-sm transition-colors"
-                :class="dayClasses(day, calendarStartNext)"
-                :disabled="isDisabled(day, calendarStartNext)"
-                @click="onDayClick(day)"
-                @mouseenter="hoveredDay = day"
-                @mouseleave="hoveredDay = null"
-              >
-                {{ day.getDate() }}
-              </button>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <p class="text-[10px] text-slate-400 uppercase font-medium tracking-wider">
+              {{ !tempStart ? 'Selecione a ida' : (!tempEnd ? 'Selecione a volta' : 'Período selecionado') }}
+            </p>
+            <div v-if="tempStart && !tempEnd" class="text-[10px] text-blue-500 font-bold uppercase">
+              Aguardando retorno...
             </div>
           </div>
-        </div>
-        <p class="mt-3 text-xs text-slate-500">Selecione a data de saída e depois a data de retorno.</p>
-      </PopoverPanel>
+        </PopoverPanel>
+      </transition>
     </Popover>
     <p
       v-if="error"
@@ -149,7 +167,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:departureDate', 'update:returnDate'])
 
-let closeRef = null
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
 const calendarStart = ref(new Date())
@@ -159,13 +176,14 @@ const hoveredDay = ref(null)
 
 const minDateObj = computed(() => {
   if (props.minDate) {
-    return typeof props.minDate === 'string' ? parseISO(props.minDate) : props.minDate
+    return startOfDay(typeof props.minDate === 'string' ? parseISO(props.minDate) : props.minDate)
   }
   return startOfDay(new Date())
 })
 
 function monthLabel(d) {
-  return format(d, 'MMMM yyyy', { locale: ptBR })
+  const label = format(d, 'MMMM yyyy', { locale: ptBR })
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 const calendarStartNext = computed(() => addMonths(calendarStart.value, 1))
@@ -185,17 +203,17 @@ const displayText = computed(() => {
   if (!start || !end) return ''
   const sameYear = start.getFullYear() === end.getFullYear()
   if (sameYear) {
-    return `${format(start, 'd \'de\' MMM', { locale: ptBR })} – ${format(end, 'd \'de\' MMM. yyyy', { locale: ptBR })}`
+    return `${format(start, "d 'de' MMM", { locale: ptBR })} – ${format(end, "d 'de' MMM. yyyy", { locale: ptBR })}`
   }
-  return `${format(start, 'd \'de\' MMM. yyyy', { locale: ptBR })} – ${format(end, 'd \'de\' MMM. yyyy', { locale: ptBR })}`
+  return `${format(start, "d 'de' MMM. yyyy", { locale: ptBR })} – ${format(end, "d 'de' MMM. yyyy", { locale: ptBR })}`
 })
 
 watch(
   () => [props.departureDate, props.returnDate],
   ([dep, ret]) => {
-    if (dep) tempStart.value = parseISO(dep)
+    if (dep) tempStart.value = startOfDay(parseISO(dep))
     else tempStart.value = null
-    if (ret) tempEnd.value = parseISO(ret)
+    if (ret) tempEnd.value = startOfDay(parseISO(ret))
     else tempEnd.value = null
   },
   { immediate: true }
@@ -203,65 +221,73 @@ watch(
 
 function isDisabled(day, month) {
   if (!isSameMonth(day, month)) return true
-  if (minDateObj.value && isBefore(day, minDateObj.value)) return true
+  const d = startOfDay(day)
+  if (minDateObj.value && isBefore(d, minDateObj.value)) return true
   return false
 }
 
 function dayClasses(day, month) {
   if (!isSameMonth(day, month)) {
-    return 'text-slate-300 cursor-default'
+    return 'text-slate-200 cursor-default pointer-events-none'
   }
-  if (minDateObj.value && isBefore(day, minDateObj.value)) {
+  
+  const d = startOfDay(day)
+  if (minDateObj.value && isBefore(d, minDateObj.value)) {
     return 'text-slate-300 cursor-not-allowed'
   }
-  const startRaw = tempStart.value
-  const endRaw = tempEnd.value
-  const hovered = hoveredDay.value
-  if (!startRaw && !endRaw) {
-    return 'hover:bg-slate-100 text-slate-800'
-  }
-  const dayStart = startOfDay(day)
-  const start = startRaw ? startOfDay(startRaw) : null
-  const canUseHover =
-    hovered && start && !isBefore(hovered, startRaw) &&
-    (!minDateObj.value || !isBefore(hovered, minDateObj.value))
-  const endComputed =
-    endRaw ? startOfDay(endRaw) : canUseHover ? startOfDay(hovered) : null
-  const end = endComputed
-  const hasRange = start && end && !isBefore(end, start)
-  const inRange =
-    hasRange &&
-    (isWithinInterval(dayStart, { start, end }) ||
-      isSameDay(dayStart, start) ||
-      isSameDay(dayStart, end))
-  const isStart = start && isSameDay(dayStart, start)
-  const isEnd = end && isSameDay(dayStart, end)
+
+  const start = tempStart.value ? startOfDay(tempStart.value) : null
+  const end = tempEnd.value ? startOfDay(tempEnd.value) : null
+  const hovered = hoveredDay.value ? startOfDay(hoveredDay.value) : null
+
+  // Casos de Seleção Exata
+  const isStart = start && isSameDay(d, start)
+  const isEnd = end && isSameDay(d, end)
+
   if (isStart || isEnd) {
-    return 'bg-blue-600 text-white font-medium hover:bg-blue-700'
+    return 'bg-blue-600 text-white font-bold shadow-sm z-10 scale-105'
   }
-  if (inRange) {
-    return 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+
+  // Range Selecionado (Ida e Volta)
+  if (start && end) {
+    if (isWithinInterval(d, { start, end })) {
+      return 'bg-blue-50 text-blue-700 font-semibold'
+    }
   }
-  return 'hover:bg-slate-100 text-slate-800'
+
+  // Preview de Range (Apenas Ida selecionada + Hover)
+  if (start && !end && hovered && !isBefore(hovered, start)) {
+    if (isWithinInterval(d, { start, end: hovered })) {
+      return 'bg-blue-50 text-blue-400 font-medium'
+    }
+  }
+
+  return 'hover:bg-slate-100 text-slate-700 font-medium'
 }
 
-function onDayClick(day) {
+function onDayClick(day, close) {
+  const d = startOfDay(day)
+  if (minDateObj.value && isBefore(d, minDateObj.value)) return
+
+  // Se nada selecionado ou ambos selecionados, inicia novo range
   if (!tempStart.value || (tempStart.value && tempEnd.value)) {
-    tempStart.value = day
+    tempStart.value = d
     tempEnd.value = null
-    emit('update:departureDate', format(day, 'yyyy-MM-dd'))
+    emit('update:departureDate', format(d, 'yyyy-MM-dd'))
     emit('update:returnDate', '')
     return
   }
-  if (isBefore(day, tempStart.value)) {
-    tempEnd.value = tempStart.value
-    tempStart.value = day
+
+  // Se já tem ida, define a volta
+  if (isBefore(d, tempStart.value)) {
+    // Se clicar em data anterior à ida, essa vira a nova ida
+    tempStart.value = d
+    emit('update:departureDate', format(d, 'yyyy-MM-dd'))
   } else {
-    tempEnd.value = day
+    tempEnd.value = d
+    emit('update:returnDate', format(d, 'yyyy-MM-dd'))
+    if (typeof close === 'function') close()
   }
-  emit('update:departureDate', format(tempStart.value, 'yyyy-MM-dd'))
-  emit('update:returnDate', format(tempEnd.value, 'yyyy-MM-dd'))
-  if (typeof closeRef === 'function') closeRef()
 }
 
 function clearSelection() {

@@ -58,12 +58,12 @@ class UserResource extends JsonResource
             'signature_url' => $this->resource->signature_path
                 ? rtrim(config('app.url'), '/').'/storage/'.ltrim($this->resource->signature_path, '/')
                 : null,
-            'servant' => $this->whenLoaded('servant', fn () => $this->servant ? [
+            'servant' => $this->when($this->relationLoaded('servant'), fn () => $this->servant ? [
                 'id' => $this->servant->id,
                 'name' => $this->servant->name,
                 'matricula' => $this->servant->matricula,
             ] : null),
-            'servant_id' => $this->whenLoaded('servant', fn () => $this->servant?->id),
+            'servant_id' => $this->servant?->id ?? null,
             'has_operation_pin' => $this->resource->hasOperationPin(),
             'has_operation_password' => $this->resource->hasOperationPassword(),
             'requires_operation_credentials_to_sign' => $this->resource->requiresOperationCredentialsToSign(),

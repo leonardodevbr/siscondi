@@ -70,8 +70,8 @@
           </h3>
         </div>
 
-        <div class="lg:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div>
+        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+          <div class="w-full">
             <Input
               v-model="form.destination_city"
               label="Cidade de destino *"
@@ -79,7 +79,7 @@
               placeholder="Ex: Salvador"
             />
           </div>
-          <div>
+          <div class="w-full">
             <Input
               v-model="form.destination_state"
               label="Estado (UF) *"
@@ -87,15 +87,17 @@
               required
               maxlength="2"
               placeholder="UF"
+              class="uppercase"
+              @input="form.destination_state = form.destination_state.toUpperCase()"
             />
           </div>
-          <div>
+          <div class="w-full md:col-span-2 lg:col-span-1">
             <DateRangePicker
-              label="Período (saída e retorno)"
+              label="Período (saída e retorno) *"
               :departure-date="form.departure_date"
               :return-date="form.return_date"
               required
-              placeholder="Selecione as datas de saída e retorno"
+              placeholder="Selecione as datas"
               @update:departure-date="form.departure_date = $event; calculateDays()"
               @update:return-date="form.return_date = $event; calculateDays()"
             />
@@ -275,6 +277,66 @@
         <p v-else class="text-sm text-slate-500">Nenhum registro na linha do tempo.</p>
       </div>
     </form>
+
+    <!-- Modal de confirmação para assinar (senha/PIN + preview da assinatura) -->
+    <Modal
+      :is-open="signModalOpen"
+      :title="signModalTitle"
+      :closable="!actionLoading"
+      @close="closeSignModal"
+    >
+      <div class="space-y-4">
+        <p class="text-slate-600">{{ signModalSummary }}</p>
+
+        <!-- Preview da assinatura do usuário logado (quando tiver imagem cadastrada) -->
+        <div class="rounded-lg border border-slate-200 p-3 bg-slate-50/80">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Sua assinatura</p>
+          <div v-if="authStore.user?.signature_url" class="flex items-center flex-col gap-3">
+            <img
+              :src="authStore.user.signature_url"
+              alt="Sua assinatura"
+              class="max-h-16 object-contain bg-white p-1 w-full border border-slate-100 rounded shadow-sm"
+            />
+            <p class="text-[10px] text-slate-400 text-center uppercase font-bold tracking-wider">Esta imagem será registrada no documento</p>
+          </div>
+          <p v-else class="text-sm text-slate-500">
+            Você não tem imagem de assinatura cadastrada. 
+            <router-link v-if="authStore.can('users.edit')" :to="{ name: 'users.index' }" class="text-blue-600 hover:underline font-medium">Cadastrar assinatura</router-link>
+          </p>
+        </div>
+
+        <!-- Senha e PIN quando o usuário tem cadastrado -->
+        <template v-if="authStore.user?.requires_operation_credentials_to_sign">
+          <Input
+            v-if="authStore.user?.has_operation_pin"
+            v-model="signModalPin"
+            label="PIN de autorização"
+            type="text"
+            inputmode="numeric"
+            placeholder="Informe seu PIN"
+            autocomplete="off"
+            @input="signModalPin = signModalPin.replace(/[^0-9]/g, '')"
+          />
+          <Input
+            v-if="authStore.user?.has_operation_password"
+            v-model="signModalPassword"
+            label="Senha de operação"
+            type="password"
+            placeholder="Informe sua senha de operação"
+            autocomplete="off"
+          />
+        </template>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" :disabled="actionLoading" @click="closeSignModal">
+            Cancelar
+          </Button>
+          <Button :loading="actionLoading" @click="confirmSign">
+            Confirmar e Assinar
+          </Button>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 

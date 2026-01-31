@@ -120,79 +120,82 @@
         <!-- Resumo das três assinaturas: Requerente, Validador, Concedente. Tesouraria só dá baixa e registra na linha do tempo, sem assinatura. -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
-            class="rounded-lg border p-4 transition-colors"
-            :class="request.requester
-              ? 'bg-green-50 border-green-200'
+            class="rounded-lg border p-4 transition-all duration-300"
+            :class="request.requester_id
+              ? 'bg-emerald-50 border-emerald-200 shadow-sm'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
-              class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.requester ? 'text-green-700' : 'text-slate-500'"
+              class="text-xs font-bold uppercase tracking-wider mb-2"
+              :class="request.requester_id ? 'text-emerald-700' : 'text-slate-500'"
             >
               Requerente
             </p>
             <template v-if="request.requester">
-              <p class="font-medium text-slate-800">{{ request.requester.name }}</p>
-              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
-              <img
-                v-if="request.requester.signature_url"
-                :src="request.requester.signature_url"
-                alt="Assinatura do requerente"
-                class="mt-2 max-h-14 object-contain"
-              />
+              <p class="font-bold text-slate-800">{{ request.requester.name }}</p>
+              <p class="text-[10px] font-medium text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
+              <div v-if="request.requester.signature_url" class="mt-3 p-2 bg-white rounded border border-emerald-100/50">
+                <img
+                  :src="request.requester.signature_url"
+                  alt="Assinatura do requerente"
+                  class="max-h-12 w-full object-contain"
+                />
+              </div>
             </template>
             <template v-else>
               <p class="text-sm text-slate-500">—</p>
-              <p v-if="request.created_at" class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
+              <p v-if="request.created_at" class="text-[10px] text-slate-500 mt-0.5">{{ formatDateTime(request.created_at) }}</p>
             </template>
           </div>
           <div
-            class="rounded-lg border p-4 transition-colors"
-            :class="request.validator
-              ? 'bg-green-50 border-green-200'
+            class="rounded-lg border p-4 transition-all duration-300"
+            :class="request.validator_id
+              ? 'bg-emerald-50 border-emerald-200 shadow-sm'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
-              class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.validator ? 'text-green-700' : 'text-slate-500'"
+              class="text-xs font-bold uppercase tracking-wider mb-2"
+              :class="request.validator_id ? 'text-emerald-700' : 'text-slate-500'"
             >
               Validador
             </p>
             <template v-if="request.validator">
-              <p class="font-medium text-slate-800">{{ request.validator.name }}</p>
-              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.validated_at) }}</p>
-              <img
-                v-if="request.validator.signature_url"
-                :src="request.validator.signature_url"
-                alt="Assinatura do validador"
-                class="mt-2 max-h-14 object-contain"
-              />
+              <p class="font-bold text-slate-800">{{ request.validator.name }}</p>
+              <p class="text-[10px] font-medium text-slate-500 mt-0.5">{{ formatDateTime(request.validated_at) }}</p>
+              <div v-if="request.validator.signature_url" class="mt-3 p-2 bg-white rounded border border-emerald-100/50">
+                <img
+                  :src="request.validator.signature_url"
+                  alt="Assinatura do validador"
+                  class="max-h-12 w-full object-contain"
+                />
+              </div>
             </template>
-            <p v-else class="text-sm text-slate-500">Pendente</p>
+            <p v-else class="text-sm text-slate-400 italic">Pendente</p>
           </div>
           <div
-            class="rounded-lg border p-4 transition-colors"
-            :class="request.authorizer
-              ? 'bg-green-50 border-green-200'
+            class="rounded-lg border p-4 transition-all duration-300"
+            :class="request.authorizer_id
+              ? 'bg-emerald-50 border-emerald-200 shadow-sm'
               : 'bg-slate-50/50 border-slate-200'"
           >
             <p
-              class="text-xs font-medium uppercase tracking-wide mb-2"
-              :class="request.authorizer ? 'text-green-700' : 'text-slate-500'"
+              class="text-xs font-bold uppercase tracking-wider mb-2"
+              :class="request.authorizer_id ? 'text-emerald-700' : 'text-slate-500'"
             >
               Concedente
             </p>
             <template v-if="request.authorizer">
-              <p class="font-medium text-slate-800">{{ request.authorizer.name }}</p>
-              <p class="text-xs text-slate-500 mt-0.5">{{ formatDateTime(request.authorized_at) }}</p>
-              <img
-                v-if="request.authorizer.signature_url"
-                :src="request.authorizer.signature_url"
-                alt="Assinatura do concedente"
-                class="mt-2 max-h-14 object-contain"
-              />
+              <p class="font-bold text-slate-800">{{ request.authorizer.name }}</p>
+              <p class="text-[10px] font-medium text-slate-500 mt-0.5">{{ formatDateTime(request.authorized_at) }}</p>
+              <div v-if="request.authorizer.signature_url" class="mt-3 p-2 bg-white rounded border border-emerald-100/50">
+                <img
+                  :src="request.authorizer.signature_url"
+                  alt="Assinatura do concedente"
+                  class="max-h-12 w-full object-contain"
+                />
+              </div>
             </template>
-            <p v-else class="text-sm text-slate-500">Pendente</p>
+            <p v-else class="text-sm text-slate-400 italic">Pendente</p>
           </div>
         </div>
 
