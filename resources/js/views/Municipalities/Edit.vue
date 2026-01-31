@@ -15,6 +15,10 @@
           <input v-model="form.name" type="text" class="input-base w-full" required />
         </div>
         <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome para exibição em documentos</label>
+          <input v-model="form.display_name" placeholder="Ex: Prefeitura Municipal de Cafarnaum" type="text" class="input-base w-full" required />
+        </div>
+        <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
           <input
             :value="form.cnpj"
@@ -28,6 +32,10 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">UF</label>
           <input v-model="form.state" type="text" class="input-base w-full max-w-[4rem]" maxlength="2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome para exibição em documentos</label>
+          <input v-model="form.display_state" placeholder="Ex: Estado da Bahia" type="text" class="input-base w-full" required />
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Endereço</label>
@@ -83,8 +91,10 @@ const saving = ref(false);
 const id = computed(() => route.params.id);
 const form = reactive({
   name: '',
+  display_name: '',
   cnpj: '',
   state: '',
+  display_state: '',
   address: '',
   email: '',
   logo_path: '',
@@ -96,8 +106,10 @@ const load = async () => {
     const { data } = await api.get(`/municipalities/${id.value}`);
     const m = data?.data ?? data ?? {};
     form.name = m.name ?? '';
+    form.display_name = m.display_name ?? '';
     form.cnpj = formatCnpj(m.cnpj ?? '');
     form.state = m.state ?? '';
+    form.display_state = m.display_state ?? '';
     form.address = m.address ?? '';
     form.email = m.email ?? '';
     form.logo_path = m.logo_path ?? '';

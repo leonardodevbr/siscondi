@@ -20,8 +20,10 @@ class UpdateMunicipalityRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'display_name' => ['sometimes', 'required', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'state' => ['nullable', 'string', 'max:2'],
+            'display_state' => ['sometimes', 'required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'email' => ['nullable', 'email', 'max:255'],
             'logo_path' => ['nullable', 'string', 'max:500'],

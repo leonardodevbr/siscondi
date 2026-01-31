@@ -19,8 +19,10 @@ class MunicipalityResource extends JsonResource
             return [
                 'id' => null,
                 'name' => null,
+                'display_name' => null,
                 'cnpj' => null,
                 'state' => null,
+                'display_state' => null,
                 'address' => null,
                 'email' => null,
                 'logo_path' => null,
@@ -33,8 +35,10 @@ class MunicipalityResource extends JsonResource
         return [
             'id' => $m->getAttribute('id'),
             'name' => $m->getAttribute('name'),
+            'display_name' => $m->getAttribute('display_name'),
             'cnpj' => $m->getAttribute('cnpj'),
             'state' => $m->getAttribute('state'),
+            'display_state' => $m->getAttribute('display_state'),
             'address' => $m->getAttribute('address'),
             'email' => $m->getAttribute('email'),
             'logo_path' => $m->getAttribute('logo_path'),
