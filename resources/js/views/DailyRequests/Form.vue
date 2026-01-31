@@ -363,8 +363,8 @@ const allDestinationTypes = ref([])
 
 const servantOptions = computed(() =>
   servants.value.map((s) => {
-    const cargoLabel = s.cargos?.length
-      ? ` — ${s.cargos.map((c) => c.name || c.symbol).join(', ')}`
+    const cargoLabel = s.cargo 
+      ? ` — ${s.cargo.name || s.cargo.symbol}`
       : ''
     return {
       value: s.id,

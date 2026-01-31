@@ -58,7 +58,12 @@
         </div>
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Servidor</p>
-          <p class="mt-1 text-slate-900">{{ request.servant?.name ?? '—' }}</p>
+          <p class="mt-1 text-slate-900">
+            {{ request.servant?.name ?? '—' }}
+            <span v-if="request.servant?.cargo" class="text-slate-500 text-xs">
+              ({{ request.servant.cargo.name || request.servant.cargo.symbol }})
+            </span>
+          </p>
         </div>
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Tipo de destino</p>

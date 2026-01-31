@@ -40,6 +40,7 @@ class ConfigController extends Controller
             'municipality' => $municipality ? [
                 'id' => $municipality->id,
                 'name' => $municipality->name,
+                'display_name' => $municipality->display_name,
                 'state' => $municipality->state,
                 'address' => $municipality->address,
                 'email' => $municipality->email,

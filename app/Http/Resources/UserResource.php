@@ -39,6 +39,7 @@ class UserResource extends JsonResource
             'municipality' => $this->whenLoaded('municipality', fn () => $this->municipality ? [
                 'id' => $this->municipality->id,
                 'name' => $this->municipality->name,
+                'display_name' => $this->municipality->display_name,
             ] : null),
             'department_id' => $primaryDepartment?->id,
             'department' => $primaryDepartment ? [

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('legislation_item_id')->nullable()->constrained('legislation_items')->nullOnDelete()->comment('Item da legislação (opcional; vínculo principal é por cargos)');
             $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete()->comment('Secretaria/Lotação');
+            $table->foreignId('cargo_id')->nullable()->constrained('cargos')->cascadeOnDelete()->comment('Cargo');
             
             // Informações Pessoais
             $table->string('name');
@@ -34,6 +35,9 @@ return new class extends Migration
             // Contato
             $table->string('email')->nullable();
             $table->string('phone', 20)->nullable();
+            
+            $table->text('appointment_decree')->nullable();
+            $table->date('appointment_date')->nullable();
             
             // Status
             $table->boolean('is_active')->default(true);

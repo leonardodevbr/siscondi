@@ -21,6 +21,7 @@ class Servant extends Model
         'user_id',
         'legislation_item_id',
         'department_id',
+        'cargo_id',
         'name',
         'cpf',
         'rg',
@@ -32,6 +33,8 @@ class Servant extends Model
         'account_type',
         'email',
         'phone',
+        'appointment_decree',
+        'appointment_date',
         'is_active',
     ];
 
@@ -85,17 +88,16 @@ class Servant extends Model
     /**
      * Cargos ocupados pelo servidor (1 ou mais)
      *
-     * @return BelongsToMany<Cargo>
+     * @return BelongsTo<Cargo>
      */
-    public function cargos(): BelongsToMany
+    public function cargo(): BelongsTo
     {
-        return $this->belongsToMany(Cargo::class, 'servant_cargo')
-            ->withTimestamps();
+        return $this->belongsTo(Cargo::class);
     }
 
     /**
-     * Item da legislação efetivo para cálculo de diária: vindo dos cargos do servidor ou do vínculo direto (legado).
-     * Retorna o primeiro item com valores disponível entre os cargos do servidor; se não houver, o legislation_item_id.
+     * Item da legislação efetivo para cálculo de diária: vindo do cargo do servidor ou do vínculo direto (legado).
+     * Retorna o primeiro item com valores disponível no cargo do servidor; se não houver, o legislation_item_id.
      */
     public function getEffectiveLegislationItem(): ?LegislationItem
     {
@@ -105,9 +107,11 @@ class Servant extends Model
                 return $item;
             }
         }
-        $this->loadMissing('cargos.legislationItems');
-        foreach ($this->cargos as $cargo) {
-            foreach ($cargo->legislationItems as $item) {
+
+        $this->loadMissing('cargo.legislationItems');
+        
+        if ($this->cargo) {
+            foreach ($this->cargo->legislationItems as $item) {
                 if (! empty($item->values)) {
                     return $item;
                 }

@@ -47,8 +47,7 @@ class UpdateServantRequest extends FormRequest
             ],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'is_active' => ['sometimes', 'boolean'],
-            'cargo_ids' => ['sometimes', 'array', 'min:1'],
-            'cargo_ids.*' => ['integer', 'exists:cargos,id'],
+            'cargo_id' => ['sometimes', 'nullable', 'integer', 'exists:cargos,id'],
         ];
     }
 }

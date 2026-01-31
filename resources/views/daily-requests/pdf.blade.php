@@ -209,12 +209,12 @@
                 @endif
             </td>
             <td class="header-text">
-                <div class="title-line">ESTADO DA BAHIA</div>
-                <div class="title-line">{{ strtoupper($municipality?->name ?? 'CAFARNAUM') }}</div>
-                <div class="title-line">{{ strtoupper($department?->name ?? 'FUNDO MUNICIPAL DE ASSISTÊNCIA SOCIAL') }}</div>
-                <div>CNPJ: {{ $department?->cnpj ?? '17.622.151/0001-84' }}</div>
-                <div>{{ strtoupper($department?->address ?? 'AVENIDA JOÃO COSTA BRASIL, 315 – CENTRO – CAFARNAUM - BAHIA') }}</div>
-                <div>EMAIL: {{ $department?->email ?? 'social@cafarnaum.ba.gov.br' }}</div>
+                <div class="title-line">{{ $municipality?->display_state ?? 'ESTADO' }}</div>
+                <div class="title-line">{{ strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }}</div>
+                <div class="title-line">{{ strtoupper($department?->fund_name ?? 'FUNDO RESPONSÁVEL') }}</div>
+                <div>CNPJ: {{ $department?->fund_cnpj ?? 'CNPJ DO FUNDO' }}</div>
+                <div>{{ strtoupper($department?->address ?? 'ENDEREÇO COMPLETO DO DEPARTAMENTO') }}</div>
+                <div>EMAIL: {{ $department?->email ?? 'endereco@email.com' }}</div>
             </td>
             <td class="header-year">
                 @if(!empty($department_logo_data))
@@ -265,7 +265,7 @@
                             <div class="signature-name">
                                 {{ strtoupper($dailyRequest->requester?->name ?? '–') }}
                                 <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->requester?->cargos[0]?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
+                                    {{ strtoupper($dailyRequest->requester?->cargo?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
                                 </div>
                             </div>
                         </td>
@@ -294,7 +294,7 @@
                                     <div class="signature-name">
                                         {{ strtoupper($dailyRequest->validator?->name ?? '–') }}
                                         <div class="signature-cargo">
-                                            {{ strtoupper($dailyRequest->validator?->cargos[0]?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO(A)') }}
+                                            {{ strtoupper($dailyRequest->validator?->cargo?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO(A)') }}
                                         </div>
                                     </div>
                                 </div>
@@ -315,8 +315,8 @@
         <!-- Linha 2: Beneficiário, Cargo, Matrícula -->
         <tr>
             <td colspan="2"><strong>Beneficiário:</strong><br>{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</td>
-            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->role ?? 'SECRETÁRIO') }}</td>
-            <td class="w-15"><strong>Matrícula:</strong><br>{{ $dailyRequest->servant?->registration_number ?? '–' }}</td>
+            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->cargo?->name ?? '–') }}</td>
+            <td class="w-15"><strong>Matrícula:</strong><br>{{ $dailyRequest->servant?->matricula ?? '–' }}</td>
         </tr>
         <!-- Linha 3: CPF, Identidade, Dados bancários (com rowspan) -->
         <tr>
@@ -377,7 +377,7 @@
         <tr>
             <td style="vertical-align: top; text-align: center;">
                 <div style="margin-top: 10pt;">Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
-                <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} – Ba, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
+                <div style="margin-top: 4pt;">{{ $municipality?->display_name ?? 'MUNICÍPIO' }} – {{ $municipality?->state ?? 'ESTADO' }}, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
                 <div style="margin-top: 6pt;">
                     @if(!empty($authorizer_signature_url))
                         <img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img">
@@ -388,7 +388,7 @@
                     <div class="signature-name">
                         {{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}
                         <div class="signature-cargo">
-                            {{ strtoupper($dailyRequest->authorizer?->cargos[0]?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
+                            {{ strtoupper($dailyRequest->authorizer?->cargo?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
                         </div>
                     </div>
                 </div>
@@ -396,12 +396,12 @@
             <td style="vertical-align: top; text-align: center;">
                 <div style="margin-top: 6pt;">Declaro para os devidos fins, que estarei afastado(a) do Município de {{ $municipality?->name ?? 'Cafarnaum' }}, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
                 <div class="signature-line"></div>
-                <div class="signature-name">
-                    {{ strtoupper($dailyRequest->servant?->name ?? '–') }}
-                    <div class="signature-cargo">
-                        {{ strtoupper($dailyRequest->servant?->cargos[0]?->name ?? $dailyRequest->servant?->role ?? 'SERVIDOR(A)') }}
-                    </div>
-                </div>
+                            <div class="signature-name">
+                                {{ strtoupper($dailyRequest->servant?->name ?? '–') }}
+                                <div class="signature-cargo">
+                                    {{ strtoupper($dailyRequest->servant?->cargo?->name ?? 'SERVIDOR(A)') }}
+                                </div>
+                            </div>
             </td>
         </tr>
     </table>

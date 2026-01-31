@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('municipalities', function (Blueprint $table): void {
             $table->id();
             $table->string('name')->comment('Nome do município');
+            $table->string('display_name')->comment('Nome completo para exibir em documentos');
             $table->string('cnpj', 18)->nullable()->comment('CNPJ da prefeitura');
             $table->string('state', 2)->nullable()->comment('UF');
+            $table->string('display_state', 100)->nullable()->comment('Nome de exibição: Ex: Estado da Bahia');
             $table->string('address')->nullable()->comment('Endereço');
             $table->string('email')->nullable()->comment('E-mail');
             $table->string('logo_path')->nullable()->comment('Caminho do brasão (storage)');
@@ -23,9 +25,11 @@ return new class extends Migration
         });
 
         DB::table('municipalities')->insert([
-            'name' => 'Prefeitura Municipal de Cafarnaum',
+            'name' => 'Cafarnaum',
+            'display_name' => 'Prefeitura Municipal de Cafarnaum',
             'cnpj' => '17.622.151/0001-84',
             'state' => 'BA',
+            'display_state' => 'Estado da Bahia',
             'address' => 'Avenida João Costa Brasil, 315 - Centro - Cafarnaum - BA',
             'email' => 'social@cafarnaum.ba.gov.br',
             'created_at' => now(),

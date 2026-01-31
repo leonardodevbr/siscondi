@@ -221,7 +221,7 @@ class DailyRequestController extends Controller
 
     public function store(StoreDailyRequestRequest $request): JsonResponse
     {
-        $servant = Servant::with('cargos.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
+        $servant = Servant::with('cargo.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
         $user = auth()->user();
 
         // Usuário pode criar solicitação para si mesmo (servidor vinculado a ele) apenas se não for só beneficiário
@@ -259,7 +259,7 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.cargos',
+            'servant.cargo',
             'servant.department',
             'legislationItemSnapshot',
             'requester'
@@ -335,9 +335,9 @@ class DailyRequestController extends Controller
         $department = $dailyRequest->servant?->department;
         $municipality = $department?->municipality;
 
-        $estadoTexto = $municipality?->state ? 'Estado da ' . ($municipality->state === 'BA' ? 'Bahia' : $municipality->state) : 'Estado';
+        $estadoTexto = $municipality?->display_state ?: 'Estado';
         $fundoNome = $department?->fund_name ?: $department?->name ?? '–';
-        $cnpjFundo = $department?->cnpj ?: $municipality?->cnpj ?? '–';
+        $cnpjFundo = $department?->fund_cnpj ?: $municipality?->cnpj ?? '–';
         $enderecoSecretaria = $municipality?->address ?? '–';
         $emailSecretaria = $municipality?->email ?? '–';
 
@@ -454,7 +454,7 @@ class DailyRequestController extends Controller
 
         $dailyRequest->load([
             'servant.department.municipality',
-            'servant.cargos',
+            'servant.cargo',
             'legislationItemSnapshot',
             'requester',
             'validator',
@@ -478,7 +478,7 @@ class DailyRequestController extends Controller
         $dailyRequest = DailyRequest::query()
             ->with([
                 'servant.department.municipality',
-                'servant.cargos',
+                'servant.cargo',
                 'legislationItemSnapshot',
                 'requester',
                 'validator',
@@ -587,13 +587,13 @@ class DailyRequestController extends Controller
         $this->ensureSignerOperationCredentials($request);
 
         $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
-        $this->authorize('daily-requests.pay');
+        $this->authorize('daily-requests.validate');
         $this->ensureCanAccess($dailyRequest);
 
         $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
-        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::PAID)) {
+        if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::VALIDATED)) {
             return response()->json([
-                'message' => 'Esta solicitação não pode ser paga no status atual.',
+                'message' => 'Esta solicitação não pode ser validada no status atual.',
             ], 422);
         }
 

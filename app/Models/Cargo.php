@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cargo extends Model
 {
@@ -17,6 +18,9 @@ class Cargo extends Model
         'municipality_id',
         'name',
         'symbol',
+        'salary',
+        'description',
+        'total_positions',
         'role',
     ];
 
@@ -44,11 +48,10 @@ class Cargo extends Model
     /**
      * Servidores que ocupam este cargo
      *
-     * @return BelongsToMany<Servant>
+     * @return HasMany<Servant>
      */
-    public function servants(): BelongsToMany
+    public function servants(): HasMany
     {
-        return $this->belongsToMany(Servant::class, 'servant_cargo')
-            ->withTimestamps();
+        return $this->hasMany(Servant::class);
     }
 }

@@ -91,17 +91,16 @@
 
         <div>
           <SelectInput
-            v-model="form.cargo_ids"
-            label="Cargo(s) *"
+            v-model="form.cargo_id"
+            label="Cargo *"
             :options="cargoOptions"
-            placeholder="Selecione um ou mais cargos"
-            mode="multiple"
+            placeholder="Selecione um cargo"
             :searchable="cargoOptions.length > 10"
           />
         </div>
 
         <div class="lg:col-span-2">
-          <p class="text-xs text-slate-500 -mt-2">Vincule um ou mais cargos ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
+          <p class="text-xs text-slate-500 -mt-2">Vincule o cargo ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
         </div>
 
         <!-- Dados Bancários -->
@@ -282,7 +281,7 @@ const form = ref({
   matricula: '',
   legislation_item_id: null,
   department_id: null,
-  cargo_ids: [],
+  cargo_id: null,
   bank_name: '',
   agency_number: '',
   account_number: '',
@@ -341,16 +340,12 @@ const fetchServant = async () => {
   try {
     const { data } = await api.get(`/servants/${route.params.id}`)
     const payload = data.data || data
-    const normalizeCargoIds = (arr) => {
-      if (!Array.isArray(arr)) return []
-      return arr.map((c) => (c != null && typeof c === 'object' && 'id' in c ? c.id : c))
-    }
     form.value = {
       ...form.value,
       ...payload,
       department_id: payload.department_id ?? null,
       account_type: payload.account_type ?? null,
-      cargo_ids: normalizeCargoIds(payload.cargo_ids)
+      cargo_id: payload.cargo_id ?? null
     }
     linkedUser.value = payload.user || null
   } catch (error) {
@@ -360,15 +355,14 @@ const fetchServant = async () => {
 
 const handleSubmit = async () => {
   formErrors.value = {}
-  if (!form.value.cargo_ids?.length) {
-    showError('Erro', 'Selecione pelo menos um cargo.')
+  if (!form.value.cargo_id) {
+    showError('Erro', 'Selecione o cargo.')
     return
   }
   saving.value = true
   try {
     const payload = { ...form.value }
     payload.cpf = (form.value.cpf || '').replace(/\D/g, '').slice(0, 11)
-    payload.cargo_ids = form.value.cargo_ids || []
     if (isEdit.value) {
       delete payload.password
       delete payload.password_confirmation

@@ -20,9 +20,9 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $with = ['legislationItem', 'department', 'user', 'cargos'];
+        $with = ['legislationItem', 'department', 'user', 'cargo'];
         if ($request->boolean('for_daily_form')) {
-            $with[] = 'cargos.legislationItems';
+            $with[] = 'cargo.legislationItems';
         }
         $query = Servant::with($with);
 
@@ -60,11 +60,10 @@ class ServantController extends Controller
     public function store(StoreServantRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $cargoIds = $data['cargo_ids'] ?? [];
         $password = $data['password'] ?? null;
-        unset($data['cargo_ids'], $data['password']);
+        unset($data['password']);
 
-        $servant = DB::transaction(function () use ($data, $cargoIds, $password): Servant {
+        $servant = DB::transaction(function () use ($data, $password): Servant {
             $userId = null;
             if (! empty($data['email']) && $password !== null) {
                 $department = Department::find($data['department_id']);
@@ -86,12 +85,11 @@ class ServantController extends Controller
 
             $data['user_id'] = $userId;
             $servant = Servant::create($data);
-            $servant->cargos()->sync($cargoIds);
 
             return $servant;
         });
 
-        $servant->load(['legislationItem', 'department', 'user', 'cargos']);
+        $servant->load(['legislationItem', 'department', 'user', 'cargo']);
 
         return response()->json(new ServantResource($servant), 201);
     }
@@ -99,7 +97,7 @@ class ServantController extends Controller
     public function show(string|int $servant): JsonResponse
     {
         $servant = Servant::query()
-            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'cargos'])
+            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'cargo'])
             ->findOrFail((int) $servant);
         $this->authorize('servants.view');
 
@@ -121,10 +119,7 @@ class ServantController extends Controller
         }
 
         $servant->update($data);
-        if ($cargoIds !== null) {
-            $servant->cargos()->sync($cargoIds);
-        }
-        $servant->load(['legislationItem', 'department', 'user', 'cargos']);
+        $servant->load(['legislationItem', 'department', 'user', 'cargo']);
 
         return response()->json(new ServantResource($servant));
     }

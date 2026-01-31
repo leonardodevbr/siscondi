@@ -20,12 +20,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Super-admin tem acesso total; admin mantém checagem por permissão
-        Gate::before(function ($user, $ability) {
-            if ($user && $user->hasRole('super-admin')) {
-                return true;
-            }
-            return null;
-        });
+        //
     }
 }

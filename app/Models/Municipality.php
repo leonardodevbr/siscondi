@@ -17,8 +17,10 @@ class Municipality extends Model
      */
     protected $fillable = [
         'name',
+        'display_name',
         'cnpj',
         'state',
+        'display_state',
         'address',
         'email',
         'logo_path',
