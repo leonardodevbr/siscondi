@@ -15,13 +15,23 @@
       </button>
     </div>
 
-    <div class="card">
+    <div class="card p-4 sm:p-6">
+      <div class="mb-4">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Buscar por nome..."
+          class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          @input="debouncedSearch"
+        />
+      </div>
+
       <div v-if="loading" class="text-center py-8">
         <p class="text-slate-500">Carregando secretarias...</p>
       </div>
 
       <div v-else-if="departments.length === 0" class="text-center py-8">
-        <p class="text-slate-500">Nenhuma secretaria cadastrada</p>
+        <p class="text-slate-500">Nenhuma secretaria encontrada</p>
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -88,6 +98,27 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Paginação -->
+      <div v-if="pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-sm text-slate-500">Mostrando {{ pagination.from }} a {{ pagination.to }} de {{ pagination.total }} resultados</div>
+        <div class="flex gap-2">
+          <button 
+            v-if="pagination.current_page > 1" 
+            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
+            @click="loadDepartments({ page: pagination.current_page - 1 })"
+          >
+            Anterior
+          </button>
+          <button 
+            v-if="pagination.current_page < pagination.last_page" 
+            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
+            @click="loadDepartments({ page: pagination.current_page + 1 })"
+          >
+            Próxima
+          </button>
+        </div>
       </div>
     </div>
 
@@ -207,23 +238,39 @@ export default {
         name: '',
         is_main: false,
       },
+      searchQuery: '',
+      pagination: null,
+      searchTimeout: null,
     };
   },
   mounted() {
     this.loadDepartments();
   },
   methods: {
-    async loadDepartments() {
+    async loadDepartments(params = {}) {
       try {
         this.loading = true;
-        const response = await api.get('/departments');
-        this.departments = response.data.data || response.data || [];
+        const p = { ...params };
+        if (this.searchQuery) p.search = this.searchQuery;
+
+        const response = await api.get('/departments', { params: p });
+        const data = response.data;
+        this.departments = data.data ?? data;
+        if (data.meta) {
+          this.pagination = data.meta;
+        } else if (data.current_page) {
+          this.pagination = data;
+        }
       } catch (error) {
         console.error('Erro ao carregar secretarias:', error);
         this.$toast?.error('Erro ao carregar secretarias');
       } finally {
         this.loading = false;
       }
+    },
+    debouncedSearch() {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => this.loadDepartments(), 500);
     },
     editDepartment(dept) {
       this.editingDepartment = dept;
