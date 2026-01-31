@@ -65,6 +65,40 @@ class ServantSeeder extends Seeder
          */
         $servidores = [
             // ========================================
+            // PREFEITO MUNICIPAL (CC-001)
+            // ========================================
+            [
+                'cpf' => '00000000011', // CPF fictício - ajustar quando disponível
+                'matricula' => '0031',
+                'name' => 'Carlan Novais Sena Xavier',
+                'rg' => '00000000001',
+                'organ_expeditor' => 'SSP/BA',
+                'email' => 'carlan.sena@cafarnaum.ba.gov.br',
+                'cargo_symbol' => 'CC-001',
+                'department_code' => 'GAB',
+                'user_id' => null,
+                'decree_number' => '',
+                'decree_date' => '',
+            ],
+
+            // ========================================
+            // VICE-PREFEITO MUNICIPAL (CC-002)
+            // ========================================
+            [
+                'cpf' => '00000000022', // CPF fictício - ajustar quando disponível
+                'matricula' => '0032',
+                'name' => 'Odilezio Dias de Souza',
+                'rg' => '00000000002',
+                'organ_expeditor' => 'SSP/BA',
+                'email' => 'odilezio.dias@cafarnaum.ba.gov.br',
+                'cargo_symbol' => 'CC-002',
+                'department_code' => 'GAB',
+                'user_id' => null,
+                'decree_number' => '',
+                'decree_date' => '',
+            ],    
+            
+            // ========================================
             // SECRETÁRIOS MUNICIPAIS (CC-01)
             // ========================================
             [

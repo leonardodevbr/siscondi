@@ -25,22 +25,6 @@ class CargoSeeder extends Seeder
 
         // Estrutura completa de cargos conforme Lei 001/2025
         $cargos = [
-            [
-                'name' => 'Prefeito Municipal',
-                'symbol' => 'CC-01',
-                'salary' => null, // Definido em lei própria
-                'description' => 'Prefeito Municipal',
-                'total_positions' => 1,
-            ],
-
-            [
-                'name' => 'Vice-Prefeito Municipal',
-                'symbol' => 'CC-01',
-                'salary' => null, // Definido em lei própria
-                'description' => 'Vice-Prefeito Municipal',
-                'total_positions' => 1,
-            ],
-
             // Secretários - CC-01 (Lei Própria)
             [
                 'name' => 'Secretário Municipal',
@@ -192,6 +176,22 @@ class CargoSeeder extends Seeder
                 'salary' => null, // Definido na Lei 134/2024
                 'description' => 'Diretores, Vice-Diretores e Coordenadores Pedagógicos conforme Lei 134/2024',
                 'total_positions' => 81,
+            ],
+
+            [
+                'name' => 'Prefeito Municipal',
+                'symbol' => 'CC-001',
+                'salary' => null, // Definido em lei própria
+                'description' => 'Prefeito Municipal',
+                'total_positions' => 1,
+            ],
+
+            [
+                'name' => 'Vice-Prefeito Municipal',
+                'symbol' => 'CC-002',
+                'salary' => null, // Definido em lei própria
+                'description' => 'Vice-Prefeito Municipal',
+                'total_positions' => 1,
             ],
         ];
 

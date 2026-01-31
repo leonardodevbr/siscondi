@@ -22,10 +22,6 @@ class UserSeeder extends Seeder
 
         // Buscar roles
         $adminRole = Role::findByName('admin');
-        $requesterRole = Role::findByName('requester');
-        $validatorRole = Role::findByName('validator');
-        $authorizerRole = Role::findByName('authorizer');
-        $payerRole = Role::findByName('payer');
 
         // Buscar departamento principal
         $mainDepartment = Department::where('is_main', true)->first();
@@ -84,99 +80,6 @@ class UserSeeder extends Seeder
         }
         
         $attachPrimary($admin);
-        $progressBar->advance();
-
-        // ========================================
-        // REQUERENTE (Será vinculado ao servidor)
-        // ========================================
-        $requester = User::firstOrCreate(
-            ['email' => 'requerente@siscondi.gov.br'],
-            [
-                'name' => 'Maria Requerente',
-                'password' => Hash::make('123$qweR---'),
-                'municipality_id' => $municipalityId,
-            ]
-        );
-        
-        if (!$requester->hasRole('requester')) {
-            $requester->assignRole($requesterRole);
-        }
-        
-        $attachPrimary($requester);
-        $progressBar->advance();
-
-        // ========================================
-        // VALIDADOR/SECRETÁRIO (Baseado em servidor real)
-        // Ariamiro do Nascimento Neto - Secretário de Educação
-        // ========================================
-        $validator = User::firstOrCreate(
-            ['email' => 'secretario@siscondi.gov.br'],
-            [
-                'name' => 'Ariamiro do Nascimento Neto',
-                'password' => Hash::make('123$qweR---'),
-                'municipality_id' => $municipalityId,
-            ]
-        );
-        
-        if (!$validator->hasRole('validator')) {
-            $validator->assignRole($validatorRole);
-        }
-        
-        // Vincular ao departamento de Educação
-        $deptEducacao = Department::where('code', 'SEMED')
-            ->where('municipality_id', $municipalityId)
-            ->first();
-        
-        if ($deptEducacao && $validator->departments()->count() === 0) {
-            $validator->departments()->attach($deptEducacao->id, ['is_primary' => true]);
-        }
-        $progressBar->advance();
-
-        // ========================================
-        // AUTORIZADOR/PREFEITO
-        // Carlan Novais Sena Xavier - Prefeito Municipal
-        // ========================================
-        $authorizer = User::firstOrCreate(
-            ['email' => 'prefeito@siscondi.gov.br'],
-            [
-                'name' => 'Carlan Novais Sena Xavier',
-                'password' => Hash::make('123$qweR---'),
-                'municipality_id' => $municipalityId,
-            ]
-        );
-        
-        if (!$authorizer->hasRole('authorizer')) {
-            $authorizer->assignRole($authorizerRole);
-        }
-        
-        $attachPrimary($authorizer);
-        $progressBar->advance();
-
-        // ========================================
-        // PAGADOR/TESOUREIRO (Baseado em servidor real)
-        // Tatiane Boaventura Batista - Tesoureira
-        // ========================================
-        $payer = User::firstOrCreate(
-            ['email' => 'tesoureiro@siscondi.gov.br'],
-            [
-                'name' => 'Tatiane Boaventura Batista',
-                'password' => Hash::make('123$qweR---'),
-                'municipality_id' => $municipalityId,
-            ]
-        );
-        
-        if (!$payer->hasRole('payer')) {
-            $payer->assignRole($payerRole);
-        }
-        
-        // Vincular ao departamento de Administração e Finanças
-        $deptFinancas = Department::where('code', 'SEMAF')
-            ->where('municipality_id', $municipalityId)
-            ->first();
-        
-        if ($deptFinancas && $payer->departments()->count() === 0) {
-            $payer->departments()->attach($deptFinancas->id, ['is_primary' => true]);
-        }
         $progressBar->advance();
 
         $progressBar->finish();
@@ -261,10 +164,6 @@ class UserSeeder extends Seeder
             [
                 ['Super Admin', $usersByRole['super-admin'] ?? 0],
                 ['Admin', $usersByRole['admin'] ?? 0],
-                ['Requerente', $usersByRole['requester'] ?? 0],
-                ['Validador', $usersByRole['validator'] ?? 0],
-                ['Autorizador', $usersByRole['authorizer'] ?? 0],
-                ['Pagador', $usersByRole['payer'] ?? 0],
                 ['TOTAL', $totalUsers],
             ]
         );
@@ -274,10 +173,6 @@ class UserSeeder extends Seeder
         $this->command->line('  ┌─────────────────────────────────────────────────────────┐');
         $this->command->line('  │ Super Admin: superadmin@siscondi.gov.br                 │');
         $this->command->line('  │ Admin:       admin@siscondi.gov.br                      │');
-        $this->command->line('  │ Requerente:  requerente@siscondi.gov.br                 │');
-        $this->command->line('  │ Secretário:  secretario@siscondi.gov.br                 │');
-        $this->command->line('  │ Prefeito:    prefeito@siscondi.gov.br                   │');
-        $this->command->line('  │ Tesoureiro:  tesoureiro@siscondi.gov.br                 │');
         $this->command->line('  │                                                         │');
         $this->command->line('  │ 🔑 Senha padrão para todos: 123$qweR---                 │');
         $this->command->line('  └─────────────────────────────────────────────────────────┘');
