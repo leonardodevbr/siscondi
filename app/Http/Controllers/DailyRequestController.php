@@ -582,28 +582,18 @@ class DailyRequestController extends Controller
     /**
      * Pagador (Tesoureiro) efetua o pagamento
      */
-    public function pay(Request $request, DailyRequest $dailyRequest): JsonResponse
+    public function pay(Request $request, string|int $dailyRequest): JsonResponse
     {
         $this->ensureSignerOperationCredentials($request);
 
+        $dailyRequest = DailyRequest::query()->findOrFail((int) $dailyRequest);
         $this->authorize('daily-requests.pay');
         $this->ensureCanAccess($dailyRequest);
 
-        $status = $dailyRequest->status;
-        if ($status === null || ! $status instanceof DailyRequestStatus) {
-            $rawStatus = $dailyRequest->getRawOriginal('status');
-            $status = is_string($rawStatus) ? DailyRequestStatus::tryFrom($rawStatus) : null;
-        }
-        if ($status === null && $dailyRequest->authorized_at) {
-            $dailyRequest->status = DailyRequestStatus::AUTHORIZED;
-            $dailyRequest->save();
-            $status = DailyRequestStatus::AUTHORIZED;
-        }
+        $status = $dailyRequest->status ?? DailyRequestStatus::tryFrom($dailyRequest->getRawOriginal('status'));
         if ($status === null || ! $status->canTransitionTo(DailyRequestStatus::PAID)) {
             return response()->json([
-                'message' => $status === null
-                    ? 'Status da solicitação inválido ou inexistente. Verifique se a solicitação foi concedida pelo prefeito.'
-                    : 'Esta solicitação não pode ser paga no status atual.',
+                'message' => 'Esta solicitação não pode ser paga no status atual.',
             ], 422);
         }
 
