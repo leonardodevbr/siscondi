@@ -87,11 +87,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $requesterRole->syncPermissions([
             'daily-requests.view',
             'daily-requests.create',
-            'daily-requests.edit',
-            'servants.view',
-            'legislations.view',
-            'cargos.view',
-            'departments.view',
+            'daily-requests.edit'
         ]);
 
         // ========================================
