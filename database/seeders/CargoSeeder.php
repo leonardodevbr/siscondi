@@ -25,6 +25,22 @@ class CargoSeeder extends Seeder
 
         // Estrutura completa de cargos conforme Lei 001/2025
         $cargos = [
+            [
+                'name' => 'Prefeito Municipal',
+                'symbol' => 'CC-01',
+                'salary' => null, // Definido em lei própria
+                'description' => 'Prefeito Municipal',
+                'total_positions' => 1,
+            ],
+
+            [
+                'name' => 'Vice-Prefeito Municipal',
+                'symbol' => 'CC-01',
+                'salary' => null, // Definido em lei própria
+                'description' => 'Vice-Prefeito Municipal',
+                'total_positions' => 1,
+            ],
+
             // Secretários - CC-01 (Lei Própria)
             [
                 'name' => 'Secretário Municipal',
@@ -183,7 +199,7 @@ class CargoSeeder extends Seeder
         $progressBar = $this->command->getOutput()->createProgressBar(count($cargos));
 
         foreach ($cargos as $cargoData) {
-            $cargo = Cargo::firstOrCreate(
+            Cargo::firstOrCreate(
                 [
                     'municipality_id' => $municipality->id,
                     'symbol' => $cargoData['symbol'],
@@ -197,12 +213,6 @@ class CargoSeeder extends Seeder
                     'total_positions' => $cargoData['total_positions'],
                 ]
             );
-
-            // Vincular ao primeiro item de legislação se existir
-            $legislationItem = LegislationItem::query()->first();
-            if ($legislationItem) {
-                $cargo->legislationItems()->syncWithoutDetaching([$legislationItem->id]);
-            }
 
             $progressBar->advance();
         }

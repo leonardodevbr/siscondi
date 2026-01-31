@@ -8,6 +8,8 @@ use App\Models\Cargo;
 use App\Models\Department;
 use App\Models\LegislationItem;
 use App\Models\Servant;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
