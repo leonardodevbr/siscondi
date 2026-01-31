@@ -12,7 +12,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();
-const { register: registerSw } = usePushNotifications();
+const { register: registerSw, requestPermission, subscribeUser } = usePushNotifications();
 
 const isSidebarOpen = ref(false);
 
@@ -21,6 +21,22 @@ const currentUserName = computed(() => auth.user?.name ?? 'Usuário');
 async function handleLogout() {
   await auth.logout();
   router.push({ name: 'login' });
+}
+
+async function setupPushNotifications() {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    const reg = await registerSw();
+    if (reg && settingsStore.vapidPublicKey) {
+      const permission = await requestPermission();
+      if (permission === 'granted') {
+        await subscribeUser(settingsStore.vapidPublicKey);
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao configurar notificações push:', e);
+  }
 }
 
 onMounted(async () => {
@@ -35,11 +51,11 @@ onMounted(async () => {
         const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
         appStore.appName = meta?.getAttribute('content') || '';
       }
+      
+      // Configura push após carregar vapidPublicKey do settingsStore
+      setupPushNotifications();
     } catch (error) {
       console.error('Erro ao carregar configurações públicas:', error);
-    }
-    if ('serviceWorker' in navigator) {
-      registerSw().catch(() => {});
     }
   }
 });

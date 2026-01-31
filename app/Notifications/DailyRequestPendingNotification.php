@@ -11,10 +11,8 @@ use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
-class DailyRequestPendingNotification extends Notification implements ShouldQueue
+class DailyRequestPendingNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(
         public DailyRequest $dailyRequest
     ) {}

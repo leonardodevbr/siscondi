@@ -9,6 +9,7 @@ export const useSettingsStore = defineStore('settings', {
     settingsGrouped: {},
     publicConfig: {
       app_name: '',
+      vapid_public_key: null,
       municipality: {},
     },
     loading: false,
@@ -16,6 +17,7 @@ export const useSettingsStore = defineStore('settings', {
 
   getters: {
     appName: (state) => state.publicConfig.app_name || '',
+    vapidPublicKey: (state) => state.publicConfig.vapid_public_key,
     municipality: (state) => state.publicConfig.municipality || {},
     getSetting: (state) => (key) => state.settings[key],
     getSettingMeta: (state) => (key) => state.settingsMeta[key] || null,
@@ -28,6 +30,7 @@ export const useSettingsStore = defineStore('settings', {
         const data = response.data || {};
         this.publicConfig = {
           app_name: data.app_name || '',
+          vapid_public_key: data.vapid_public_key || null,
           municipality: data.municipality || {},
         };
         return this.publicConfig;

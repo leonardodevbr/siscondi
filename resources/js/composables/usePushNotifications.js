@@ -1,9 +1,20 @@
+import api from '@/services/api';
+
 /**
  * Registra o Service Worker para notificações push e opcionalmente solicita permissão.
- * Para o backend enviar push: é necessário configurar Web Push (VAPID) e um endpoint
- * que envie notificações quando houver nova solicitação de diária pendente.
  */
 let swRegistration = null;
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export function usePushNotifications() {
   async function register() {
@@ -26,5 +37,28 @@ export function usePushNotifications() {
     return permission;
   }
 
-  return { register, requestPermission, get registration() { return swRegistration; } };
+  async function subscribeUser(vapidPublicKey) {
+    if (!swRegistration || !vapidPublicKey) return null;
+
+    try {
+      const subscription = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      // Envia para o backend
+      await api.post('/push/subscribe', subscription.toJSON());
+      return subscription;
+    } catch (e) {
+      console.error('Failed to subscribe the user:', e);
+      return null;
+    }
+  }
+
+  return { 
+    register, 
+    requestPermission, 
+    subscribeUser,
+    get registration() { return swRegistration; } 
+  };
 }

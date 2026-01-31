@@ -615,14 +615,21 @@ class DailyRequestController extends Controller
         if ($departmentId === null) {
             return;
         }
-        $users = User::query()
-            ->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId))
-            ->get()
-            ->filter(fn (User $u) => $u->can($permission));
-        foreach ($users as $user) {
-            if ($user->id !== auth()->id()) {
-                $user->notify(new DailyRequestPendingNotification($dailyRequest));
+        
+        $authId = auth()->id();
+        
+        // Despacha após a resposta para não travar o usuário
+        dispatch(function () use ($departmentId, $permission, $dailyRequest, $authId) {
+            $users = User::query()
+                ->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId))
+                ->get()
+                ->filter(fn (User $u) => $u->can($permission));
+
+            foreach ($users as $user) {
+                if ($user->id !== $authId) {
+                    $user->notify(new DailyRequestPendingNotification($dailyRequest));
+                }
             }
-        }
+        })->afterResponse();
     }
 }
