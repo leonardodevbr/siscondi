@@ -350,11 +350,22 @@ class DailyRequestController extends Controller
         $baseUrl = rtrim(config('app.url'), '/');
 
         $logoToBase64 = function (?string $path): ?string {
-            if (! $path || ! Storage::disk('public')->exists($path)) {
+            if (! $path) {
                 return null;
             }
-            $contents = Storage::disk('public')->get($path);
-            $mime = Storage::disk('public')->mimeType($path) ?: 'image/png';
+            // Remove leading slashes to ensure relative path for storage disk
+            $cleanPath = ltrim($path, '/');
+            
+            if (! Storage::disk('public')->exists($cleanPath)) {
+                return null;
+            }
+            
+            $contents = Storage::disk('public')->get($cleanPath);
+            if (! $contents) {
+                return null;
+            }
+
+            $mime = Storage::disk('public')->mimeType($cleanPath) ?: 'image/png';
             return 'data:' . $mime . ';base64,' . base64_encode($contents);
         };
 

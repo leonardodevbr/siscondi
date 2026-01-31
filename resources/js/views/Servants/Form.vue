@@ -96,6 +96,7 @@
             :options="cargoOptions"
             placeholder="Selecione um cargo"
             :searchable="cargoOptions.length > 10"
+            mode="single"
           />
         </div>
 

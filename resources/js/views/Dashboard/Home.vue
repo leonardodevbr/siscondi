@@ -76,17 +76,26 @@ onMounted(() => {
     <div v-else class="space-y-6">
       <!-- Cards de Estatísticas -->
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="card p-5 border-l-4 border-blue-500">
+        <div 
+          @click="goToServants"
+          class="card p-5 border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow"
+        >
           <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Servidores Ativos</p>
           <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_servants }}</p>
         </div>
 
-        <div class="card p-5 border-l-4 border-green-500">
+        <div 
+          @click="goToLegislations"
+          class="card p-5 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition-shadow"
+        >
           <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Legislações Ativas</p>
           <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_legislations }}</p>
         </div>
 
-        <div class="card p-5 border-l-4 border-purple-500">
+        <div 
+          @click="goToRequests"
+          class="card p-5 border-l-4 border-purple-500 cursor-pointer hover:shadow-md transition-shadow"
+        >
           <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Total de Solicitações</p>
           <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_requests }}</p>
         </div>

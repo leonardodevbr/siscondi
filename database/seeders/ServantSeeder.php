@@ -8,8 +8,8 @@ use App\Models\Cargo;
 use App\Models\Department;
 use App\Models\LegislationItem;
 use App\Models\Servant;
-use App\Models\User;
-use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class ServantSeeder extends Seeder
 {
@@ -35,6 +35,11 @@ class ServantSeeder extends Seeder
             $this->command->warn('ServantSeeder: nenhum item de legislação encontrado. Execute LegislationSeeder antes.');
             return;
         }
+
+        // Buscar roles para atribuição automática
+        $beneficiaryRole = Role::findByName('beneficiary');
+        $validatorRole = Role::findByName('validator');
+        $payerRole = Role::findByName('payer');
 
         // Buscar usuários já criados
         $userRequerente = User::where('email', 'requerente@siscondi.gov.br')->first();
@@ -576,10 +581,45 @@ class ServantSeeder extends Seeder
                 continue;
             }
 
-            Servant::firstOrCreate(
+            // Lógica de Usuário: Buscar existente ou Criar novo
+            $userId = $s['user_id'];
+            if (!$userId) {
+                // Tenta achar pelo e-mail
+                $existingUser = User::where('email', $s['email'])->first();
+                
+                if ($existingUser) {
+                    $userId = $existingUser->id;
+                } else {
+                    // Cria novo usuário
+                    $newUser = User::create([
+                        'name' => $s['name'],
+                        'email' => $s['email'],
+                        'password' => Hash::make('123$qweR---'),
+                        'municipality_id' => $dept->municipality_id,
+                    ]);
+
+                    // Atribui roles baseadas no cargo
+                    $newUser->assignRole($beneficiaryRole); // Todos são beneficiários
+
+                    if ($s['cargo_symbol'] === 'CC-01' || $s['cargo_symbol'] === 'CC-2A') {
+                        $newUser->assignRole($validatorRole);
+                    }
+                    
+                    if ($s['cargo_symbol'] === 'CC-03') {
+                        $newUser->assignRole($payerRole);
+                    }
+
+                    // Vincula ao departamento
+                    $newUser->departments()->attach($dept->id, ['is_primary' => true]);
+                    
+                    $userId = $newUser->id;
+                }
+            }
+
+            $servant = Servant::firstOrCreate(
                 ['cpf' => $s['cpf']],
                 [
-                    'user_id' => $s['user_id'],
+                    'user_id' => $userId,
                     'legislation_item_id' => $item?->id,
                     'department_id' => $dept->id,
                     'cargo_id' => $cargo->id,
@@ -598,6 +638,11 @@ class ServantSeeder extends Seeder
                     'appointment_date' => $s['decree_date'],
                 ]
             );
+
+            // Se o servidor já existia mas estava sem usuário, vincula agora
+            if (!$servant->user_id && $userId) {
+                $servant->update(['user_id' => $userId]);
+            }
 
             $progressBar->advance();
         }
