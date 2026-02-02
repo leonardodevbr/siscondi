@@ -20,6 +20,41 @@
       </div>
     </div>
 
+    <!-- Barra de progresso FORA do modal: só quando modal fechado -->
+    <div
+      v-if="importProgress && !importModalOpen"
+      class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+    >
+      <div class="flex items-center justify-between text-sm">
+        <span class="font-medium text-slate-700">{{ importProgress.message }}</span>
+        <div class="flex items-center gap-3">
+          <span class="text-slate-600">{{ importProgress.progress }}%</span>
+          <button
+            v-if="importProgress.progress === 100"
+            type="button"
+            class="text-xs px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+            @click="clearImportProgress"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+      <div class="mt-2 w-full overflow-hidden rounded-full bg-slate-200">
+        <div
+          class="h-2.5 rounded-full transition-all duration-300"
+          :class="{
+            'bg-blue-600': importProgress.status === 'processing',
+            'bg-green-600': importProgress.status === 'completed',
+            'bg-red-600': importProgress.status === 'error'
+          }"
+          :style="{ width: importProgress.progress + '%' }"
+        />
+      </div>
+      <div v-if="importProgress.processed" class="mt-1 text-center text-xs text-slate-500">
+        {{ importProgress.created }} criados • {{ importProgress.updated }} atualizados
+      </div>
+    </div>
+
     <div class="card p-4 sm:p-6">
       <div class="mb-4">
         <input
@@ -169,14 +204,14 @@
           </div>
         </div>
 
-        <!-- Barra de Progresso -->
-        <div v-if="importProgress" class="space-y-2">
+        <!-- Barra de progresso DENTRO do modal: só quando modal aberto -->
+        <div v-if="importProgress && importModalOpen" class="space-y-2 pt-2">
           <div class="flex items-center justify-between text-sm">
             <span class="font-medium text-slate-700">{{ importProgress.message }}</span>
             <span class="text-slate-600">{{ importProgress.progress }}%</span>
           </div>
-          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-            <div 
+          <div class="w-full overflow-hidden rounded-full bg-slate-200">
+            <div
               class="h-2.5 rounded-full transition-all duration-300"
               :class="{
                 'bg-blue-600': importProgress.status === 'processing',
@@ -184,9 +219,9 @@
                 'bg-red-600': importProgress.status === 'error'
               }"
               :style="{ width: importProgress.progress + '%' }"
-            ></div>
+            />
           </div>
-          <div v-if="importProgress.processed" class="text-xs text-slate-500 text-center">
+          <div v-if="importProgress.processed" class="text-center text-xs text-slate-500">
             {{ importProgress.created }} criados • {{ importProgress.updated }} atualizados
           </div>
         </div>
@@ -195,10 +230,10 @@
           <Button 
             type="button" 
             variant="outline" 
-            :disabled="importing"
+            :disabled="importing || (importProgress && importProgress.status === 'processing')"
             @click="closeImportModal"
           >
-            {{ importing ? 'Aguarde...' : 'Cancelar' }}
+            {{ (importing || (importProgress && importProgress.status === 'processing')) ? 'Processando...' : 'Fechar' }}
           </Button>
           <Button
             v-if="!validationResult && !importProgress"
@@ -304,23 +339,18 @@ function subscribeToImportChannel() {
   if (!userId) return
 
   const channelName = `servant-import.${userId}`
+  if (importChannel.value) return
   importChannel.value = echo.private(channelName)
-    .listen('.import.progress', (data) => {
-      importProgress.value = data
-      
-      // Se completou ou teve erro, recarrega lista
-      if (data.status === 'completed') {
-        setTimeout(() => {
-          fetchServants()
-          success('Sucesso', data.message || 'Importação concluída!')
-          setTimeout(() => {
-            closeImportModal()
-          }, 2000)
-        }, 1000)
-      } else if (data.status === 'error') {
-        showError('Erro', data.message || 'Erro na importação.')
-      }
-    })
+  importChannel.value.listen('.import.progress', (data) => {
+    importProgress.value = data
+
+    if (data.status === 'completed') {
+      fetchServants()
+      success('Sucesso', data.message || 'Importação concluída!')
+    } else if (data.status === 'error') {
+      showError('Erro', data.message || 'Erro na importação.')
+    }
+  })
 }
 
 function unsubscribeFromImportChannel() {
@@ -380,25 +410,43 @@ async function validateFile() {
 async function confirmImport() {
   if (!selectedFile.value || !validationResult.value || validationResult.value.errors.length > 0) return
   importing.value = true
-  importProgress.value = { status: 'processing', progress: 0, message: 'Iniciando importação...' }
-  
+  importProgress.value = { status: 'processing', progress: 0, message: 'Aguardando início...' }
+
   try {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
-    const { data } = await api.post('/servants/import', formData, {
+    await api.post('/servants/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    // Job despachado, aguarda eventos WebSocket
+    // Resposta voltou; job está na fila. Modal fica aberto; barra atualiza via WebSocket.
   } catch (err) {
     console.error('Erro ao importar:', err)
     showError('Erro', err.response?.data?.message || 'Erro ao importar servidores.')
     importProgress.value = null
+  } finally {
     importing.value = false
   }
 }
 
+async function fetchImportStatus() {
+  try {
+    const { data } = await api.get('/servants/import/status')
+    if (data && data.status) {
+      importProgress.value = data
+    }
+  } catch (_) {
+    // ignora
+  }
+}
+
+function clearImportProgress() {
+  importProgress.value = null
+}
+
 onMounted(() => {
   fetchServants()
+  fetchImportStatus()
+  subscribeToImportChannel()
 })
 
 onUnmounted(() => {

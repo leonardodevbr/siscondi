@@ -7,6 +7,8 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 // Views
 import HomeView from '@/views/Dashboard/Home.vue';
 import LoginView from '@/views/Auth/Login.vue';
+import ForgotPasswordView from '@/views/Auth/ForgotPassword.vue';
+import ResetPasswordView from '@/views/Auth/ResetPassword.vue';
 import ChooseDepartmentView from '@/views/Auth/ChooseDepartment.vue';
 import LegislationsIndex from '@/views/Legislations/Index.vue';
 import LegislationForm from '@/views/Legislations/Form.vue';
@@ -36,6 +38,32 @@ const routes = [
         name: 'login',
         component: LoginView,
         meta: { title: 'Entrar', guestOnly: true },
+      },
+    ],
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/forgot-password',
+    component: AuthLayout,
+    children: [
+      {
+        path: '',
+        name: 'forgot-password',
+        component: ForgotPasswordView,
+        meta: { title: 'Esqueci minha senha', guestOnly: true },
+      },
+    ],
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/reset-password',
+    component: AuthLayout,
+    children: [
+      {
+        path: '',
+        name: 'reset-password',
+        component: ResetPasswordView,
+        meta: { title: 'Redefinir senha', guestOnly: true },
       },
     ],
     meta: { guestOnly: true },

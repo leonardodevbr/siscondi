@@ -5,10 +5,17 @@ declare(strict_types=1);
 namespace App\Imports;
 
 use App\Events\ServantImportProgress;
+use App\Mail\FirstAccessMail;
 use App\Models\Department;
 use App\Models\Position;
 use App\Models\Servant;
+use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -136,39 +143,83 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
                     ];
                 }
             } else {
-                // Importação real: salva no banco
-                if ($servant) {
-                    $servant->update($data);
-                    $this->updated++;
-                    $this->preview[] = [
-                        'line' => $lineNumber,
-                        'name' => $name,
-                        'action' => 'updated',
-                        'id' => $servant->id,
-                    ];
-                } else {
-                    $servant = Servant::create($data);
-                    $this->created++;
-                    $this->preview[] = [
-                        'line' => $lineNumber,
-                        'name' => $name,
-                        'action' => 'created',
-                        'id' => $servant->id,
-                    ];
-                }
+                // Importação real: salva no banco e cria/atualiza User com e-mail (primeiro acesso)
+                $servant = DB::transaction(function () use ($data, $servant, $name, $email, $departmentId) {
+                    $userId = null;
+                    if (!empty($email)) {
+                        $existingUser = User::where('email', $email)->first();
+                        $department = Department::find($departmentId);
+                        $municipalityId = $department?->municipality_id;
 
-                // Notifica progresso a cada 10 registros ou no último
-                if ($this->userId && ($this->processedRows % 10 === 0 || $this->processedRows === $this->totalRows)) {
-                    $progress = ($this->processedRows / $this->totalRows) * 100;
-                    ServantImportProgress::dispatch($this->userId, [
+                        if ($existingUser) {
+                            $userId = $existingUser->id;
+                            if ($servant && (int) $servant->user_id !== (int) $userId) {
+                                $existingUser->update([
+                                    'name' => $name,
+                                    'municipality_id' => $municipalityId,
+                                ]);
+                                $existingUser->departments()->sync([$departmentId => ['is_primary' => true]]);
+                                $existingUser->update(['primary_department_id' => $departmentId]);
+                            }
+                        } else {
+                            $newUser = User::create([
+                                'name' => $name,
+                                'email' => $email,
+                                'password' => Str::random(32),
+                                'municipality_id' => $municipalityId,
+                            ]);
+                            $newUser->syncRoles(['beneficiary']);
+                            $newUser->departments()->attach($departmentId, ['is_primary' => true]);
+                            $newUser->update(['primary_department_id' => $departmentId]);
+                            $userId = $newUser->id;
+
+                            try {
+                                $token = Password::broker()->createToken($newUser);
+                                $resetUrl = rtrim(config('app.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($email);
+                                Mail::to($email)->queue(new FirstAccessMail($newUser, $resetUrl, true));
+                            } catch (\Throwable $e) {
+                                report($e);
+                            }
+                        }
+                    }
+
+                    $data['user_id'] = $userId;
+                    if ($servant) {
+                        $servant->update($data);
+                        return $servant;
+                    }
+                    return Servant::create($data);
+                });
+
+                if ($servant->wasRecentlyCreated) {
+                    $this->created++;
+                } else {
+                    $this->updated++;
+                }
+                $this->preview[] = [
+                    'line' => $lineNumber,
+                    'name' => $name,
+                    'action' => $servant->wasRecentlyCreated ? 'created' : 'updated',
+                    'id' => $servant->id,
+                ];
+
+                // Notifica a cada 1% de progresso (ou a cada 2 itens, o que for menor)
+                $notifyInterval = max(1, (int) ($this->totalRows / 100));
+                $shouldNotify = ($this->processedRows % $notifyInterval === 0) || ($this->processedRows === $this->totalRows);
+
+                if ($this->userId && $shouldNotify) {
+                    $progress = $this->totalRows > 0 ? (int) (($this->processedRows / $this->totalRows) * 100) : 0;
+                    $payload = [
                         'status' => 'processing',
-                        'progress' => (int) $progress,
+                        'progress' => $progress,
                         'message' => "Processando... {$this->processedRows}/{$this->totalRows}",
                         'processed' => $this->processedRows,
                         'total' => $this->totalRows,
                         'created' => $this->created,
                         'updated' => $this->updated,
-                    ]);
+                    ];
+                    Cache::put('servant_import_progress_' . $this->userId, $payload, 3600);
+                    ServantImportProgress::dispatch($this->userId, $payload);
                 }
             }
         }

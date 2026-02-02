@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -234,7 +235,31 @@ class ServantController extends Controller
     }
 
     /**
-     * Importação efetiva: processa e salva os servidores em background.
+     * Status da importação em andamento (para barra de progresso após refresh).
+     */
+    public function importStatus(Request $request): JsonResponse
+    {
+        $this->authorize('servants.view');
+        $key = 'servant_import_progress_' . $request->user()->id;
+        $data = Cache::get($key);
+
+        return response()->json($data ?? ['status' => null]);
+    }
+
+    /**
+     * Limpa o status de importação (chamado pelo front após concluir).
+     */
+    public function clearImportStatus(Request $request): JsonResponse
+    {
+        $this->authorize('servants.view');
+        $key = 'servant_import_progress_' . $request->user()->id;
+        Cache::forget($key);
+
+        return response()->json(['message' => 'Status limpo.']);
+    }
+
+    /**
+     * Importação efetiva: processa em background (afterResponse) e devolve resposta na hora.
      */
     public function import(Request $request): JsonResponse
     {
@@ -245,16 +270,13 @@ class ServantController extends Controller
         ]);
 
         try {
-            // Salva arquivo temporário
             $file = $request->file('file');
             $filePath = $file->store('imports/servants', 'local');
 
-            // Despacha job em background
-            ImportServantsJob::dispatch($filePath, $request->user()->id)
-                ->afterResponse();
+            ImportServantsJob::dispatch($filePath, $request->user()->id);
 
             return response()->json([
-                'message' => 'Importação iniciada. Você receberá atualizações em tempo real.',
+                'message' => 'Importação iniciada. Acompanhe o progresso em tempo real.',
                 'status' => 'processing',
             ]);
         } catch (\Exception $e) {

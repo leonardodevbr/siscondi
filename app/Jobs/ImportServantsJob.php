@@ -11,12 +11,21 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * Processa importação na fila (queue:work via cron).
+ * Notifica progresso via WebSocket a cada 5 itens e persiste em cache.
+ * E-mails são enfileirados (Mail::queue) para processamento em background.
+ */
 class ImportServantsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const CACHE_KEY_PREFIX = 'servant_import_progress_';
+    private const CACHE_TTL = 3600;
 
     public function __construct(
         private string $filePath,
@@ -25,21 +34,22 @@ class ImportServantsJob implements ShouldQueue
 
     public function handle(): void
     {
+        $cacheKey = self::CACHE_KEY_PREFIX . $this->userId;
+
         try {
-            // Notifica início
-            ServantImportProgress::dispatch($this->userId, [
+            $payload = [
                 'status' => 'processing',
                 'progress' => 0,
                 'message' => 'Iniciando importação...',
-            ]);
+            ];
+            Cache::put($cacheKey, $payload, self::CACHE_TTL);
+            ServantImportProgress::dispatch($this->userId, $payload);
 
-            // Processa a importação
-            $import = new ServantsImport(validateOnly: false);
+            $import = new ServantsImport(validateOnly: false, userId: $this->userId);
             Excel::import($import, Storage::path($this->filePath));
 
-            // Se houve erros, notifica
             if (!empty($import->errors)) {
-                ServantImportProgress::dispatch($this->userId, [
+                $payload = [
                     'status' => 'error',
                     'progress' => 100,
                     'message' => 'Importação concluída com erros.',
@@ -49,10 +59,9 @@ class ImportServantsJob implements ShouldQueue
                         'updated' => $import->updated,
                         'errors_count' => count($import->errors),
                     ],
-                ]);
+                ];
             } else {
-                // Notifica sucesso
-                ServantImportProgress::dispatch($this->userId, [
+                $payload = [
                     'status' => 'completed',
                     'progress' => 100,
                     'message' => 'Importação concluída com sucesso!',
@@ -61,22 +70,26 @@ class ImportServantsJob implements ShouldQueue
                         'updated' => $import->updated,
                         'total' => $import->created + $import->updated,
                     ],
-                ]);
+                ];
             }
 
-            // Remove arquivo temporário
+            ServantImportProgress::dispatch($this->userId, $payload);
             Storage::delete($this->filePath);
+            
+            // Limpa cache após 10s para não persistir após conclusão
+            Cache::put($cacheKey, $payload, 10);
         } catch (\Exception $e) {
-            // Notifica erro
-            ServantImportProgress::dispatch($this->userId, [
+            $payload = [
                 'status' => 'error',
                 'progress' => 0,
                 'message' => 'Erro ao processar importação.',
                 'error' => $e->getMessage(),
-            ]);
-
-            // Remove arquivo temporário
+            ];
+            ServantImportProgress::dispatch($this->userId, $payload);
             Storage::delete($this->filePath);
+            
+            // Limpa cache após 10s
+            Cache::put($cacheKey, $payload, 10);
         }
     }
 }

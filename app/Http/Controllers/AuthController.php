@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
+use App\Mail\FirstAccessMail;
 use App\Http\Resources\UserResource;
 use App\Models\Department;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -156,6 +159,64 @@ class AuthController extends Controller
         return response()->json([
             'valid' => true,
             'authorized_by_user_id' => $manager->id,
+        ]);
+    }
+
+    /**
+     * Esqueci minha senha: envia link por e-mail.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+        ], [
+            'email.exists' => 'Não encontramos um usuário com este e-mail.',
+        ]);
+
+        $user = User::where('email', $request->input('email'))->first();
+        if (!$user) {
+            return response()->json(['message' => 'Não encontramos um usuário com este e-mail.'], 422);
+        }
+
+        $token = Password::broker()->createToken($user);
+        $resetUrl = rtrim(config('app.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
+
+        Mail::to($user->email)->queue(new FirstAccessMail($user, $resetUrl, false));
+
+        return response()->json([
+            'message' => 'Enviamos um link para redefinir sua senha no e-mail informado. Verifique sua caixa de entrada.',
+        ]);
+    }
+
+    /**
+     * Redefinir senha (primeiro acesso ou esqueci minha senha).
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email', 'exists:users,email'],
+            'password' => ['required', 'string', 'confirmed', 'min:8'],
+        ], [
+            'email.exists' => 'E-mail não encontrado.',
+            'password.min' => 'A senha deve ter no mínimo 8 caracteres.',
+        ]);
+
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill(['password' => Hash::make($password)])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'Link expirado ou inválido. Solicite uma nova redefinição de senha.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Senha redefinida com sucesso. Você já pode entrar com sua nova senha.',
         ]);
     }
 }

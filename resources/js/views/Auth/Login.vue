@@ -83,6 +83,15 @@ async function handleSubmit() {
         Entrar
       </Button>
     </div>
+
+    <p class="text-center text-sm text-slate-500">
+      <router-link
+        :to="{ name: 'forgot-password' }"
+        class="text-blue-600 hover:text-blue-800 hover:underline"
+      >
+        Esqueci minha senha / Primeiro acesso
+      </router-link>
+    </p>
   </form>
 </template>
 
