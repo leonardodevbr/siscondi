@@ -21,8 +21,6 @@ class Municipality extends Model
         'cnpj',
         'state',
         'display_state',
-        'address',
-        'email',
         'logo_path',
     ];
 

@@ -44,14 +44,6 @@
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Endereço</label>
-          <input v-model="form.address" type="text" class="input-base w-full" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-          <input v-model="form.email" type="email" class="input-base w-full" />
-        </div>
-        <div>
           <LogoUpload
             v-model="form.logo_path"
             type="municipality"
@@ -80,7 +72,7 @@ const toast = useToast();
 const loading = ref(true);
 const saving = ref(false);
 const municipality = ref(null);
-const form = reactive({ name: '', display_name: '', cnpj: '', state: '', display_state: '', address: '', email: '', logo_path: '' });
+const form = reactive({ name: '', display_name: '', cnpj: '', state: '', display_state: '', logo_path: '' });
 const load = async () => {
   loading.value = true;
   try {
@@ -93,8 +85,6 @@ const load = async () => {
       form.cnpj = formatCnpj(payload.cnpj ?? '');
       form.state = payload.state ?? '';
       form.display_state = payload.display_state ?? '';
-      form.address = payload.address ?? '';
-      form.email = payload.email ?? '';
       form.logo_path = payload.logo_path ?? '';
     }
   } catch (e) {
