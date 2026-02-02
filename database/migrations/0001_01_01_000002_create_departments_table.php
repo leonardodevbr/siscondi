@@ -23,6 +23,14 @@ return new class extends Migration
             $table->string('fund_name')->nullable()->comment('Nome do fundo para pagamento');
             $table->string('fund_code', 50)->nullable()->comment('Código do fundo');
             $table->string('logo_path')->nullable()->comment('Caminho do brasão/logo (storage)');
+            
+            // Endereço
+            $table->string('address')->nullable()->comment('Endereço completo');
+            $table->string('neighborhood')->nullable()->comment('Bairro');
+            $table->string('zip_code', 10)->nullable()->comment('CEP');
+            $table->string('phone', 20)->nullable()->comment('Telefone');
+            $table->string('email')->nullable()->comment('E-mail');
+            
             $table->timestamps();
         });
     }

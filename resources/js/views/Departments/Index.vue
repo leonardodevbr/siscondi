@@ -125,12 +125,17 @@
       v-if="showCreateModal || editingDepartment"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div class="bg-white rounded-lg border border-slate-200 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold text-slate-800 mb-4">
-          {{ editingDepartment ? 'Editar Secretaria' : 'Nova Secretaria' }}
-        </h3>
+      <div class="bg-white rounded-lg border border-slate-200 w-full max-w-lg max-h-[90vh] flex flex-col">
+        <!-- Header fixo -->
+        <div class="px-6 py-4 border-b border-slate-200 flex-shrink-0">
+          <h3 class="text-lg font-semibold text-slate-800">
+            {{ editingDepartment ? 'Editar Secretaria' : 'Nova Secretaria' }}
+          </h3>
+        </div>
 
-        <form @submit.prevent="saveDepartment" class="space-y-4">
+        <!-- Conteúdo com scroll -->
+        <form @submit.prevent="saveDepartment" class="flex flex-col flex-1 min-h-0">
+          <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
           <!-- Identificação -->
           <div class="border-b border-slate-200 pb-4">
             <h4 class="text-sm font-semibold text-slate-800 mb-3">Identificação</h4>
@@ -205,18 +210,16 @@
                   @input="onFundNameInput"
                 />
               </div>
-              <div class="flex gap-2">
-                <div class="flex-1">
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Código do fundo</label>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Código do fundo</label>
+                <div class="flex gap-2">
                   <input
                     v-model="form.fund_code"
                     type="text"
-                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="flex-1 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: FMAS"
                     maxlength="50"
                   />
-                </div>
-                <div class="flex items-end pb-2">
                   <button
                     type="button"
                     class="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 transition-colors whitespace-nowrap"
@@ -228,6 +231,66 @@
                 </div>
               </div>
               <p class="text-xs text-slate-500">Ex.: &quot;Fundo Municipal de Assistência Social&quot; → FMAS</p>
+            </div>
+          </div>
+
+          <!-- Endereço -->
+          <div class="border-b border-slate-200 pb-4">
+            <h4 class="text-sm font-semibold text-slate-800 mb-2">Endereço</h4>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Endereço completo</label>
+                <input
+                  v-model="form.address"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Rua, número, complemento"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Bairro</label>
+                  <input
+                    v-model="form.neighborhood"
+                    type="text"
+                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Bairro"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">CEP</label>
+                  <input
+                    :value="form.zip_code"
+                    type="text"
+                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="00000-000"
+                    maxlength="10"
+                    @input="form.zip_code = formatZipCode($event.target.value)"
+                  />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Telefone</label>
+                  <input
+                    :value="form.phone"
+                    type="text"
+                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="(00) 0000-0000"
+                    maxlength="20"
+                    @input="form.phone = formatPhone($event.target.value)"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+                  <input
+                    v-model="form.email"
+                    type="email"
+                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="contato@secretaria.gov.br"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -252,23 +315,27 @@
               />
             </div>
           </div>
+          </div>
 
-          <div class="flex justify-end gap-2 pt-4">
-            <button
-              type="button"
-              @click="closeModal"
-              class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              :disabled="saving"
-              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-slate-400 transition-colors"
-            >
-              <span v-if="saving">Salvando...</span>
-              <span v-else>Salvar</span>
-            </button>
+          <!-- Footer fixo -->
+          <div class="px-6 py-4 border-t border-slate-200 flex-shrink-0">
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                @click="closeModal"
+                class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                :disabled="saving"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-slate-400 transition-colors"
+              >
+                <span v-if="saving">Salvando...</span>
+                <span v-else>Salvar</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -305,6 +372,11 @@ export default {
         fund_name: '',
         fund_code: '',
         logo_path: '',
+        address: '',
+        neighborhood: '',
+        zip_code: '',
+        phone: '',
+        email: '',
       },
       searchQuery: '',
       pagination: null,
@@ -384,6 +456,11 @@ export default {
         fund_name: dept.fund_name ?? '',
         fund_code: dept.fund_code ?? '',
         logo_path: dept.logo_path ?? '',
+        address: dept.address ?? '',
+        neighborhood: dept.neighborhood ?? '',
+        zip_code: this.formatZipCode(dept.zip_code ?? ''),
+        phone: this.formatPhone(dept.phone ?? ''),
+        email: dept.email ?? '',
       };
     },
     async saveDepartment() {
@@ -393,6 +470,12 @@ export default {
         const payload = { ...this.form };
       if (payload.fund_cnpj) {
         payload.fund_cnpj = String(payload.fund_cnpj).replace(/\D/g, '').slice(0, 14);
+      }
+      if (payload.zip_code) {
+        payload.zip_code = String(payload.zip_code).replace(/\D/g, '').slice(0, 8);
+      }
+      if (payload.phone) {
+        payload.phone = String(payload.phone).replace(/\D/g, '').slice(0, 11);
       }
       if (this.editingDepartment) {
         await api.post(`/departments/${this.editingDepartment.id}/update`, payload);
@@ -414,6 +497,11 @@ export default {
             fund_name: created.fund_name ?? '',
             fund_code: created.fund_code ?? '',
             logo_path: created.logo_path ?? '',
+            address: created.address ?? '',
+            neighborhood: created.neighborhood ?? '',
+            zip_code: this.formatZipCode(created.zip_code ?? ''),
+            phone: this.formatPhone(created.phone ?? ''),
+            email: created.email ?? '',
           };
         } else {
           this.closeModal();
@@ -460,6 +548,11 @@ export default {
         fund_name: '',
         fund_code: '',
         logo_path: '',
+        address: '',
+        neighborhood: '',
+        zip_code: '',
+        phone: '',
+        email: '',
       };
     },
     formatCnpj(value) {
@@ -474,6 +567,43 @@ export default {
     formatDate(date) {
       if (!date) return '-';
       return new Date(date).toLocaleDateString('pt-BR');
+    },
+    onFundNameInput() {
+      // Placeholder para quando o usuário digita o nome do fundo
+      // Pode ser usado para validações futuras
+    },
+    generateFundCodeFromName() {
+      const name = this.form.fund_name?.trim();
+      if (!name) {
+        this.$toast?.warning('Digite o nome do fundo primeiro');
+        return;
+      }
+
+      // Pega as primeiras letras de cada palavra significativa
+      const words = name
+        .toUpperCase()
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !['DE', 'DA', 'DO', 'DAS', 'DOS'].includes(w));
+      
+      // Gera sigla: primeira letra de cada palavra
+      const code = words.map(w => w[0]).join('');
+      
+      this.form.fund_code = code || name.substring(0, 4).toUpperCase();
+      this.$toast?.success(`Código gerado: ${this.form.fund_code}`);
+    },
+    formatZipCode(value) {
+      if (!value) return '';
+      const digits = String(value).replace(/\D/g, '').slice(0, 8);
+      if (digits.length <= 5) return digits;
+      return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    },
+    formatPhone(value) {
+      if (!value) return '';
+      const digits = String(value).replace(/\D/g, '').slice(0, 11);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+      if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     },
   },
 };

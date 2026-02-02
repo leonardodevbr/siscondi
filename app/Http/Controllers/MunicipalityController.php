@@ -11,6 +11,7 @@ use App\Models\Department;
 use App\Models\Municipality;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class MunicipalityController extends Controller
 {

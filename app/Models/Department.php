@@ -28,7 +28,12 @@ class Department extends Model
         'logo_path',
         'code',
         'description',
-        'total_employees'
+        'total_employees',
+        'address',
+        'neighborhood',
+        'zip_code',
+        'phone',
+        'email',
     ];
 
     /**
