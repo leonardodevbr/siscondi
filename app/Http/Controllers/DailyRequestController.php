@@ -595,6 +595,8 @@ class DailyRequestController extends Controller
             'authorizer'
         ]);
 
+        $this->notifyPendingSigners($dailyRequest, 'daily-requests.pay');
+
         DailyRequestPendingUpdated::dispatch();
 
         return response()->json(new DailyRequestResource($dailyRequest));
