@@ -4,10 +4,10 @@
       <h2 class="text-lg font-semibold text-slate-800">Municípios</h2>
       <p class="text-xs text-slate-500">Gestão dos dados dos municípios.</p>
     </div>
-    <div class="card">
+    <div class="card p-4 sm:p-6">
       <div v-if="loading" class="text-center py-8 text-slate-500">Carregando...</div>
       <div v-else-if="municipalities.length === 0" class="text-center py-8 text-slate-500">Nenhum município.</div>
-      <div v-else class="overflow-x-auto">
+      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
