@@ -131,66 +131,126 @@
         </h3>
 
         <form @submit.prevent="saveDepartment" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
-            <input
-              v-model="form.name"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex: Secretaria de Educação"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
-            <input
-              :value="form.cnpj"
-              type="text"
-              class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="00.000.000/0001-00"
-              maxlength="18"
-              @input="form.cnpj = formatCnpj($event.target.value)"
-            />
-          </div>
-
-          <div class="border-t border-slate-200 pt-4">
-            <h4 class="text-sm font-semibold text-slate-800 mb-2">Dados do fundo (pagamento)</h4>
+          <!-- Identificação -->
+          <div class="border-b border-slate-200 pb-4">
+            <h4 class="text-sm font-semibold text-slate-800 mb-3">Identificação</h4>
             <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Nome *</label>
+                <input
+                  v-model="form.name"
+                  type="text"
+                  required
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Secretaria Municipal de Educação"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Código</label>
+                <input
+                  v-model="form.code"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: SEMED"
+                  maxlength="50"
+                />
+                <p class="mt-0.5 text-xs text-slate-500">Sigla ou código da secretaria/setor</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Secretaria pai</label>
+                <select
+                  v-model="form.parent_id"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option :value="null">Nenhuma (órgão de primeiro nível)</option>
+                  <option
+                    v-for="p in parentDepartmentOptions"
+                    :key="p.value"
+                    :value="p.value"
+                  >
+                    {{ p.label }}
+                  </option>
+                </select>
+                <p class="mt-0.5 text-xs text-slate-500">Deixe em branco para secretaria principal; selecione para subdepartamento</p>
+              </div>
+              <div>
+                <Toggle v-model="form.is_main" label="Secretaria principal (ex.: Gabinete do Prefeito)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dados do fundo (pagamento) -->
+          <div class="border-b border-slate-200 pb-4">
+            <h4 class="text-sm font-semibold text-slate-800 mb-2">Dados do fundo (pagamento)</h4>
+            <p class="text-xs text-slate-500 mb-3">CNPJ e identificação do fundo vinculado para pagamento</p>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ do fundo</label>
+                <input
+                  :value="form.fund_cnpj"
+                  type="text"
+                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="00.000.000/0001-00"
+                  maxlength="18"
+                  @input="form.fund_cnpj = formatCnpj($event.target.value)"
+                />
+              </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Nome do fundo</label>
                 <input
                   v-model="form.fund_name"
                   type="text"
                   class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: Fundo Municipal de Educação"
+                  placeholder="Ex: Fundo Municipal de Assistência Social"
+                  @input="onFundNameInput"
                 />
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Código do fundo</label>
-                <input
-                  v-model="form.fund_code"
-                  type="text"
-                  class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: 001"
-                  maxlength="50"
-                />
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Código do fundo</label>
+                  <input
+                    v-model="form.fund_code"
+                    type="text"
+                    class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: FMAS"
+                    maxlength="50"
+                  />
+                </div>
+                <div class="flex items-end pb-2">
+                  <button
+                    type="button"
+                    class="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 transition-colors whitespace-nowrap"
+                    title="Gerar sigla a partir do nome do fundo (ex.: FMAS)"
+                    @click="generateFundCodeFromName"
+                  >
+                    Gerar
+                  </button>
+                </div>
               </div>
+              <p class="text-xs text-slate-500">Ex.: &quot;Fundo Municipal de Assistência Social&quot; → FMAS</p>
             </div>
           </div>
 
-          <div>
-            <LogoUpload
-              v-model="form.logo_path"
-              type="department"
-              :entity-id="editingDepartment ? editingDepartment.id : ''"
-              label="Brasão / Logo"
-              size-class="h-32 w-32 min-h-[120px]"
-            />
-          </div>
-
-          <div>
-            <Toggle v-model="form.is_main" label="Secretaria principal" />
+          <!-- Descrição e logo -->
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
+              <textarea
+                v-model="form.description"
+                rows="2"
+                class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Breve descrição do órgão (opcional)"
+              />
+            </div>
+            <div>
+              <LogoUpload
+                v-model="form.logo_path"
+                type="department"
+                :entity-id="editingDepartment ? editingDepartment.id : ''"
+                label="Brasão / Logo"
+                size-class="h-32 w-32 min-h-[120px]"
+              />
+            </div>
           </div>
 
           <div class="flex justify-end gap-2 pt-4">
@@ -230,19 +290,44 @@ export default {
   data() {
     return {
       departments: [],
+      allDepartmentsForParent: [],
       loading: true,
       showCreateModal: false,
       editingDepartment: null,
       saving: false,
       form: {
         name: '',
+        code: '',
+        parent_id: null,
+        description: '',
         is_main: false,
+        fund_cnpj: '',
+        fund_name: '',
+        fund_code: '',
+        logo_path: '',
       },
       searchQuery: '',
       pagination: null,
       perPage: 15,
       searchTimeout: null,
     };
+  },
+  computed: {
+    parentDepartmentOptions() {
+      const list = this.allDepartmentsForParent.length ? this.allDepartmentsForParent : this.departments || [];
+      const editingId = this.editingDepartment?.id;
+      return list
+        .filter((d) => !d.parent_id && d.id !== editingId)
+        .map((d) => ({ value: d.id, label: d.code ? `${d.name} (${d.code})` : d.name }));
+    },
+  },
+  watch: {
+    showCreateModal(val) {
+      if (val) this.fetchAllDepartmentsForParent();
+    },
+    editingDepartment(val) {
+      if (val) this.fetchAllDepartmentsForParent();
+    },
   },
   mounted() {
     this.loadDepartments();
@@ -271,6 +356,14 @@ export default {
         this.loading = false;
       }
     },
+    async fetchAllDepartmentsForParent() {
+      try {
+        const { data } = await api.get('/departments', { params: { all: 1 } });
+        this.allDepartmentsForParent = data.data ?? data ?? [];
+      } catch {
+        this.allDepartmentsForParent = [];
+      }
+    },
     debouncedSearch() {
       clearTimeout(this.searchTimeout);
       this.searchTimeout = setTimeout(() => this.loadDepartments(), 500);
@@ -283,8 +376,11 @@ export default {
       this.editingDepartment = dept;
       this.form = {
         name: dept.name ?? '',
+        code: dept.code ?? '',
+        parent_id: dept.parent_id ?? null,
+        description: dept.description ?? '',
         is_main: dept.is_main ?? false,
-        cnpj: this.formatCnpj(dept.cnpj ?? ''),
+        fund_cnpj: this.formatCnpj(dept.cnpj ?? dept.fund_cnpj ?? ''),
         fund_name: dept.fund_name ?? '',
         fund_code: dept.fund_code ?? '',
         logo_path: dept.logo_path ?? '',
@@ -294,28 +390,35 @@ export default {
       try {
         this.saving = true;
 
-        if (this.editingDepartment) {
-          await api.put(`/departments/${this.editingDepartment.id}`, this.form);
-          this.$toast?.success('Secretaria atualizada com sucesso.');
-          this.closeModal();
+        const payload = { ...this.form };
+      if (payload.fund_cnpj) {
+        payload.fund_cnpj = String(payload.fund_cnpj).replace(/\D/g, '').slice(0, 14);
+      }
+      if (this.editingDepartment) {
+        await api.put(`/departments/${this.editingDepartment.id}`, payload);
+        this.$toast?.success('Secretaria atualizada com sucesso.');
+        this.closeModal();
+      } else {
+        const { data } = await api.post('/departments', payload);
+        this.$toast?.success('Secretaria criada com sucesso.');
+        const created = data?.data ?? data;
+        if (created?.id) {
+          this.editingDepartment = created;
+          this.form = {
+            name: created.name ?? this.form.name,
+            code: created.code ?? '',
+            parent_id: created.parent_id ?? null,
+            description: created.description ?? '',
+            is_main: created.is_main ?? false,
+            fund_cnpj: this.formatCnpj(created.cnpj ?? created.fund_cnpj ?? ''),
+            fund_name: created.fund_name ?? '',
+            fund_code: created.fund_code ?? '',
+            logo_path: created.logo_path ?? '',
+          };
         } else {
-          const { data } = await api.post('/departments', this.form);
-          this.$toast?.success('Secretaria criada com sucesso.');
-          const created = data?.data ?? data;
-          if (created?.id) {
-            this.editingDepartment = created;
-            this.form = {
-              name: created.name ?? this.form.name,
-              is_main: created.is_main ?? false,
-              cnpj: this.formatCnpj(created.cnpj ?? ''),
-              fund_name: created.fund_name ?? '',
-              fund_code: created.fund_code ?? '',
-              logo_path: created.logo_path ?? '',
-            };
-          } else {
-            this.closeModal();
-          }
+          this.closeModal();
         }
+      }
         this.loadDepartments();
       } catch (error) {
         console.error('Erro ao salvar secretaria:', error);
@@ -349,8 +452,11 @@ export default {
       this.editingDepartment = null;
       this.form = {
         name: '',
+        code: '',
+        parent_id: null,
+        description: '',
         is_main: false,
-        cnpj: '',
+        fund_cnpj: '',
         fund_name: '',
         fund_code: '',
         logo_path: '',

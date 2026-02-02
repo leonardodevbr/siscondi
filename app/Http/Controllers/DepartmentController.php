@@ -38,7 +38,11 @@ class DepartmentController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $query->orderBy('is_main', 'desc')->orderBy('name', 'asc');
+        // Hierarquia: pai seguido dos seus filhos (subdepartamentos logo abaixo do parent)
+        $query->orderByRaw('COALESCE(parent_id, id) ASC')
+            ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END ASC')
+            ->orderBy('is_main', 'desc')
+            ->orderBy('name', 'asc');
 
         $perPage = (int) $request->input('per_page', 15);
         $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
@@ -142,12 +146,42 @@ class DepartmentController extends Controller
                 ->update(['is_main' => false]);
         }
 
-        // Apenas campos fillable do model (evita enviar 'cnpj' quando a coluna é 'fund_cnpj')
-        $department->update($request->safe()->only([
-            'municipality_id', 'name', 'is_main', 'fund_cnpj', 'fund_name', 'fund_code', 'logo_path',
-        ]));
+        $updateData = $request->safe()->only([
+            'municipality_id', 'parent_id', 'name', 'code', 'description', 'is_main',
+            'fund_cnpj', 'fund_name', 'fund_code', 'logo_path',
+        ]);
+
+        // Evitar que a secretaria seja pai de si mesma
+        if (isset($updateData['parent_id']) && (int) $updateData['parent_id'] === (int) $department->id) {
+            $updateData['parent_id'] = null;
+        }
+        // Evitar ciclo: pai não pode ser um subdepartamento desta secretaria
+        if (! empty($updateData['parent_id'])) {
+            $descendantIds = $this->getDescendantIds($department);
+            if (in_array((int) $updateData['parent_id'], $descendantIds, true)) {
+                $updateData['parent_id'] = $department->parent_id;
+            }
+        }
+
+        $department->update($updateData);
 
         return response()->json(new DepartmentResource($department->fresh()));
+    }
+
+    /**
+     * Retorna IDs de todos os descendentes (filhos, netos, etc.) do departamento.
+     *
+     * @return int[]
+     */
+    private function getDescendantIds(Department $department): array
+    {
+        $department->load('children');
+        $ids = [];
+        foreach ($department->children as $child) {
+            $ids[] = $child->id;
+            $ids = array_merge($ids, $this->getDescendantIds($child));
+        }
+        return $ids;
     }
 
     public function destroy(string|int $department): JsonResponse

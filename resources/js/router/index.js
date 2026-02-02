@@ -89,88 +89,88 @@ const routes = [
         component: DailyRequestShow,
         meta: { title: 'Detalhes da Solicitação' },
       },
-      // Servidores
+      // Servidores (acesso por permissão; menu usa servants.view)
       {
         path: 'servants',
         name: 'servants.index',
         component: ServantsIndex,
-        meta: { title: 'Servidores', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Servidores', permission: 'servants.view' },
       },
       {
         path: 'servants/create',
         name: 'servants.create',
         component: ServantForm,
-        meta: { title: 'Novo Servidor', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Novo Servidor', permission: 'servants.create' },
       },
       {
         path: 'servants/:id/edit',
         name: 'servants.edit',
         component: ServantForm,
-        meta: { title: 'Editar Servidor', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Editar Servidor', permission: 'servants.edit' },
       },
-      // Legislações (Cargos)
+      // Legislações (acesso por permissão; menu usa legislations.view)
       {
         path: 'legislations',
         name: 'legislations.index',
         component: LegislationsIndex,
-        meta: { title: 'Legislações', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Legislações', permission: 'legislations.view' },
       },
       {
         path: 'legislations/create',
         name: 'legislations.create',
         component: LegislationForm,
-        meta: { title: 'Nova Legislação', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Nova Legislação', permission: 'legislations.create' },
       },
       {
         path: 'legislations/:id/edit',
         name: 'legislations.edit',
         component: LegislationForm,
-        meta: { title: 'Editar Legislação', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Editar Legislação', permission: 'legislations.edit' },
       },
-      // Cargos/Posições (símbolo + pivot com itens da lei)
+      // Cargos/Posições (acesso por permissão; menu usa positions.view)
       {
         path: 'positions',
         name: 'positions.index',
         component: PositionsIndex,
-        meta: { title: 'Cargos', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Cargos', permission: 'positions.view' },
       },
       {
         path: 'positions/create',
         name: 'positions.create',
         component: PositionForm,
-        meta: { title: 'Novo Cargo', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Novo Cargo', permission: 'positions.create' },
       },
       {
         path: 'positions/:id/edit',
         name: 'positions.edit',
         component: PositionForm,
-        meta: { title: 'Editar Cargo', roles: ['admin', 'super-admin', 'validator'] },
+        meta: { title: 'Editar Cargo', permission: 'positions.edit' },
       },
-      // Secretarias
+      // Secretarias (acesso por permissão; menu usa departments.view)
       {
         path: 'departments',
         name: 'departments.index',
         component: DepartmentsIndex,
-        meta: { title: 'Secretarias', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Secretarias', permission: 'departments.view' },
       },
-      // Usuários
+      // Usuários (acesso por permissão; menu usa users.view)
       {
         path: 'users',
         name: 'users.index',
         component: UsersIndex,
-        meta: { title: 'Usuários', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Usuários', permission: 'users.view' },
       },
       {
         path: 'users/new',
         name: 'users.create',
         component: UserForm,
-        meta: { title: 'Novo Usuário', roles: ['admin'] },
+        meta: { title: 'Novo Usuário', permission: 'users.create' },
       },
       {
         path: 'users/:id/edit',
         name: 'users.edit',
         component: UserForm,
-        meta: { title: 'Editar Usuário', roles: ['admin', 'super-admin'] },
+        meta: { title: 'Editar Usuário', permission: 'users.edit' },
       },
       // Perfil e Configurações
       {
@@ -235,6 +235,30 @@ router.beforeEach((to, from, next) => {
     }
   }
 
+  // Controle por permissão (alinhado ao menu: quem vê o item pode acessar a rota)
+  if (to.meta.permission && token) {
+    const authStore = useAuthStore();
+    const user = authStore.user;
+
+    if (!user) {
+      next({ name: 'login' });
+      return;
+    }
+
+    if (authStore.isSuperAdmin) {
+      next();
+      return;
+    }
+
+    const hasAccess = authStore.can(to.meta.permission);
+    if (!hasAccess) {
+      toast.error('Você não tem permissão para acessar esta página.');
+      next({ name: 'dashboard' });
+      return;
+    }
+  }
+
+  // Controle por role (rotas restritas a perfis específicos: município, config, etc.)
   if (to.meta.roles && token) {
     const authStore = useAuthStore();
     const user = authStore.user;
@@ -244,13 +268,11 @@ router.beforeEach((to, from, next) => {
       return;
     }
 
-    // Super-admin tem acesso total
     if (authStore.isSuperAdmin) {
       next();
       return;
     }
 
-    // Verifica se o usuário tem uma das roles necessárias
     const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles : [to.meta.roles];
     const hasAccess = authStore.hasRole(requiredRoles);
 

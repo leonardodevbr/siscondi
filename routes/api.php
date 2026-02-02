@@ -26,9 +26,12 @@ require __DIR__.'/api/positions.php'; // Cargos/Posições (símbolo + pivot com
 require __DIR__.'/api/servants.php'; // Servidores Públicos
 require __DIR__.'/api/daily-requests.php'; // Solicitações de Diárias
 
-// Notificações Push
+// Notificações Push (Web Push / VAPID)
 use App\Http\Controllers\PushSubscriptionController;
-Route::middleware('auth:sanctum')->post('/push/subscribe', [PushSubscriptionController::class, 'store']);
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'store']);
+    Route::post('/push/test', [PushSubscriptionController::class, 'test']);
+});
 
 // Dashboard
 require __DIR__.'/api/dashboard.php';
