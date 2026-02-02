@@ -103,6 +103,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'servants.create',
             'servants.edit',
             'legislations.view',
+            'legislations.create',
+            'legislations.edit',
             'positions.view',
             'positions.create',
             'positions.edit',
