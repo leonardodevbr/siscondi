@@ -43,6 +43,11 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Build frontend
+        env:
+          # Variáveis do Pusher são embutidas no JS no momento do build (Vite).
+          # Configure os secrets no repositório: Settings → Secrets and variables → Actions.
+          VITE_PUSHER_APP_KEY: ${{ secrets.VITE_PUSHER_APP_KEY }}
+          VITE_PUSHER_APP_CLUSTER: ${{ secrets.VITE_PUSHER_APP_CLUSTER || 'sa1' }}
         run: |
           npm ci && npm run build
 
