@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Exports\ServantsTemplateExport;
 use App\Http\Requests\StoreServantRequest;
 use App\Http\Requests\UpdateServantRequest;
 use App\Http\Resources\ServantResource;
+use App\Imports\ServantsImport;
 use App\Models\Department;
 use App\Models\Servant;
 use App\Models\User;
@@ -14,6 +16,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ServantController extends Controller
 {
@@ -182,5 +186,87 @@ class ServantController extends Controller
         $servant->delete();
 
         return response()->json(['message' => 'Servidor deletado com sucesso.']);
+    }
+
+    /**
+     * Download do modelo de planilha para importação massiva de servidores.
+     */
+    public function downloadTemplate(): BinaryFileResponse
+    {
+        $this->authorize('servants.create');
+
+        return Excel::download(new ServantsTemplateExport, 'modelo-importacao-servidores.xlsx');
+    }
+
+    /**
+     * Validação prévia: lê a planilha e retorna preview com erros (sem salvar).
+     */
+    public function validateImport(Request $request): JsonResponse
+    {
+        $this->authorize('servants.create');
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
+        ]);
+
+        try {
+            $import = new ServantsImport(validateOnly: true);
+            Excel::import($import, $request->file('file'));
+
+            return response()->json([
+                'preview' => $import->preview,
+                'errors' => $import->errors,
+                'summary' => [
+                    'total_rows' => count($import->preview),
+                    'to_create' => $import->created,
+                    'to_update' => $import->updated,
+                    'errors_count' => count($import->errors),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao processar a planilha.',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Importação efetiva: processa e salva os servidores.
+     */
+    public function import(Request $request): JsonResponse
+    {
+        $this->authorize('servants.create');
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
+        ]);
+
+        try {
+            $import = new ServantsImport(validateOnly: false);
+            Excel::import($import, $request->file('file'));
+
+            if (!empty($import->errors)) {
+                return response()->json([
+                    'message' => 'A planilha contém erros. Corrija e tente novamente.',
+                    'errors' => $import->errors,
+                    'preview' => $import->preview,
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => 'Importação concluída com sucesso.',
+                'summary' => [
+                    'created' => $import->created,
+                    'updated' => $import->updated,
+                    'total' => $import->created + $import->updated,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao importar servidores.',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
     }
 }
