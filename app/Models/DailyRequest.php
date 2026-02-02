@@ -25,6 +25,7 @@ class DailyRequest extends Model
         'destination_state',
         'departure_date',
         'return_date',
+        'purpose',
         'reason',
         'quantity_days',
         'unit_value',

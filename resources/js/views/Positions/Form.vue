@@ -4,7 +4,7 @@
       <button
         type="button"
         class="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-        @click="$router.push({ name: 'cargos.index' })"
+        @click="$router.push({ name: 'positions.index' })"
       >
         <ArrowLeftIcon class="h-5 w-5 text-slate-600" />
       </button>
@@ -62,7 +62,7 @@
       </div>
 
       <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-slate-200">
-        <Button type="button" variant="outline" @click="$router.push({ name: 'cargos.index' })">
+        <Button type="button" variant="outline" @click="$router.push({ name: 'positions.index' })">
           Cancelar
         </Button>
         <Button type="submit" :loading="saving">
@@ -138,9 +138,9 @@ const fetchData = async () => {
   }
 }
 
-const fetchCargo = async () => {
+const fetchPosition = async () => {
   try {
-    const { data } = await api.get(`/cargos/${route.params.id}`)
+    const { data } = await api.get(`/positions/${route.params.id}`)
     const payload = data.data ?? data
     form.value = {
       symbol: payload.symbol ?? '',
@@ -165,12 +165,12 @@ const handleSubmit = async () => {
       role: form.value.role || undefined
     }
     if (isEdit.value) {
-      await api.put(`/cargos/${route.params.id}`, payload)
+      await api.put(`/positions/${route.params.id}`, payload)
     } else {
-      await api.post('/cargos', payload)
+      await api.post('/positions', payload)
     }
     await success('Salvo', 'Cargo salvo com sucesso.')
-    router.push({ name: 'cargos.index' })
+    router.push({ name: 'positions.index' })
   } catch (e) {
     const msg = e.response?.data?.message ?? e.response?.data?.errors
       ? Object.values(e.response.data.errors).flat().join(' ')
@@ -185,7 +185,7 @@ onMounted(async () => {
   await fetchData()
   if (route.params.id) {
     isEdit.value = true
-    await fetchCargo()
+    await fetchPosition()
   }
 })
 </script>

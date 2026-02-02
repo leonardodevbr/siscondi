@@ -30,8 +30,8 @@ class UpdateLegislationRequest extends FormRequest
             'items.*.daily_class' => ['required_with:items', 'string', 'max:100'],
             'items.*.values' => ['required_with:items', 'array'],
             'items.*.values.*' => ['required_with:items', 'integer', 'min:0', 'max:9999999999'],
-            'items.*.cargo_ids' => ['nullable', 'array'],
-            'items.*.cargo_ids.*' => ['integer', 'exists:cargos,id'],
+            'items.*.position_ids' => ['nullable', 'array'],
+            'items.*.position_ids.*' => ['integer', 'exists:positions,id'],
         ];
     }
 }

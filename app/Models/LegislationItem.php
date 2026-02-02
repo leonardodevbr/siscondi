@@ -51,13 +51,13 @@ class LegislationItem extends Model
     }
 
     /**
-     * Cargos vinculados a este item da legislação
+     * Cargos/posições vinculados a este item da legislação
      *
-     * @return BelongsToMany<Cargo>
+     * @return BelongsToMany<Position>
      */
-    public function cargos(): BelongsToMany
+    public function positions(): BelongsToMany
     {
-        return $this->belongsToMany(Cargo::class, 'cargo_legislation_item')
+        return $this->belongsToMany(Position::class, 'legislation_item_position')
             ->withTimestamps();
     }
 

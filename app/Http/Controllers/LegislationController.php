@@ -94,18 +94,18 @@ class LegislationController extends Controller
                 'daily_class' => $item['daily_class'],
                 'values' => $item['values'] ?? [],
             ]);
-            $cargoIdsRaw = $item['cargo_ids'] ?? [];
-            $cargoIds = array_values(array_unique(array_map('intval', $cargoIdsRaw)));
-            $legislationItem->cargos()->sync($cargoIds);
+            $positionIdsRaw = $item['position_ids'] ?? [];
+            $positionIds = array_values(array_unique(array_map('intval', $positionIdsRaw)));
+            $legislationItem->positions()->sync($positionIds);
         }
 
-        $legislation->load(['items', 'items.cargos']);
+        $legislation->load(['items', 'items.positions']);
         return response()->json(new LegislationResource($legislation), 201);
     }
 
     public function show(string|int $legislation): JsonResponse
     {
-        $legislation = Legislation::query()->with(['items', 'items.cargos'])->findOrFail((int) $legislation);
+        $legislation = Legislation::query()->with(['items', 'items.positions'])->findOrFail((int) $legislation);
         $this->authorize('legislations.view');
 
         return response()->json(new LegislationResource($legislation));
@@ -125,9 +125,9 @@ class LegislationController extends Controller
         $keptItemIds = [];
 
         foreach ($itemsPayload as $item) {
-            $cargoIdsSent = array_key_exists('cargo_ids', $item);
-            $cargoIdsRaw = $item['cargo_ids'] ?? [];
-            $cargoIds = array_values(array_unique(array_map('intval', $cargoIdsRaw)));
+            $positionIdsSent = array_key_exists('position_ids', $item);
+            $positionIdsRaw = $item['position_ids'] ?? [];
+            $positionIds = array_values(array_unique(array_map('intval', $positionIdsRaw)));
             $attrs = [
                 'functional_category' => $item['functional_category'] ?? '',
                 'daily_class' => $item['daily_class'] ?? '',
@@ -147,20 +147,20 @@ class LegislationController extends Controller
 
             if ($legislationItem) {
                 $legislationItem->update($attrs);
-                if ($cargoIdsSent) {
-                    $legislationItem->cargos()->sync($cargoIds);
+                if ($positionIdsSent) {
+                    $legislationItem->positions()->sync($positionIds);
                 }
                 $keptItemIds[] = $legislationItem->id;
             } else {
                 $legislationItem = $legislation->items()->create($attrs);
-                $legislationItem->cargos()->sync($cargoIds);
+                $legislationItem->positions()->sync($positionIds);
                 $keptItemIds[] = $legislationItem->id;
             }
         }
 
         $legislation->items()->whereNotIn('id', $keptItemIds)->delete();
 
-        $legislation->load(['items', 'items.cargos']);
+        $legislation->load(['items', 'items.positions']);
         return response()->json(new LegislationResource($legislation));
     }
 

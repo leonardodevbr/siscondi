@@ -218,7 +218,7 @@ class DailyRequestController extends Controller
     {
         $this->authorize('daily-requests.create');
         
-        $servant = Servant::with('cargo.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
+        $servant = Servant::with('position.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
         $user = auth()->user();
 
         // Super-admin pode criar para qualquer servidor
@@ -250,7 +250,7 @@ class DailyRequestController extends Controller
         $effectiveItem = $servant->getEffectiveLegislationItem();
         if (! $effectiveItem) {
             return response()->json([
-                'message' => 'O servidor selecionado não possui cargo vinculado a um item da legislação com valores de diária. Vincule cargos ao servidor e aos itens da legislação.',
+                'message' => 'O servidor selecionado não possui cargo/posição vinculado a um item da legislação com valores de diária. Vincule cargos ao servidor e aos itens da legislação.',
             ], 422);
         }
 
@@ -272,7 +272,7 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.cargo',
+            'servant.position',
             'servant.department',
             'legislationItemSnapshot',
             'requester'
@@ -356,8 +356,8 @@ class DailyRequestController extends Controller
         $enderecoSecretaria = $municipality?->address ?? '–';
         $emailSecretaria = $municipality?->email ?? '–';
 
-        $cargoFuncao = $dailyRequest->servant?->cargos?->isNotEmpty()
-            ? $dailyRequest->servant->cargos->map(fn ($c) => ($c->symbol ?? '') . ' ' . ($c->name ?? ''))->join(', ')
+        $cargoFuncao = $dailyRequest->servant?->position
+            ? trim(($dailyRequest->servant->position->symbol ?? '') . ' ' . ($dailyRequest->servant->position->name ?? ''))
             : ($dailyRequest->legislationItemSnapshot?->functional_category ?? '–');
 
         $baseUrl = rtrim(config('app.url'), '/');
@@ -480,7 +480,7 @@ class DailyRequestController extends Controller
 
         $dailyRequest->load([
             'servant.department.municipality',
-            'servant.cargo',
+            'servant.position',
             'legislationItemSnapshot',
             'requester',
             'validator',

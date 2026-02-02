@@ -39,7 +39,7 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ servant.matricula }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ servant.name }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ servant.formatted_cpf || servant.cpf }}</td>
-              <td class="px-6 py-4 text-sm text-gray-900">{{ servant.cargo ? (servant.cargo.name ? `${servant.cargo.name} (${servant.cargo.symbol})` : servant.cargo.symbol) : '–' }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">{{ servant.position ? (servant.position.name ? `${servant.position.name} (${servant.position.symbol})` : servant.position.symbol) : '–' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ servant.department?.name }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="servant.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 text-xs rounded-full">

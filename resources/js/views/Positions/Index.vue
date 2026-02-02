@@ -5,7 +5,7 @@
         <h2 class="text-lg font-semibold text-slate-800">Cargos</h2>
         <p class="text-xs text-slate-500">Gerencie os cargos (símbolo) e vincule aos itens da legislação</p>
       </div>
-      <router-link to="/cargos/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+      <router-link to="/positions/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
         Novo Cargo
       </router-link>
     </div>
@@ -24,7 +24,7 @@
       <div v-if="loading" class="text-center py-8">
         <p class="text-slate-500">Carregando cargos...</p>
       </div>
-      <div v-else-if="cargos.length === 0" class="text-center py-8">
+      <div v-else-if="positions.length === 0" class="text-center py-8">
         <p class="text-slate-500">Nenhum cargo encontrado</p>
       </div>
       <div v-else class="overflow-x-auto">
@@ -38,17 +38,17 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
-            <tr v-for="cargo in cargos" :key="cargo.id">
+            <tr v-for="position in positions" :key="position.id">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-slate-900">{{ cargo.symbol }}</div>
+                <div class="text-sm font-medium text-slate-900">{{ position.symbol }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-slate-700">{{ cargo.name || '–' }}</div>
+                <div class="text-sm text-slate-700">{{ position.name || '–' }}</div>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-slate-600">
-                  <template v-if="cargo.legislation_items && cargo.legislation_items.length">
-                    <span v-for="item in cargo.legislation_items" :key="item.id" class="inline-block mr-1 mb-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs">
+                  <template v-if="position.legislation_items && position.legislation_items.length">
+                    <span v-for="item in position.legislation_items" :key="item.id" class="inline-block mr-1 mb-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs">
                       {{ item.functional_category }} ({{ item.daily_class }})
                     </span>
                   </template>
@@ -57,10 +57,10 @@
               </td>
               <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-1">
-                  <button type="button" class="p-1.5 text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition-colors" title="Excluir" @click="deleteCargo(cargo)">
+                  <button type="button" class="p-1.5 text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition-colors" title="Excluir" @click="deletePosition(position)">
                     <TrashIcon class="h-5 w-5" />
                   </button>
-                  <router-link :to="`/cargos/${cargo.id}/edit`" class="p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors" title="Editar">
+                  <router-link :to="`/positions/${position.id}/edit`" class="p-1.5 text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors" title="Editar">
                     <PencilSquareIcon class="h-5 w-5" />
                   </router-link>
                 </div>
@@ -74,7 +74,7 @@
       <PaginationBar
         v-if="pagination"
         :pagination="pagination"
-        @page-change="(page) => fetchCargos({ page })"
+        @page-change="(page) => fetchPositions({ page })"
         @per-page-change="onPerPageChange"
       />
     </div>
@@ -89,21 +89,21 @@ import { useAlert } from '@/composables/useAlert'
 import PaginationBar from '@/components/Common/PaginationBar.vue'
 
 const { success, confirm, error: showError } = useAlert()
-const cargos = ref([])
+const positions = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
 const pagination = ref(null)
 const perPageRef = ref(15)
 let searchTimeout = null
 
-const fetchCargos = async (params = {}) => {
+const fetchPositions = async (params = {}) => {
   loading.value = true
   try {
     const p = { per_page: perPageRef.value, ...params }
     if (searchQuery.value) p.search = searchQuery.value
-    
-    const { data } = await api.get('/cargos', { params: p })
-    cargos.value = data.data ?? data
+
+    const { data } = await api.get('/positions', { params: p })
+    positions.value = data.data ?? data
     if (data.meta) {
       pagination.value = data.meta
       perPageRef.value = data.meta.per_page ?? perPageRef.value
@@ -121,21 +121,21 @@ const fetchCargos = async (params = {}) => {
 
 function onPerPageChange(perPage) {
   perPageRef.value = perPage
-  fetchCargos({ page: 1, per_page: perPage })
+  fetchPositions({ page: 1, per_page: perPage })
 }
 
 const debouncedSearch = () => {
   clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => fetchCargos(), 500)
+  searchTimeout = setTimeout(() => fetchPositions(), 500)
 }
 
-const deleteCargo = async (cargo) => {
-  const ok = await confirm(`Excluir o cargo "${cargo.symbol}"?`, 'Essa ação não pode ser desfeita.')
+const deletePosition = async (position) => {
+  const ok = await confirm(`Excluir o cargo "${position.symbol}"?`, 'Essa ação não pode ser desfeita.')
   if (!ok) return
   try {
-    await api.delete(`/cargos/${cargo.id}`)
+    await api.delete(`/positions/${position.id}`)
     await success('Excluído', 'Cargo excluído com sucesso.')
-    await fetchCargos()
+    await fetchPositions()
   } catch (e) {
     const msg = e.response?.data?.message ?? 'Erro ao excluir cargo.'
     showError('Erro', msg)
@@ -143,6 +143,6 @@ const deleteCargo = async (cargo) => {
 }
 
 onMounted(() => {
-  fetchCargos()
+  fetchPositions()
 })
 </script>

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('municipality_id')->nullable()->constrained('municipalities')->nullOnDelete();
             $table->foreignId('primary_department_id')->nullable()->constrained('departments')->nullOnDelete();
-            $table->foreignId('cargo_id')->nullable()->constrained('cargos')->nullOnDelete();
+            $table->foreignId('position_id')->nullable()->constrained('positions')->nullOnDelete();
             $table->string('name');
             $table->string('email')->unique();
             $table->string('signature_path', 500)->nullable()->comment('Caminho do arquivo de assinatura (apenas cargos que aprovam)');

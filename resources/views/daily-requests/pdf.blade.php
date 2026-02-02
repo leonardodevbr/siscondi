@@ -265,7 +265,7 @@
                             <div class="signature-name">
                                 {{ strtoupper($dailyRequest->requester?->name ?? '–') }}
                                 <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->requester?->cargo?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
+                                    {{ strtoupper($dailyRequest->requester?->position?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
                                 </div>
                             </div>
                         </td>
@@ -315,7 +315,7 @@
         <!-- Linha 2: Beneficiário, Cargo, Matrícula -->
         <tr>
             <td colspan="2"><strong>Beneficiário:</strong><br>{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</td>
-            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->cargo?->name ?? '–') }}</td>
+            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->position?->name ?? '–') }}</td>
             <td class="w-15"><strong>Matrícula:</strong><br>{{ $dailyRequest->servant?->matricula ?? '–' }}</td>
         </tr>
         <!-- Linha 3: CPF, Identidade, Dados bancários (com rowspan) -->
@@ -339,10 +339,10 @@
                 $qDays = (float) $dailyRequest->quantity_days;
                 $quantityDaysDisplay = ($qDays == floor($qDays)) ? (string) (int) $qDays : number_format($qDays, 1, ',', '.');
             @endphp
-            <td class="w-20" style="text-align: center;"><strong>Nº DE DIÁRIAS:</strong><br>R$ {{ $quantityDaysDisplay }}</td>
+            <td class="w-20" style="text-align: center;"><strong>Nº DE DIÁRIAS:</strong><br>{{ $quantityDaysDisplay }}</td>
             <td class="w-20" style="text-align: center;"><strong>V. UNITÁRIO:</strong><br>R$ {{ number_format(($dailyRequest->unit_value ?? 0) / 100, 2, ',', '.') }}</td>
             <td class="w-20" style="text-align: center;"><strong>V. TOTAL:</strong><br>R$ {{ number_format(($dailyRequest->total_value ?? 0) / 100, 2, ',', '.') }}</td>
-            <td class="w-35"><strong>FINALIDADE:</strong> Custeio de despesas com locomoção, hospedagem e alimentação.</td>
+            <td class="w-35"><strong>FINALIDADE:</strong> {{ $dailyRequest->purpose ?? 'Custeio de despesas com locomoção, hospedagem e alimentação.' }}</td>
         </tr>
     </table>
 
@@ -388,7 +388,7 @@
                     <div class="signature-name">
                         {{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}
                         <div class="signature-cargo">
-                            {{ strtoupper($dailyRequest->authorizer?->cargo?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
+                            {{ strtoupper($dailyRequest->authorizer?->position?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
                         </div>
                     </div>
                 </div>
@@ -399,7 +399,7 @@
                             <div class="signature-name">
                                 {{ strtoupper($dailyRequest->servant?->name ?? '–') }}
                                 <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->servant?->cargo?->name ?? 'SERVIDOR(A)') }}
+                                    {{ strtoupper($dailyRequest->servant?->position?->name ?? 'SERVIDOR(A)') }}
                                 </div>
                             </div>
             </td>

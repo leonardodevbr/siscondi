@@ -69,7 +69,7 @@ const menuGroups = computed(() => {
       title: 'Cadastros',
       items: [
         { name: 'Servidores', to: { name: 'servants.index' }, icon: UserGroupIcon, permission: 'servants.view' },
-        { name: 'Cargos', to: { name: 'cargos.index' }, icon: BriefcaseIcon, permission: 'cargos.view' },
+        { name: 'Cargos', to: { name: 'positions.index' }, icon: BriefcaseIcon, permission: 'positions.view' },
         { name: 'Legislações', to: { name: 'legislations.index' }, icon: DocumentTextIcon, permission: 'legislations.view' },
         { name: 'Secretarias', to: { name: 'departments.index' }, icon: BuildingOfficeIcon, permission: 'departments.view' },
       ],

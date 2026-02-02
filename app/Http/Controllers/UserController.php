@@ -171,7 +171,7 @@ class UserController extends Controller
                 $user->departments()->attach($pivotData);
             }
 
-            return $user->load('roles', 'departments', 'cargo');
+            return $user->load('roles', 'departments', 'position');
         });
 
         if ($request->filled('servant_id')) {
@@ -217,7 +217,7 @@ class UserController extends Controller
             ->with('roles', 'departments', 'servant')
             ->findOrFail($userId);
 
-        $data = $request->safe()->only(['name', 'email', 'cargo_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
+        $data = $request->safe()->only(['name', 'email', 'position_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -241,6 +241,9 @@ class UserController extends Controller
             }
             if (array_key_exists('operation_pin', $data)) {
                 $payload['operation_pin'] = $data['operation_pin'] !== null && $data['operation_pin'] !== '' ? $data['operation_pin'] : null;
+            }
+            if (array_key_exists('position_id', $data)) {
+                $payload['position_id'] = $data['position_id'];
             }
 
             if ($request->filled('department_ids')) {
@@ -300,7 +303,7 @@ class UserController extends Controller
             }
         }
 
-        $user->refresh()->load('roles', 'departments', 'servant');
+        $user->refresh()->load('roles', 'departments', 'position', 'servant');
 
         return response()->json(new UserResource($user));
     }

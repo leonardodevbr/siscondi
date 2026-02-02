@@ -49,6 +49,7 @@ class UpdateUserRequest extends FormRequest
             'signature' => ['sometimes', 'nullable', 'file', 'image', 'max:2048'],
             'signature_path' => ['sometimes', 'nullable', 'string', 'max:500'],
             'servant_id' => ['sometimes', 'nullable', 'integer', 'exists:servants,id'],
+            'position_id' => ['sometimes', 'nullable', 'integer', 'exists:positions,id'],
         ];
     }
 

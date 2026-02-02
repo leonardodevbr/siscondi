@@ -21,9 +21,9 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $with = ['legislationItem', 'department', 'user', 'cargo'];
+        $with = ['legislationItem', 'department', 'user', 'position'];
         if ($request->boolean('for_daily_form')) {
-            $with[] = 'cargo.legislationItems';
+            $with[] = 'position.legislationItems';
         }
         $query = Servant::with($with);
 
@@ -109,7 +109,7 @@ class ServantController extends Controller
             return $servant;
         });
 
-        $servant->load(['legislationItem', 'department', 'user', 'cargo']);
+        $servant->load(['legislationItem', 'department', 'user', 'position']);
 
         return response()->json(new ServantResource($servant), 201);
     }
@@ -117,7 +117,7 @@ class ServantController extends Controller
     public function show(string|int $servant): JsonResponse
     {
         $servant = Servant::query()
-            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'cargo'])
+            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'position'])
             ->findOrFail((int) $servant);
         $this->authorize('servants.view');
 
@@ -131,9 +131,7 @@ class ServantController extends Controller
         $user = auth()->user();
         $servant = Servant::query()->findOrFail((int) $servant);
         $data = $request->validated();
-        $cargoIds = $data['cargo_ids'] ?? null;
-        unset($data['cargo_ids']);
-        
+
         // Verifica se pode editar este servidor
         if (!$user->hasRole('super-admin')) {
             if ($user->hasRole('admin')) {
@@ -167,7 +165,7 @@ class ServantController extends Controller
         }
 
         $servant->update($data);
-        $servant->load(['legislationItem', 'department', 'user', 'cargo']);
+        $servant->load(['legislationItem', 'department', 'user', 'position']);
 
         return response()->json(new ServantResource($servant));
     }

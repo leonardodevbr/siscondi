@@ -25,12 +25,12 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $role,
-            'cargo_id' => $this->cargo_id,
-            'cargo' => $this->whenLoaded('cargo', fn () => $this->cargo ? [
-                'id' => $this->cargo->id,
-                'name' => $this->cargo->name,
-                'symbol' => $this->cargo->symbol,
-                'role' => $this->cargo->role,
+            'position_id' => $this->position_id,
+            'position' => $this->whenLoaded('position', fn () => $this->position ? [
+                'id' => $this->position->id,
+                'name' => $this->position->name,
+                'symbol' => $this->position->symbol,
+                'role' => $this->position->role,
             ] : null),
             'roles' => $this->getRoleNames()->values()->all(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values()->all(),

@@ -21,7 +21,7 @@ class Servant extends Model
         'user_id',
         'legislation_item_id',
         'department_id',
-        'cargo_id',
+        'position_id',
         'name',
         'cpf',
         'rg',
@@ -86,35 +86,40 @@ class Servant extends Model
     }
 
     /**
-     * Cargos ocupados pelo servidor (1 ou mais)
+     * Cargo/posição do servidor
      *
-     * @return BelongsTo<Cargo>
+     * @return BelongsTo<Position>
      */
-    public function cargo(): BelongsTo
+    public function position(): BelongsTo
     {
-        return $this->belongsTo(Cargo::class);
+        return $this->belongsTo(Position::class);
     }
 
     /**
-     * Item da legislação efetivo para cálculo de diária: vindo do cargo do servidor ou do vínculo direto (legado).
-     * Retorna o primeiro item com valores disponível no cargo do servidor; se não houver, o legislation_item_id.
+     * Item da legislação efetivo para cálculo de diária.
+     * 
+     * Prioridade:
+     * 1. Item de legislação associado ao cargo (position) do servidor via pivot
+     * 2. Item de legislação vinculado diretamente ao servidor (legacy/fallback)
      */
     public function getEffectiveLegislationItem(): ?LegislationItem
     {
+        // Primeiro: buscar via cargo (position) - a forma correta
+        $this->loadMissing('position.legislationItems');
+        
+        if ($this->position && $this->position->legislationItems->isNotEmpty()) {
+            foreach ($this->position->legislationItems as $item) {
+                if (! empty($item->values)) {
+                    return $item;
+                }
+            }
+        }
+
+        // Fallback: vínculo direto no servidor (legado)
         if ($this->legislation_item_id) {
             $item = $this->legislationItem;
             if ($item && ! empty($item->values)) {
                 return $item;
-            }
-        }
-
-        $this->loadMissing('cargo.legislationItems');
-        
-        if ($this->cargo) {
-            foreach ($this->cargo->legislationItems as $item) {
-                if (! empty($item->values)) {
-                    return $item;
-                }
             }
         }
 

@@ -28,7 +28,7 @@ class User extends Authenticatable
         'password',
         'municipality_id',
         'primary_department_id',
-        'cargo_id',
+        'position_id',
         'signature_path',
     ];
 
@@ -72,13 +72,13 @@ class User extends Authenticatable
     }
 
     /**
-     * Cargo do usuário (define o perfil/role no sistema).
+     * Cargo/posição do usuário (define o perfil/role no sistema).
      *
-     * @return BelongsTo<Cargo, $this>
+     * @return BelongsTo<Position, $this>
      */
-    public function cargo(): BelongsTo
+    public function position(): BelongsTo
     {
-        return $this->belongsTo(Cargo::class);
+        return $this->belongsTo(Position::class);
     }
 
     /**

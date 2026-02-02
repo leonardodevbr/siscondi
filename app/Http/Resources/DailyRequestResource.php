@@ -23,6 +23,7 @@ class DailyRequestResource extends JsonResource
             'destination_state' => $this->destination_state,
             'departure_date' => $this->departure_date?->format('Y-m-d'),
             'return_date' => $this->return_date?->format('Y-m-d'),
+            'purpose' => $this->purpose,
             'reason' => $this->reason,
             'quantity_days' => $this->quantity_days,
             'unit_value' => $this->unit_value,

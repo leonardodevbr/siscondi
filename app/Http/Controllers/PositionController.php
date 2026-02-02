@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreCargoRequest;
-use App\Http\Requests\UpdateCargoRequest;
-use App\Http\Resources\CargoResource;
-use App\Models\Cargo;
+use App\Http\Requests\StorePositionRequest;
+use App\Http\Requests\UpdatePositionRequest;
+use App\Http\Resources\PositionResource;
+use App\Models\Position;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class CargoController extends Controller
+class PositionController extends Controller
 {
     public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
-        $this->authorize('cargos.view');
-        
+        $this->authorize('positions.view');
+
         $user = auth()->user();
-        $query = Cargo::query()->with('legislationItems');
+        $query = Position::query()->with('legislationItems');
 
         // Super-admin vê todos os cargos
         if (!$user->hasRole('super-admin')) {
@@ -48,19 +48,19 @@ class CargoController extends Controller
         $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
 
         if ($request->boolean('all')) {
-            return response()->json(CargoResource::collection($query->get()));
+            return response()->json(PositionResource::collection($query->get()));
         }
 
-        return CargoResource::collection($query->paginate($perPage));
+        return PositionResource::collection($query->paginate($perPage));
     }
 
-    public function store(StoreCargoRequest $request): JsonResponse
+    public function store(StorePositionRequest $request): JsonResponse
     {
-        $this->authorize('cargos.create');
-        
+        $this->authorize('positions.create');
+
         $user = auth()->user();
         $data = $request->validated();
-        
+
         // Super-admin pode criar cargo em qualquer município
         if (!$user->hasRole('super-admin')) {
             // Admin só pode criar cargos no seu município
@@ -79,51 +79,51 @@ class CargoController extends Controller
             }
         }
 
-        $cargo = Cargo::create($data);
+        $position = Position::create($data);
 
-        return response()->json(new CargoResource($cargo), 201);
+        return response()->json(new PositionResource($position), 201);
     }
 
-    private function ensureCargoScope(Cargo $cargo): void
+    private function ensurePositionScope(Position $position): void
     {
         $user = auth()->user();
-        
+
         // Super-admin tem acesso total
         if ($user && $user->hasRole('super-admin')) {
             return;
         }
-        
+
         // Admin tem acesso aos cargos do seu município
-        if ($user && $user->hasRole('admin') && $user->municipality_id === $cargo->municipality_id) {
+        if ($user && $user->hasRole('admin') && $user->municipality_id === $position->municipality_id) {
             return;
         }
-        
+
         // Outros usuários têm acesso aos cargos do seu município
-        if ($user && $user->municipality_id === $cargo->municipality_id) {
+        if ($user && $user->municipality_id === $position->municipality_id) {
             return;
         }
-        
+
         abort(403, 'Você não tem permissão para acessar este cargo.');
     }
 
-    public function show(string|int $cargo): JsonResponse
+    public function show(string|int $position): JsonResponse
     {
-        $cargo = Cargo::query()->with('legislationItems')->findOrFail((int) $cargo);
-        $this->authorize('cargos.view');
-        $this->ensureCargoScope($cargo);
+        $position = Position::query()->with('legislationItems')->findOrFail((int) $position);
+        $this->authorize('positions.view');
+        $this->ensurePositionScope($position);
 
-        return response()->json(new CargoResource($cargo));
+        return response()->json(new PositionResource($position));
     }
 
-    public function update(UpdateCargoRequest $request, string|int $cargo): JsonResponse
+    public function update(UpdatePositionRequest $request, string|int $position): JsonResponse
     {
-        $this->authorize('cargos.edit');
-        
+        $this->authorize('positions.edit');
+
         $user = auth()->user();
-        $cargo = Cargo::query()->findOrFail((int) $cargo);
-        $this->ensureCargoScope($cargo);
+        $position = Position::query()->findOrFail((int) $position);
+        $this->ensurePositionScope($position);
         $data = $request->validated();
-        
+
         // Super-admin pode atualizar qualquer cargo
         if (!$user->hasRole('super-admin')) {
             // Admin só pode atualizar cargos do seu município
@@ -133,31 +133,31 @@ class CargoController extends Controller
                 }
             } else {
                 // Outros perfis não podem mudar o município
-                if (isset($data['municipality_id']) && $data['municipality_id'] !== $cargo->municipality_id) {
+                if (isset($data['municipality_id']) && $data['municipality_id'] !== $position->municipality_id) {
                     abort(403, 'Você não pode transferir cargos para outro município.');
                 }
             }
         }
 
-        $cargo->update($data);
+        $position->update($data);
 
-        return response()->json(new CargoResource($cargo->fresh()));
+        return response()->json(new PositionResource($position->fresh()));
     }
 
-    public function destroy(string|int $cargo): JsonResponse
+    public function destroy(string|int $position): JsonResponse
     {
-        $cargo = Cargo::query()->findOrFail((int) $cargo);
-        $this->authorize('cargos.delete');
-        $this->ensureCargoScope($cargo);
+        $position = Position::query()->findOrFail((int) $position);
+        $this->authorize('positions.delete');
+        $this->ensurePositionScope($position);
 
-        if ($cargo->servants()->exists()) {
+        if ($position->servants()->exists()) {
             return response()->json([
                 'message' => 'Não é possível excluir um cargo com servidores vinculados.',
             ], 422);
         }
 
-        $cargo->legislationItems()->detach();
-        $cargo->delete();
+        $position->legislationItems()->detach();
+        $position->delete();
 
         return response()->json(['message' => 'Cargo excluído com sucesso.']);
     }

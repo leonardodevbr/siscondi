@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Cargo extends Model
+class Position extends Model
 {
     /**
      * @var list<string>
@@ -41,7 +41,7 @@ class Cargo extends Model
      */
     public function legislationItems(): BelongsToMany
     {
-        return $this->belongsToMany(LegislationItem::class, 'cargo_legislation_item')
+        return $this->belongsToMany(LegislationItem::class, 'legislation_item_position')
             ->withTimestamps();
     }
 

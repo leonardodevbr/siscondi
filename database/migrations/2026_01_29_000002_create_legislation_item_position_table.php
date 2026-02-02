@@ -10,18 +10,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('cargo_legislation_item', function (Blueprint $table): void {
+        Schema::create('legislation_item_position', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('cargo_id')->constrained('cargos')->cascadeOnDelete();
+            $table->foreignId('position_id')->constrained('positions')->cascadeOnDelete();
             $table->foreignId('legislation_item_id')->constrained('legislation_items')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->unique(['cargo_id', 'legislation_item_id']);
+            $table->unique(['position_id', 'legislation_item_id']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('cargo_legislation_item');
+        Schema::dropIfExists('legislation_item_position');
     }
 };

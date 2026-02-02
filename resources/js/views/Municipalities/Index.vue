@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-4">
     <div>
-      <h2 class="text-lg font-semibold text-slate-800">Municípios (meus clientes)</h2>
-      <p class="text-xs text-slate-500">Apenas Super Admin.</p>
+      <h2 class="text-lg font-semibold text-slate-800">Municípios</h2>
+      <p class="text-xs text-slate-500">Gestão dos dados dos municípios.</p>
     </div>
     <div class="card">
       <div v-if="loading" class="text-center py-8 text-slate-500">Carregando...</div>

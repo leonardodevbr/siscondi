@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('destination_state', 2);
             $table->date('departure_date');
             $table->date('return_date');
+            $table->string('purpose')->default('Custeio de despesas com locomoção, hospedagem e alimentação.')->comment('Finalidade da diária');
             $table->text('reason')->comment('Motivo da viagem');
             
             // Cálculo Financeiro (valores em centavos)

@@ -29,8 +29,8 @@ class StoreLegislationRequest extends FormRequest
             'items.*.daily_class' => ['required', 'string', 'max:100'],
             'items.*.values' => ['required', 'array'],
             'items.*.values.*' => ['required', 'integer', 'min:0', 'max:9999999999'],
-            'items.*.cargo_ids' => ['nullable', 'array'],
-            'items.*.cargo_ids.*' => ['integer', 'exists:cargos,id'],
+            'items.*.position_ids' => ['nullable', 'array'],
+            'items.*.position_ids.*' => ['integer', 'exists:positions,id'],
         ];
     }
 }

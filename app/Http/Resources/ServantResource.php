@@ -35,10 +35,10 @@ class ServantResource extends JsonResource
             'legislation_item' => new LegislationItemResource($this->whenLoaded('legislationItem')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'user' => new UserResource($this->whenLoaded('user')),
-            'cargo_id' => $this->cargo_id,
-            'cargo' => new CargoResource($this->whenLoaded('cargo')),
+            'position_id' => $this->position_id,
+            'position' => new PositionResource($this->whenLoaded('position')),
             'destination_options' => $this->when(
-                $this->relationLoaded('cargo') || $this->relationLoaded('legislationItem'),
+                $this->relationLoaded('position') || $this->relationLoaded('legislationItem'),
                 fn () => $this->resource->getEffectiveLegislationItem()?->values ?? []
             ),
             'created_at' => $this->created_at,

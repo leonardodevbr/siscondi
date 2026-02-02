@@ -140,12 +140,21 @@
           </p>
         </div>
 
-        <!-- Motivo -->
+        <!-- Finalidade e Motivo -->
         <div class="lg:col-span-2 border-t border-slate-200 pt-6">
           <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <DocumentTextIcon class="h-5 w-5 text-slate-500" />
-            Motivo da viagem
+            Finalidade e Motivo
           </h3>
+        </div>
+
+        <div class="lg:col-span-2">
+          <Input
+            v-model="form.purpose"
+            label="Finalidade"
+            placeholder="Ex: Custeio de despesas com locomoção, hospedagem e alimentação."
+          />
+          <p class="mt-1 text-xs text-slate-500">Objetivo formal da diária (aparece no PDF).</p>
         </div>
 
         <div class="lg:col-span-2">
@@ -157,6 +166,7 @@
             placeholder="Descreva o motivo da viagem..."
             class="input-base w-full resize-y"
           />
+          <p class="mt-1 text-xs text-slate-500">Descrição detalhada do motivo da viagem.</p>
         </div>
       </div>
 
@@ -417,6 +427,7 @@ const form = ref({
   departure_date: '',
   return_date: '',
   quantity_days: 1,
+  purpose: 'Custeio de despesas com locomoção, hospedagem e alimentação.',
   reason: ''
 })
 
@@ -425,12 +436,12 @@ const allDestinationTypes = ref([])
 
 const servantOptions = computed(() =>
   servants.value.map((s) => {
-    const cargoLabel = s.cargo 
-      ? ` — ${s.cargo.name || s.cargo.symbol}`
+    const positionLabel = s.position
+      ? ` — ${s.position.name || s.position.symbol}`
       : ''
     return {
       value: s.id,
-      label: `${s.matricula} - ${s.name}${cargoLabel}`,
+      label: `${s.matricula} - ${s.name}${positionLabel}`,
     }
   })
 )
@@ -506,6 +517,7 @@ async function loadRequest() {
       departure_date: r.departure_date ? r.departure_date.slice(0, 10) : '',
       return_date: r.return_date ? r.return_date.slice(0, 10) : '',
       quantity_days: Number(r.quantity_days) ?? 1,
+      purpose: r.purpose ?? 'Custeio de despesas com locomoção, hospedagem e alimentação.',
       reason: r.reason ?? '',
     }
     if (isEdit.value) fetchTimeline()

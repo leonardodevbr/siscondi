@@ -91,11 +91,11 @@
 
         <div>
           <SelectInput
-            v-model="form.cargo_id"
+            v-model="form.position_id"
             label="Cargo *"
-            :options="cargoOptions"
+            :options="positionOptions"
             placeholder="Selecione um cargo"
-            :searchable="cargoOptions.length > 10"
+            :searchable="positionOptions.length > 10"
             mode="single"
           />
         </div>
@@ -282,7 +282,7 @@ const form = ref({
   matricula: '',
   legislation_item_id: null,
   department_id: null,
-  cargo_id: null,
+  position_id: null,
   bank_name: '',
   agency_number: '',
   account_number: '',
@@ -300,24 +300,24 @@ const accountTypeOptions = [
 ]
 
 const departments = ref([])
-const cargos = ref([])
+const positions = ref([])
 
 const departmentOptions = computed(() =>
   (departments.value || []).map((d) => ({ value: d.id, label: d.name }))
 )
 
-const cargoOptions = computed(() =>
-  (cargos.value || []).map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
+const positionOptions = computed(() =>
+  (positions.value || []).map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
 )
 
 const fetchData = async () => {
   try {
-    const [deptData, cargosData] = await Promise.all([
+    const [deptData, positionsData] = await Promise.all([
       api.get('/departments?all=1'),
-      api.get('/cargos?all=1')
+      api.get('/positions?all=1')
     ])
     departments.value = deptData.data?.data ?? deptData.data ?? []
-    cargos.value = cargosData.data?.data ?? cargosData.data ?? []
+    positions.value = positionsData.data?.data ?? positionsData.data ?? []
   } catch (error) {
     console.error('Erro ao carregar dados:', error)
   }
@@ -346,7 +346,7 @@ const fetchServant = async () => {
       ...payload,
       department_id: payload.department_id ?? null,
       account_type: payload.account_type ?? null,
-      cargo_id: payload.cargo_id ?? null
+      position_id: payload.position_id ?? null
     }
     linkedUser.value = payload.user || null
   } catch (error) {
@@ -356,7 +356,7 @@ const fetchServant = async () => {
 
 const handleSubmit = async () => {
   formErrors.value = {}
-  if (!form.value.cargo_id) {
+  if (!form.value.position_id) {
     showError('Erro', 'Selecione o cargo.')
     return
   }

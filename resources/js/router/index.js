@@ -10,8 +10,8 @@ import LoginView from '@/views/Auth/Login.vue';
 import ChooseDepartmentView from '@/views/Auth/ChooseDepartment.vue';
 import LegislationsIndex from '@/views/Legislations/Index.vue';
 import LegislationForm from '@/views/Legislations/Form.vue';
-import CargosIndex from '@/views/Cargos/Index.vue';
-import CargoForm from '@/views/Cargos/Form.vue';
+import PositionsIndex from '@/views/Positions/Index.vue';
+import PositionForm from '@/views/Positions/Form.vue';
 import ServantsIndex from '@/views/Servants/Index.vue';
 import ServantForm from '@/views/Servants/Form.vue';
 import DailyRequestsIndex from '@/views/DailyRequests/Index.vue';
@@ -127,23 +127,23 @@ const routes = [
         component: LegislationForm,
         meta: { title: 'Editar Legislação', roles: ['admin', 'super-admin'] },
       },
-      // Cargos (símbolo + pivot com itens da lei)
+      // Cargos/Posições (símbolo + pivot com itens da lei)
       {
-        path: 'cargos',
-        name: 'cargos.index',
-        component: CargosIndex,
+        path: 'positions',
+        name: 'positions.index',
+        component: PositionsIndex,
         meta: { title: 'Cargos', roles: ['admin', 'super-admin', 'validator'] },
       },
       {
-        path: 'cargos/create',
-        name: 'cargos.create',
-        component: CargoForm,
+        path: 'positions/create',
+        name: 'positions.create',
+        component: PositionForm,
         meta: { title: 'Novo Cargo', roles: ['admin', 'super-admin', 'validator'] },
       },
       {
-        path: 'cargos/:id/edit',
-        name: 'cargos.edit',
-        component: CargoForm,
+        path: 'positions/:id/edit',
+        name: 'positions.edit',
+        component: PositionForm,
         meta: { title: 'Editar Cargo', roles: ['admin', 'super-admin', 'validator'] },
       },
       // Secretarias

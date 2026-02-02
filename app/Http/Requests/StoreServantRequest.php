@@ -36,7 +36,7 @@ class StoreServantRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
             'password' => ['required_with:email', 'nullable', 'string', 'confirmed', Password::defaults()],
-            'cargo_id' => ['required', 'integer', 'exists:cargos,id'],
+            'position_id' => ['required', 'integer', 'exists:positions,id'],
         ];
     }
 }

@@ -60,8 +60,8 @@
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Servidor</p>
           <p class="mt-1 text-slate-900">
             {{ request.servant?.name ?? '—' }}
-            <span v-if="request.servant?.cargo" class="text-slate-500 text-xs">
-              ({{ request.servant.cargo.name || request.servant.cargo.symbol }})
+            <span v-if="request.servant?.position" class="text-slate-500 text-xs">
+              ({{ request.servant.position.name || request.servant.position.symbol }})
             </span>
           </p>
         </div>
@@ -102,8 +102,12 @@
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatCurrency(request.total_value) }}</p>
         </div>
 
-        <!-- Motivo (uma linha quando possível) -->
-        <div class="lg:col-span-2 border-t border-slate-200 pt-4">
+        <!-- Finalidade e Motivo -->
+        <div class="lg:col-span-2 border-t border-slate-200 pt-4 space-y-2">
+          <p class="text-sm text-slate-700">
+            <span class="font-medium text-slate-800">Finalidade:</span>
+            {{ request.purpose || 'Custeio de despesas com locomoção, hospedagem e alimentação.' }}
+          </p>
           <p class="text-sm text-slate-700">
             <span class="font-medium text-slate-800">Motivo da viagem:</span>
             {{ request.reason || '—' }}

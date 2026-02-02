@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Cargo;
+use App\Models\Position;
 use App\Models\Department;
 use App\Models\LegislationItem;
 use App\Models\Servant;
@@ -26,7 +26,7 @@ class ServantSeeder extends Seeder
         // Buscar dados necessários
         $departments = Department::all();
         $items = LegislationItem::orderBy('id')->get();
-        $cargos = Cargo::all();
+        $positions = Position::all();
 
         if ($departments->isEmpty()) {
             $this->command->warn('ServantSeeder: nenhuma secretaria encontrada. Execute DepartmentSeeder antes.');
@@ -50,8 +50,8 @@ class ServantSeeder extends Seeder
         $userTesoureiro = User::where('email', 'tesoureiro@siscondi.gov.br')->first();
 
         // Função auxiliar para buscar cargo por símbolo
-        $getCargo = function($symbol) use ($cargos) {
-            return $cargos->firstWhere('symbol', $symbol);
+        $getPosition = function ($symbol) use ($positions) {
+            return $positions->firstWhere('symbol', $symbol);
         };
 
         // Função auxiliar para buscar departamento por código
@@ -601,11 +601,11 @@ class ServantSeeder extends Seeder
         $progressBar = $this->command->getOutput()->createProgressBar(count($servidores));
 
         foreach ($servidores as $s) {
-            $cargo = $getCargo($s['cargo_symbol']);
+            $position = $getPosition($s['cargo_symbol']);
             $dept = $getDepartment($s['department_code']);
             $item = $items->first(); // Pode ajustar lógica aqui
 
-            if (!$cargo) {
+            if (!$position) {
                 $this->command->warn("Cargo {$s['cargo_symbol']} não encontrado para {$s['name']}");
                 $progressBar->advance();
                 continue;
@@ -658,7 +658,7 @@ class ServantSeeder extends Seeder
                     'user_id' => $userId,
                     'legislation_item_id' => $item?->id,
                     'department_id' => $dept->id,
-                    'cargo_id' => $cargo->id,
+                    'position_id' => $position->id,
                     'name' => $s['name'],
                     'rg' => $s['rg'],
                     'organ_expeditor' => $s['organ_expeditor'],

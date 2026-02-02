@@ -105,12 +105,12 @@
                 <td class="px-4 py-3 align-top">
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-slate-600 whitespace-nowrap">
-                      {{ getCargoCountLabel(item) }}
+                      {{ getPositionCountLabel(item) }}
                     </span>
                     <button
                       type="button"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 shrink-0"
-                      @click="openCargoModal(idx)"
+                      @click="openPositionModal(idx)"
                     >
                       <PencilSquareIcon class="w-3.5 h-3.5" />
                       Selecionar
@@ -142,35 +142,35 @@
 
       <!-- Modal: Selecionar cargos -->
       <Modal
-        :is-open="cargoModalOpen"
+        :is-open="positionModalOpen"
         title="Selecionar cargos"
-        @close="closeCargoModal"
+        @close="closePositionModal"
       >
         <div class="space-y-4">
-          <p v-if="cargoModalCategoryLabel" class="text-slate-600 text-sm font-medium border-b border-slate-200 pb-2 -mt-1">
-            {{ cargoModalCategoryLabel }}
+          <p v-if="positionModalCategoryLabel" class="text-slate-600 text-sm font-medium border-b border-slate-200 pb-2 -mt-1">
+            {{ positionModalCategoryLabel }}
           </p>
           <input
-            v-model="cargoSearch"
+            v-model="positionSearch"
             type="search"
             placeholder="Pesquisar cargos..."
             class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100"
           />
           <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
             <label
-              v-for="opt in filteredCargoOptions"
+              v-for="opt in filteredPositionOptions"
               :key="opt.value"
               class="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer"
             >
               <input
                 type="checkbox"
-                :checked="cargoModalSelectedIds.includes(opt.value)"
+                :checked="positionModalSelectedIds.includes(opt.value)"
                 class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                @change="toggleCargoModalSelection(opt.value)"
+                @change="togglePositionModalSelection(opt.value)"
               />
               <span class="text-sm text-slate-800">{{ opt.label }}</span>
             </label>
-            <p v-if="filteredCargoOptions.length === 0" class="px-3 py-4 text-sm text-slate-500">
+            <p v-if="filteredPositionOptions.length === 0" class="px-3 py-4 text-sm text-slate-500">
               Nenhum cargo encontrado.
             </p>
           </div>
@@ -178,14 +178,14 @@
             <button
               type="button"
               class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
-              @click="closeCargoModal"
+              @click="closePositionModal"
             >
               Cancelar
             </button>
             <button
               type="button"
               class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-              @click="applyCargoSelection"
+              @click="applyPositionSelection"
             >
               Aplicar
             </button>
@@ -220,12 +220,12 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: showError } = useAlert()
 const isEdit = ref(false)
-const cargos = ref([])
-const cargoOptions = ref([])
-const cargoModalOpen = ref(false)
-const cargoModalItemIndex = ref(null)
-const cargoSearch = ref('')
-const cargoModalSelectedIds = ref([])
+const positions = ref([])
+const positionOptions = ref([])
+const positionModalOpen = ref(false)
+const positionModalItemIndex = ref(null)
+const positionSearch = ref('')
+const positionModalSelectedIds = ref([])
 
 const form = ref({
   title: '',
@@ -325,7 +325,7 @@ const fetchLegislation = async () => {
     form.value.law_number = payload.law_number ?? ''
     form.value.is_active = payload.is_active ?? true
     form.value.destinations = [...destinations]
-    const normalizeCargoIds = (arr) => {
+    const normalizePositionIds = (arr) => {
       if (!Array.isArray(arr)) return []
       return arr.map((c) => (c != null && typeof c === 'object' && 'id' in c ? c.id : c))
     }
@@ -338,7 +338,7 @@ const fetchLegislation = async () => {
             functional_category: it.functional_category ?? '',
             daily_class: it.daily_class ?? '',
             valueByIndex,
-            cargo_ids: normalizeCargoIds(it.cargo_ids)
+            position_ids: normalizePositionIds(it.position_ids)
           }
         })
       : []
@@ -354,7 +354,7 @@ const addItem = () => {
     functional_category: '',
     daily_class: '',
     valueByIndex: valueArrayForDestinations(form.value.destinations),
-    cargo_ids: []
+    position_ids: []
   })
 }
 
@@ -362,26 +362,26 @@ const removeItem = (index) => {
   form.value.items.splice(index, 1)
 }
 
-function getCargoCount(item) {
-  return (Array.isArray(item.cargo_ids) ? item.cargo_ids : []).length
+function getPositionCount(item) {
+  return (Array.isArray(item.position_ids) ? item.position_ids : []).length
 }
 
-function getCargoCountLabel(item) {
-  const n = getCargoCount(item)
+function getPositionCountLabel(item) {
+  const n = getPositionCount(item)
   if (n === 0) return 'Nenhum'
   if (n === 1) return '1 cargo'
   return `${n} cargos`
 }
 
-const filteredCargoOptions = computed(() => {
-  const q = (cargoSearch.value || '').trim().toLowerCase()
-  const list = cargoOptions.value || []
+const filteredPositionOptions = computed(() => {
+  const q = (positionSearch.value || '').trim().toLowerCase()
+  const list = positionOptions.value || []
   if (!q) return list
   return list.filter((o) => (o.label || '').toLowerCase().includes(q) || String(o.value || '').includes(q))
 })
 
-const cargoModalCategoryLabel = computed(() => {
-  const idx = cargoModalItemIndex.value
+const positionModalCategoryLabel = computed(() => {
+  const idx = positionModalItemIndex.value
   if (idx == null || !form.value.items[idx]) return ''
   const item = form.value.items[idx]
   const cat = (item.functional_category || '').trim()
@@ -391,36 +391,36 @@ const cargoModalCategoryLabel = computed(() => {
   return ''
 })
 
-function openCargoModal(itemIndex) {
-  cargoModalItemIndex.value = itemIndex
+function openPositionModal(itemIndex) {
+  positionModalItemIndex.value = itemIndex
   const item = form.value.items[itemIndex]
-  const ids = Array.isArray(item?.cargo_ids) ? item.cargo_ids : []
-  cargoModalSelectedIds.value = ids.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
-  cargoSearch.value = ''
-  cargoModalOpen.value = true
+  const ids = Array.isArray(item?.position_ids) ? item.position_ids : []
+  positionModalSelectedIds.value = ids.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
+  positionSearch.value = ''
+  positionModalOpen.value = true
 }
 
-function closeCargoModal() {
-  cargoModalOpen.value = false
-  cargoModalItemIndex.value = null
-  cargoModalSelectedIds.value = []
-  cargoSearch.value = ''
+function closePositionModal() {
+  positionModalOpen.value = false
+  positionModalItemIndex.value = null
+  positionModalSelectedIds.value = []
+  positionSearch.value = ''
 }
 
-function toggleCargoModalSelection(id) {
-  const idx = cargoModalSelectedIds.value.indexOf(id)
+function togglePositionModalSelection(id) {
+  const idx = positionModalSelectedIds.value.indexOf(id)
   if (idx === -1) {
-    cargoModalSelectedIds.value = [...cargoModalSelectedIds.value, id]
+    positionModalSelectedIds.value = [...positionModalSelectedIds.value, id]
   } else {
-    cargoModalSelectedIds.value = cargoModalSelectedIds.value.filter((x) => x !== id)
+    positionModalSelectedIds.value = positionModalSelectedIds.value.filter((x) => x !== id)
   }
 }
 
-function applyCargoSelection() {
-  const idx = cargoModalItemIndex.value
+function applyPositionSelection() {
+  const idx = positionModalItemIndex.value
   if (idx == null || !form.value.items[idx]) return
-  form.value.items[idx].cargo_ids = [...cargoModalSelectedIds.value]
-  closeCargoModal()
+  form.value.items[idx].position_ids = [...positionModalSelectedIds.value]
+  closePositionModal()
 }
 
 const reaisToCents = (val) => Math.round(100 * (Number(val) || 0))
@@ -440,8 +440,8 @@ const toPayload = () => {
     if (it.id != null && it.id !== '') {
       payloadItem.id = it.id
     }
-    const cargoIds = Array.isArray(it.cargo_ids) ? it.cargo_ids : []
-    payloadItem.cargo_ids = cargoIds.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
+    const positionIds = Array.isArray(it.position_ids) ? it.position_ids : []
+    payloadItem.position_ids = positionIds.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
     return payloadItem
   })
   return {
@@ -473,18 +473,18 @@ const handleSubmit = async () => {
   }
 }
 
-const fetchCargos = async () => {
+const fetchPositions = async () => {
   try {
-    const { data } = await api.get('/cargos?all=1')
+    const { data } = await api.get('/positions?all=1')
     const list = data.data ?? data ?? []
-    cargoOptions.value = list.map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
+    positionOptions.value = list.map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.symbol})` : c.symbol }))
   } catch (e) {
     console.error(e)
   }
 }
 
 onMounted(async () => {
-  await fetchCargos()
+  await fetchPositions()
   const id = route.params.id
   if (id && id !== 'create' && String(Number(id)) === String(id)) {
     isEdit.value = true

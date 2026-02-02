@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('cargos', function (Blueprint $table): void {
+        Schema::create('positions', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('municipality_id')->constrained('municipalities')->cascadeOnDelete();
             $table->string('symbol')->comment('Símbolo do cargo (ex.: 101, 201)');
@@ -25,6 +25,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('cargos');
+        Schema::dropIfExists('positions');
     }
 };

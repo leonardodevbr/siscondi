@@ -6,11 +6,11 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateCargoRequest extends FormRequest
+class StorePositionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('cargos.edit') ?? false;
+        return $this->user()?->can('positions.create') ?? false;
     }
 
     /**
@@ -20,8 +20,8 @@ class UpdateCargoRequest extends FormRequest
     {
         return [
             'municipality_id' => ['nullable', 'integer', 'exists:municipalities,id'],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'symbol' => ['sometimes', 'required', 'string', 'max:50'],
+            'name' => ['required', 'string', 'max:255'],
+            'symbol' => ['required', 'string', 'max:50'],
             'role' => ['nullable', 'string', 'max:50', 'in:admin,requester,validator,authorizer,payer,beneficiary,super-admin'],
         ];
     }

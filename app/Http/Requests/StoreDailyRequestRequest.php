@@ -25,6 +25,7 @@ class StoreDailyRequestRequest extends FormRequest
             'destination_state' => ['required', 'string', 'size:2'],
             'departure_date' => ['required', 'date', 'after_or_equal:today'],
             'return_date' => ['required', 'date', 'after:departure_date'],
+            'purpose' => ['nullable', 'string', 'max:500'],
             'reason' => ['required', 'string', 'max:1000'],
             'quantity_days' => ['required', 'numeric', 'min:0.5', 'max:999.9'],
         ];
