@@ -29,8 +29,26 @@ const authStore = useAuthStore();
 
 /** Item visível se não tem permission (ex.: Dashboard) ou se user pode (can) a permissão. */
 function itemVisible(item) {
-  // Temporariamente liberado para todos os itens do menu
-  return true;
+  // Super-admin tem acesso a tudo
+  if (authStore.isSuperAdmin) {
+    return true;
+  }
+  
+  // Se o item tem role específica, verifica
+  if (item.role) {
+    const roles = Array.isArray(item.role) ? item.role : [item.role];
+    if (!authStore.hasRole(roles)) {
+      return false;
+    }
+  }
+  
+  // Se o item não tem permissão definida, está liberado para todos
+  if (!item.permission) {
+    return true;
+  }
+  
+  // Verifica se tem a permissão
+  return authStore.can(item.permission);
 }
 
 const menuGroups = computed(() => {

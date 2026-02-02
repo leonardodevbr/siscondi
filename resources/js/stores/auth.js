@@ -17,8 +17,23 @@ export const useAuthStore = defineStore('auth', {
      * @returns {boolean}
      */
     can: (state) => (permissionName) => {
-      // Temporariamente liberado para todos os perfis
-      return Boolean(state.user);
+      if (!state.user) return false;
+      
+      // Super-admin tem acesso total
+      const roles = state.user.roles || [];
+      const isSuperAdmin = roles.some((r) => {
+        const name = typeof r === 'string' ? r : r?.name;
+        return name === 'super-admin';
+      });
+      
+      if (isSuperAdmin) return true;
+      
+      // Verifica se tem a permissão específica
+      const permissions = state.user.permissions || [];
+      return permissions.some((p) => {
+        const pName = typeof p === 'string' ? p : p?.name;
+        return pName === permissionName;
+      });
     },
     /**
      * Verifica se o usuário tem uma role específica.
@@ -26,8 +41,15 @@ export const useAuthStore = defineStore('auth', {
      * @returns {boolean}
      */
     hasRole: (state) => (roleName) => {
-      // Temporariamente liberado para todos os perfis
-      return Boolean(state.user);
+      if (!state.user) return false;
+      
+      const roles = state.user.roles || [];
+      const roleNames = Array.isArray(roleName) ? roleName : [roleName];
+      
+      return roles.some((r) => {
+        const name = typeof r === 'string' ? r : r?.name;
+        return roleNames.includes(name);
+      });
     },
     isSuperAdmin: (state) => {
       if (!state.user) return false;

@@ -58,8 +58,38 @@ class DailyRequestController extends Controller
 
     private function ensureCanAccess(DailyRequest $dailyRequest): void
     {
-        // Removida restrição de acesso para permitir acesso total
-        return;
+        $user = auth()->user();
+        
+        // Super-admin tem acesso total
+        if ($user && $user->hasRole('super-admin')) {
+            return;
+        }
+        
+        // Admin do município tem acesso total às solicitações do seu município
+        if ($user && $user->hasRole('admin')) {
+            $servant = $dailyRequest->servant;
+            if ($servant && $servant->department && $servant->department->municipality_id === $user->municipality_id) {
+                return;
+            }
+        }
+        
+        // Usuário criador pode acessar
+        if ($dailyRequest->requester_id === $user->id) {
+            return;
+        }
+        
+        // Usuário que é o próprio servidor pode acessar
+        if ($user->servant && $user->servant->id === $dailyRequest->servant_id) {
+            return;
+        }
+        
+        // Usuário com acesso ao departamento do servidor pode acessar
+        $servant = $dailyRequest->servant;
+        if ($servant && $user->hasAccessToDepartment($servant->department_id)) {
+            return;
+        }
+        
+        abort(403, 'Você não tem permissão para acessar esta solicitação.');
     }
 
     /**
@@ -68,20 +98,52 @@ class DailyRequestController extends Controller
     public function pendingSignatures(Request $request): JsonResponse
     {
         $this->authorize('daily-requests.view');
+        
+        $user = auth()->user();
 
-        $query = DailyRequest::with(['servant', 'requester'])
+        $query = DailyRequest::with(['servant.department', 'requester'])
             ->whereIn('status', [DailyRequestStatus::REQUESTED, DailyRequestStatus::VALIDATED, DailyRequestStatus::AUTHORIZED]);
 
-        // Removida restrição de departamento para exibir todas as solicitações pendentes
+        // Super-admin vê tudo
+        if (!$user->hasRole('super-admin')) {
+            // Admin vê tudo do seu município
+            if ($user->hasRole('admin') && $user->municipality_id) {
+                $query->whereHas('servant.department', function ($q) use ($user): void {
+                    $q->where('municipality_id', $user->municipality_id);
+                });
+            } else {
+                // Outros usuários veem apenas das secretarias que têm acesso
+                $departmentIds = $user->getDepartmentIds();
+                $query->whereHas('servant', function ($q) use ($departmentIds): void {
+                    $q->whereIn('department_id', $departmentIds);
+                });
+            }
+        }
         
         $all = $query->orderBy('created_at', 'desc')->get();
-        // Permite que qualquer usuário veja qualquer pendência
-        return response()->json(DailyRequestResource::collection($all->take(20)));
+        
+        // Filtra apenas as que o usuário pode assinar (validar, autorizar ou pagar)
+        $filtered = $all->filter(function ($req) use ($user) {
+            if ($req->status === DailyRequestStatus::REQUESTED && $user->can('daily-requests.validate')) {
+                return true;
+            }
+            if ($req->status === DailyRequestStatus::VALIDATED && $user->can('daily-requests.authorize')) {
+                return true;
+            }
+            if ($req->status === DailyRequestStatus::AUTHORIZED && $user->can('daily-requests.pay')) {
+                return true;
+            }
+            return false;
+        });
+        
+        return response()->json(DailyRequestResource::collection($filtered->take(20)));
     }
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('daily-requests.view');
+        
+        $user = auth()->user();
 
         $query = DailyRequest::with([
             'servant.legislationItem',
@@ -93,7 +155,21 @@ class DailyRequestController extends Controller
             'payer'
         ]);
 
-        // Removida filtragem por departamento/usuário para acesso total
+        // Super-admin vê tudo
+        if (!$user->hasRole('super-admin')) {
+            // Admin vê tudo do seu município
+            if ($user->hasRole('admin') && $user->municipality_id) {
+                $query->whereHas('servant.department', function ($q) use ($user): void {
+                    $q->where('municipality_id', $user->municipality_id);
+                });
+            } else {
+                // Outros usuários veem apenas das secretarias que têm acesso
+                $departmentIds = $user->getDepartmentIds();
+                $query->whereHas('servant', function ($q) use ($departmentIds): void {
+                    $q->whereIn('department_id', $departmentIds);
+                });
+            }
+        }
         
         // Filtros
         if ($request->filled('search')) {
@@ -140,7 +216,31 @@ class DailyRequestController extends Controller
         $servant = Servant::with('cargo.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
         $user = auth()->user();
 
-        // Removida restrição para beneficiários criarem para si mesmos para permitir acesso total
+        // Super-admin pode criar para qualquer servidor
+        if (!$user->hasRole('super-admin')) {
+            // Admin pode criar para servidores do seu município
+            if ($user->hasRole('admin')) {
+                if ($servant->department && $servant->department->municipality_id !== $user->municipality_id) {
+                    return response()->json([
+                        'message' => 'Você não tem permissão para criar solicitações para servidores de outros municípios.',
+                    ], 403);
+                }
+            } else {
+                // Outros usuários só podem criar para servidores das secretarias que têm acesso
+                if (!$user->hasAccessToDepartment($servant->department_id)) {
+                    return response()->json([
+                        'message' => 'Você não tem permissão para criar solicitações para este servidor.',
+                    ], 403);
+                }
+                
+                // Beneficiários (role 'beneficiary') não podem criar solicitações para si mesmos
+                if ($user->hasRole('beneficiary') && $user->servant && $user->servant->id === $servant->id) {
+                    return response()->json([
+                        'message' => 'Beneficiários não podem criar solicitações para si mesmos. Solicite a um requerente autorizado.',
+                    ], 403);
+                }
+            }
+        }
 
         $effectiveItem = $servant->getEffectiveLegislationItem();
         if (! $effectiveItem) {

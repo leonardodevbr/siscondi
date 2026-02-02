@@ -244,20 +244,15 @@ router.beforeEach((to, from, next) => {
       return;
     }
 
-    const userRoles = user.roles || [];
-    const requiredRoles = to.meta.roles;
+    // Super-admin tem acesso total
+    if (authStore.isSuperAdmin) {
+      next();
+      return;
+    }
 
-    const hasAccess = requiredRoles.some((requiredRole) => {
-      if (requiredRole === '*') {
-        return true;
-      }
-      return userRoles.some((userRole) => {
-        if (typeof userRole === 'string') {
-          return userRole === requiredRole;
-        }
-        return userRole?.name === requiredRole;
-      });
-    });
+    // Verifica se o usuário tem uma das roles necessárias
+    const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles : [to.meta.roles];
+    const hasAccess = authStore.hasRole(requiredRoles);
 
     if (!hasAccess) {
       toast.error('Você não tem permissão para acessar esta página.');

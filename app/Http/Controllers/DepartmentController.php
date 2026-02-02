@@ -16,10 +16,21 @@ class DepartmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->authorize('departments.view');
-
+        
+        $user = auth()->user();
         $query = Department::query();
 
-        // Removida filtragem por município para permitir acesso total
+        // Super-admin vê todas as secretarias
+        if (!$user->hasRole('super-admin')) {
+            // Admin vê apenas secretarias do seu município
+            if ($user->hasRole('admin') && $user->municipality_id) {
+                $query->where('municipality_id', $user->municipality_id);
+            } else {
+                // Outros usuários veem apenas as secretarias que têm acesso
+                $departmentIds = $user->getDepartmentIds();
+                $query->whereIn('id', $departmentIds);
+            }
+        }
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -37,9 +48,21 @@ class DepartmentController extends Controller
 
     public function store(StoreDepartmentRequest $request): JsonResponse
     {
+        $user = auth()->user();
         $data = $request->validated();
         
-        // Removida restrição de município para permitir criação livre
+        // Super-admin pode criar secretaria em qualquer município
+        if (!$user->hasRole('super-admin')) {
+            // Admin só pode criar secretarias no seu município
+            if ($user->hasRole('admin')) {
+                if (!isset($data['municipality_id']) || $data['municipality_id'] !== $user->municipality_id) {
+                    abort(403, 'Você só pode criar secretarias no seu município.');
+                }
+            } else {
+                // Outros perfis não podem criar secretarias
+                abort(403, 'Você não tem permissão para criar secretarias.');
+            }
+        }
 
         $department = Department::create($data);
 
@@ -55,8 +78,24 @@ class DepartmentController extends Controller
 
     private function ensureDepartmentScope(Department $department): void
     {
-        // Removida restrição de acesso por município
-        return;
+        $user = auth()->user();
+        
+        // Super-admin tem acesso total
+        if ($user && $user->hasRole('super-admin')) {
+            return;
+        }
+        
+        // Admin tem acesso às secretarias do seu município
+        if ($user && $user->hasRole('admin') && $user->municipality_id === $department->municipality_id) {
+            return;
+        }
+        
+        // Outros usuários só têm acesso às secretarias vinculadas
+        if ($user && $user->hasAccessToDepartment($department->id)) {
+            return;
+        }
+        
+        abort(403, 'Você não tem permissão para acessar esta secretaria.');
     }
 
     public function show(string|int $department): JsonResponse
@@ -70,11 +109,23 @@ class DepartmentController extends Controller
 
     public function update(UpdateDepartmentRequest $request, string|int $department): JsonResponse
     {
+        $user = auth()->user();
         $department = Department::query()->findOrFail((int) $department);
         $this->ensureDepartmentScope($department);
         $data = $request->validated();
         
-        // Removida restrição de município para permitir atualização livre
+        // Super-admin pode atualizar qualquer secretaria
+        if (!$user->hasRole('super-admin')) {
+            // Admin só pode atualizar secretarias do seu município
+            if ($user->hasRole('admin')) {
+                if (isset($data['municipality_id']) && $data['municipality_id'] !== $user->municipality_id) {
+                    abort(403, 'Você não pode transferir secretarias para outro município.');
+                }
+            } else {
+                // Outros perfis não podem atualizar secretarias
+                abort(403, 'Você não tem permissão para atualizar secretarias.');
+            }
+        }
 
         if (! empty($data['is_main']) && $department->municipality_id) {
             Department::query()

@@ -19,7 +19,13 @@ class MunicipalityController extends Controller
     public function index(): JsonResponse
     {
         $this->authorize('settings.manage');
-        // Removida restrição para permitir listagem por todos
+        
+        $user = auth()->user();
+        
+        // Apenas super-admin pode listar todos os municípios
+        if (!$user || !$user->hasRole('super-admin')) {
+            abort(403, 'Apenas super-administradores podem listar todos os municípios.');
+        }
 
         $municipalities = Municipality::query()->orderBy('name')->get();
 
@@ -53,11 +59,21 @@ class MunicipalityController extends Controller
      */
     public function show(string|int $id): JsonResponse
     {
-        // Removida restrição para permitir visualização por todos
-
-        $municipality = Municipality::query()->with('departments')->findOrFail((int) $id);
-
-        return response()->json(new MunicipalityResource($municipality));
+        $user = auth()->user();
+        
+        // Super-admin pode ver qualquer município
+        if ($user && $user->hasRole('super-admin')) {
+            $municipality = Municipality::query()->with('departments')->findOrFail((int) $id);
+            return response()->json(new MunicipalityResource($municipality));
+        }
+        
+        // Admin só pode ver o seu próprio município
+        if ($user && $user->hasRole('admin') && $user->municipality_id === (int) $id) {
+            $municipality = Municipality::query()->with('departments')->findOrFail((int) $id);
+            return response()->json(new MunicipalityResource($municipality));
+        }
+        
+        abort(403, 'Você não tem permissão para visualizar este município.');
     }
 
     /**
@@ -85,14 +101,27 @@ class MunicipalityController extends Controller
      */
     public function update(UpdateMunicipalityRequest $request, string|int $id): JsonResponse
     {
-        // Removida restrição para permitir edição por todos
-
-        $municipality = Municipality::query()->findOrFail((int) $id);
-        $municipality->update($request->validated());
-
-        $fresh = Municipality::query()->with('departments')->findOrFail($municipality->id);
-
-        return response()->json(new MunicipalityResource($fresh));
+        $user = auth()->user();
+        
+        // Super-admin pode editar qualquer município
+        if ($user && $user->hasRole('super-admin')) {
+            $municipality = Municipality::query()->findOrFail((int) $id);
+            $municipality->update($request->validated());
+            
+            $fresh = Municipality::query()->with('departments')->findOrFail($municipality->id);
+            return response()->json(new MunicipalityResource($fresh));
+        }
+        
+        // Admin só pode editar o seu próprio município
+        if ($user && $user->hasRole('admin') && $user->municipality_id === (int) $id) {
+            $municipality = Municipality::query()->findOrFail((int) $id);
+            $municipality->update($request->validated());
+            
+            $fresh = Municipality::query()->with('departments')->findOrFail($municipality->id);
+            return response()->json(new MunicipalityResource($fresh));
+        }
+        
+        abort(403, 'Você não tem permissão para editar este município.');
     }
 
     /**
@@ -107,7 +136,13 @@ class MunicipalityController extends Controller
 
         $municipality = Municipality::query()->findOrFail((int) $id);
 
-        // Removida restrição de acesso por município para permitir acesso total
+        // Super-admin pode listar secretarias de qualquer município
+        if (!$user->hasRole('super-admin')) {
+            // Admin só pode listar secretarias do seu município
+            if (!$user->hasRole('admin') || $user->municipality_id !== (int) $id) {
+                abort(403, 'Você não tem permissão para listar as secretarias deste município.');
+            }
+        }
 
         $departments = $municipality->departments()->orderBy('is_main', 'desc')->orderBy('name')->get();
 

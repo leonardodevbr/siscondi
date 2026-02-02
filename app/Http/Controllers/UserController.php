@@ -45,8 +45,28 @@ class UserController extends Controller
 
     private function departmentScope(): \Illuminate\Database\Eloquent\Builder
     {
-        // Removida restrição de departamento para permitir acesso total
-        return User::query();
+        $user = auth()->user();
+        $query = User::query();
+        
+        // Super-admin vê todos os usuários
+        if ($user && $user->hasRole('super-admin')) {
+            return $query;
+        }
+        
+        // Admin vê usuários do seu município
+        if ($user && $user->hasRole('admin') && $user->municipality_id) {
+            return $query->where('municipality_id', $user->municipality_id);
+        }
+        
+        // Outros usuários veem apenas usuários das secretarias que têm acesso
+        if ($user) {
+            $departmentIds = $user->getDepartmentIds();
+            return $query->whereHas('departments', function ($q) use ($departmentIds): void {
+                $q->whereIn('departments.id', $departmentIds);
+            });
+        }
+        
+        return $query->whereRaw('1 = 0'); // Retorna vazio se não autenticado
     }
 
     public function index(Request $request): JsonResponse
@@ -76,7 +96,29 @@ class UserController extends Controller
         $primaryDepartmentId = null;
         $roles = $request->validated('roles');
 
-        // Removida restrição para permitir atribuição de secretarias livremente
+        // Verifica permissões para criar usuário
+        if (!$authUser->hasRole('super-admin')) {
+            // Admin só pode criar usuários no seu município
+            if ($authUser->hasRole('admin')) {
+                if ($request->filled('department_ids')) {
+                    $deptIds = $request->input('department_ids');
+                    $invalidDepts = Department::whereIn('id', $deptIds)
+                        ->where('municipality_id', '!=', $authUser->municipality_id)
+                        ->exists();
+                    
+                    if ($invalidDepts) {
+                        throw ValidationException::withMessages([
+                            'department_ids' => ['Você só pode criar usuários para secretarias do seu município.']
+                        ]);
+                    }
+                }
+            } else {
+                // Outros perfis não podem criar usuários
+                throw ValidationException::withMessages([
+                    'permission' => ['Você não tem permissão para criar usuários.']
+                ]);
+            }
+        }
 
         if ($request->filled('department_ids')) {
             $departmentIds = $request->input('department_ids');
@@ -268,7 +310,22 @@ class UserController extends Controller
             ]);
         }
 
-        // Removida restrição de exclusão baseada em perfis
+        // Super-admin pode excluir qualquer usuário (exceto ele mesmo)
+        if (!$authUser->hasRole('super-admin')) {
+            // Admin só pode excluir usuários do seu município
+            if ($authUser->hasRole('admin')) {
+                if ($user->municipality_id !== $authUser->municipality_id) {
+                    throw ValidationException::withMessages([
+                        'user' => ['Você só pode excluir usuários do seu município.'],
+                    ]);
+                }
+            } else {
+                // Outros perfis não podem excluir usuários
+                throw ValidationException::withMessages([
+                    'permission' => ['Você não tem permissão para excluir usuários.'],
+                ]);
+            }
+        }
 
         $user->delete();
 
