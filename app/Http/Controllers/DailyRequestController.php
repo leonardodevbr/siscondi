@@ -16,6 +16,7 @@ use App\Notifications\DailyRequestPendingNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -139,7 +140,7 @@ class DailyRequestController extends Controller
         return response()->json(DailyRequestResource::collection($filtered->take(20)));
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('daily-requests.view');
         
@@ -203,12 +204,14 @@ class DailyRequestController extends Controller
 
         $query->orderBy('created_at', 'desc');
 
-        if ($request->boolean('all') || !$request->has('page')) {
-            $dailyRequests = $query->get();
-            return response()->json(DailyRequestResource::collection($dailyRequests));
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
+            return response()->json(DailyRequestResource::collection($query->get()));
         }
 
-        return response()->json(DailyRequestResource::collection($query->paginate(15)));
+        return DailyRequestResource::collection($query->paginate($perPage));
     }
 
     public function store(StoreDailyRequestRequest $request): JsonResponse

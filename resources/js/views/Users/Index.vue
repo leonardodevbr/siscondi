@@ -76,13 +76,12 @@
           </tbody>
         </table>
       </div>
-      <div v-if="userStore.pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-slate-500">Mostrando {{ userStore.pagination.from }} a {{ userStore.pagination.to }} de {{ userStore.pagination.total }} resultados</div>
-        <div class="flex gap-2">
-          <Button v-if="userStore.pagination.current_page > 1" variant="outline" @click="loadUsers({ page: userStore.pagination.current_page - 1 })">Anterior</Button>
-          <Button v-if="userStore.pagination.current_page < userStore.pagination.last_page" variant="outline" @click="loadUsers({ page: userStore.pagination.current_page + 1 })">Próxima</Button>
-        </div>
-      </div>
+      <PaginationBar
+        v-if="userStore.pagination"
+        :pagination="userStore.pagination"
+        @page-change="(page) => loadUsers({ page })"
+        @per-page-change="onPerPageChange"
+      />
     </div>
   </div>
 </template>
@@ -94,6 +93,7 @@ import { useUserStore } from '@/stores/user';
 import { useAuthStore } from '@/stores/auth';
 import { useAlert } from '@/composables/useAlert';
 import Button from '@/components/Common/Button.vue';
+import PaginationBar from '@/components/Common/PaginationBar.vue';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
 const ROLE_LABELS = {
@@ -110,6 +110,7 @@ const { confirm } = useAlert();
 const authStore = useAuthStore();
 const userStore = useUserStore();
 const searchQuery = ref('');
+const perPageRef = ref(15);
 let searchTimeout = null;
 
 const showDepartmentColumn = computed(() => {
@@ -130,11 +131,17 @@ function roleLabel(role) {
   return role ? (ROLE_LABELS[role] ?? role) : '—';
 }
 
+function onPerPageChange(perPage) {
+  perPageRef.value = perPage;
+  loadUsers({ page: 1, per_page: perPage });
+}
+
 async function loadUsers(params = {}) {
   try {
-    const p = { ...params };
+    const p = { per_page: perPageRef.value, ...params };
     if (searchQuery.value) p.search = searchQuery.value;
     await userStore.fetchUsers(p);
+    if (userStore.pagination?.per_page) perPageRef.value = userStore.pagination.per_page;
   } catch {
     toast.error('Erro ao carregar usuários');
   }

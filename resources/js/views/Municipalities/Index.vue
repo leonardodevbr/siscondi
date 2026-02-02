@@ -29,6 +29,14 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Paginação -->
+      <PaginationBar
+        v-if="pagination"
+        :pagination="pagination"
+        @page-change="(page) => load({ page })"
+        @per-page-change="onPerPageChange"
+      />
     </div>
   </div>
 </template>
@@ -37,18 +45,39 @@
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { PencilSquareIcon } from '@heroicons/vue/24/outline';
+import PaginationBar from '@/components/Common/PaginationBar.vue';
+
 const municipalities = ref([]);
 const loading = ref(true);
-const load = async () => {
+const pagination = ref(null);
+const perPageRef = ref(15);
+
+const load = async (params = {}) => {
   loading.value = true;
   try {
-    const { data } = await api.get('/municipalities');
+    const p = { per_page: perPageRef.value, ...params };
+    const { data } = await api.get('/municipalities', { params: p });
     municipalities.value = Array.isArray(data) ? data : (data?.data ?? []);
+    if (data?.meta) {
+      pagination.value = data.meta;
+      perPageRef.value = data.meta.per_page ?? perPageRef.value;
+    } else if (data?.current_page) {
+      pagination.value = data;
+      perPageRef.value = data.per_page ?? perPageRef.value;
+    } else {
+      pagination.value = null;
+    }
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
   }
 };
+
+function onPerPageChange(perPage) {
+  perPageRef.value = perPage;
+  load({ page: 1, per_page: perPage });
+}
+
 onMounted(() => load());
 </script>

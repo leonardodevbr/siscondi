@@ -11,6 +11,7 @@ use App\Models\Legislation;
 use App\Models\LegislationItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class LegislationController extends Controller
 {
@@ -47,7 +48,7 @@ class LegislationController extends Controller
         return response()->json(['data' => $labels]);
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('legislations.view');
 
@@ -67,12 +68,14 @@ class LegislationController extends Controller
 
         $query->orderBy('title', 'asc');
 
-        if ($request->boolean('all') || !$request->has('page')) {
-            $legislations = $query->get();
-            return response()->json(LegislationResource::collection($legislations));
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
+            return response()->json(LegislationResource::collection($query->get()));
         }
 
-        return response()->json(LegislationResource::collection($query->paginate(15)));
+        return LegislationResource::collection($query->paginate($perPage));
     }
 
     public function store(StoreLegislationRequest $request): JsonResponse

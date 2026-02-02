@@ -84,7 +84,10 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->where('id', '!=', $user->id)->orderBy('name')->paginate(15);
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        $users = $query->where('id', '!=', $user->id)->orderBy('name')->paginate($perPage);
 
         return response()->json(UserResource::collection($users));
     }

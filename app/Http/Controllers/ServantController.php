@@ -12,11 +12,12 @@ use App\Models\Servant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class ServantController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('servants.view');
 
@@ -49,12 +50,14 @@ class ServantController extends Controller
 
         $query->orderBy('name', 'asc');
 
-        if ($request->boolean('all') || !$request->has('page')) {
-            $servants = $query->get();
-            return response()->json(ServantResource::collection($servants));
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
+            return response()->json(ServantResource::collection($query->get()));
         }
 
-        return response()->json(ServantResource::collection($query->paginate(15)));
+        return ServantResource::collection($query->paginate($perPage));
     }
 
     public function store(StoreServantRequest $request): JsonResponse

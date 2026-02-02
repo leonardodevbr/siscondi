@@ -10,13 +10,14 @@ use App\Http\Resources\MunicipalityResource;
 use App\Models\Department;
 use App\Models\Municipality;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MunicipalityController extends Controller
 {
     /**
      * Lista todos os municípios (apenas SuperAdmin).
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('settings.manage');
         
@@ -27,9 +28,16 @@ class MunicipalityController extends Controller
             abort(403, 'Apenas super-administradores podem listar todos os municípios.');
         }
 
-        $municipalities = Municipality::query()->orderBy('name')->get();
+        $query = Municipality::query()->orderBy('name');
 
-        return response()->json(MunicipalityResource::collection($municipalities));
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
+            return response()->json(MunicipalityResource::collection($query->get()));
+        }
+
+        return MunicipalityResource::collection($query->paginate($perPage));
     }
 
     /**

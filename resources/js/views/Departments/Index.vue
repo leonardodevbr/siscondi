@@ -101,25 +101,12 @@
       </div>
 
       <!-- Paginação -->
-      <div v-if="pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-slate-500">Mostrando {{ pagination.from }} a {{ pagination.to }} de {{ pagination.total }} resultados</div>
-        <div class="flex gap-2">
-          <button 
-            v-if="pagination.current_page > 1" 
-            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
-            @click="loadDepartments({ page: pagination.current_page - 1 })"
-          >
-            Anterior
-          </button>
-          <button 
-            v-if="pagination.current_page < pagination.last_page" 
-            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
-            @click="loadDepartments({ page: pagination.current_page + 1 })"
-          >
-            Próxima
-          </button>
-        </div>
-      </div>
+      <PaginationBar
+        v-if="pagination"
+        :pagination="pagination"
+        @page-change="(page) => loadDepartments({ page })"
+        @per-page-change="onPerPageChange"
+      />
     </div>
 
     <div
@@ -223,9 +210,10 @@ import { useAlert } from '@/composables/useAlert';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import LogoUpload from '@/components/Common/LogoUpload.vue';
 import Toggle from '@/components/Common/Toggle.vue';
+import PaginationBar from '@/components/Common/PaginationBar.vue';
 
 export default {
-  components: { PencilSquareIcon, TrashIcon, LogoUpload, Toggle },
+  components: { PencilSquareIcon, TrashIcon, LogoUpload, Toggle, PaginationBar },
   name: 'DepartmentsIndex',
   data() {
     return {
@@ -240,6 +228,7 @@ export default {
       },
       searchQuery: '',
       pagination: null,
+      perPage: 15,
       searchTimeout: null,
     };
   },
@@ -250,7 +239,7 @@ export default {
     async loadDepartments(params = {}) {
       try {
         this.loading = true;
-        const p = { ...params };
+        const p = { per_page: this.perPage, ...params };
         if (this.searchQuery) p.search = this.searchQuery;
 
         const response = await api.get('/departments', { params: p });
@@ -258,8 +247,10 @@ export default {
         this.departments = data.data ?? data;
         if (data.meta) {
           this.pagination = data.meta;
+          this.perPage = data.meta.per_page ?? this.perPage;
         } else if (data.current_page) {
           this.pagination = data;
+          this.perPage = data.per_page ?? this.perPage;
         }
       } catch (error) {
         console.error('Erro ao carregar secretarias:', error);
@@ -271,6 +262,10 @@ export default {
     debouncedSearch() {
       clearTimeout(this.searchTimeout);
       this.searchTimeout = setTimeout(() => this.loadDepartments(), 500);
+    },
+    onPerPageChange(perPage) {
+      this.perPage = perPage;
+      this.loadDepartments({ page: 1, per_page: perPage });
     },
     editDepartment(dept) {
       this.editingDepartment = dept;

@@ -10,10 +10,11 @@ use App\Http\Resources\CargoResource;
 use App\Models\Cargo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CargoController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('cargos.view');
         
@@ -43,11 +44,14 @@ class CargoController extends Controller
 
         $query->orderBy('symbol', 'asc');
 
-        if ($request->boolean('all') || ! $request->has('page')) {
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
             return response()->json(CargoResource::collection($query->get()));
         }
 
-        return response()->json(CargoResource::collection($query->paginate(15)));
+        return CargoResource::collection($query->paginate($perPage));
     }
 
     public function store(StoreCargoRequest $request): JsonResponse

@@ -10,10 +10,11 @@ use App\Http\Resources\DepartmentResource;
 use App\Models\Department;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DepartmentController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
         $this->authorize('departments.view');
         
@@ -39,11 +40,14 @@ class DepartmentController extends Controller
 
         $query->orderBy('is_main', 'desc')->orderBy('name', 'asc');
 
-        if ($request->boolean('all') || ! $request->has('page')) {
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
+
+        if ($request->boolean('all')) {
             return response()->json(DepartmentResource::collection($query->get()));
         }
 
-        return response()->json(DepartmentResource::collection($query->paginate(15)));
+        return DepartmentResource::collection($query->paginate($perPage));
     }
 
     public function store(StoreDepartmentRequest $request): JsonResponse

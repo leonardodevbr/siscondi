@@ -85,6 +85,14 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Paginação -->
+    <PaginationBar
+      v-if="pagination"
+      :pagination="pagination"
+      @page-change="(page) => fetchRequests({ page })"
+      @per-page-change="onPerPageChange"
+    />
   </div>
 </template>
 
@@ -100,18 +108,31 @@ import {
   DocumentArrowDownIcon,
   PlusIcon,
 } from '@heroicons/vue/24/outline'
+import PaginationBar from '@/components/Common/PaginationBar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { error: showError } = useAlert()
 const requests = ref([])
+const pagination = ref(null)
+const perPageRef = ref(15)
 const filters = ref({ status: route.query.status || '' })
 
-const fetchRequests = async () => {
+const fetchRequests = async (params = {}) => {
   try {
-    const { data } = await api.get('/daily-requests', { params: filters.value })
+    const p = { ...filters.value, ...params, per_page: perPageRef.value }
+    const { data } = await api.get('/daily-requests', { params: p })
     requests.value = data.data || data
+    if (data.meta) {
+      pagination.value = data.meta
+      perPageRef.value = data.meta.per_page ?? perPageRef.value
+    } else if (data.current_page) {
+      pagination.value = data
+      perPageRef.value = data.per_page ?? perPageRef.value
+    } else {
+      pagination.value = null
+    }
   } catch (err) {
     console.error('Erro ao carregar solicitações:', err)
     showError('Erro', err.response?.data?.message || 'Não foi possível carregar as solicitações.')
@@ -148,6 +169,11 @@ const getStatusClass = (status) => {
 const formatDate = (date) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('pt-BR')
+}
+
+function onPerPageChange(perPage) {
+  perPageRef.value = perPage
+  fetchRequests({ page: 1, per_page: perPage })
 }
 
 const applyQueryFilter = () => {

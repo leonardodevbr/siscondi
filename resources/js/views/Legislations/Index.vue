@@ -44,6 +44,14 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Paginação -->
+    <PaginationBar
+      v-if="pagination"
+      :pagination="pagination"
+      @page-change="(page) => fetchLegislations({ page })"
+      @per-page-change="onPerPageChange"
+    />
   </div>
 </template>
 
@@ -51,16 +59,34 @@
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
+import PaginationBar from '@/components/Common/PaginationBar.vue'
 
 const legislations = ref([])
+const pagination = ref(null)
+const perPageRef = ref(15)
 
-const fetchLegislations = async () => {
+const fetchLegislations = async (params = {}) => {
   try {
-    const { data } = await api.get('/legislations')
+    const p = { per_page: perPageRef.value, ...params }
+    const { data } = await api.get('/legislations', { params: p })
     legislations.value = data.data || data
+    if (data.meta) {
+      pagination.value = data.meta
+      perPageRef.value = data.meta.per_page ?? perPageRef.value
+    } else if (data.current_page) {
+      pagination.value = data
+      perPageRef.value = data.per_page ?? perPageRef.value
+    } else {
+      pagination.value = null
+    }
   } catch (error) {
     console.error('Erro ao carregar legislações:', error)
   }
+}
+
+function onPerPageChange(perPage) {
+  perPageRef.value = perPage
+  fetchLegislations({ page: 1, per_page: perPage })
 }
 
 onMounted(() => {

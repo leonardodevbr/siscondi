@@ -71,25 +71,12 @@
       </div>
 
       <!-- Paginação -->
-      <div v-if="pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-slate-500">Mostrando {{ pagination.from }} a {{ pagination.to }} de {{ pagination.total }} resultados</div>
-        <div class="flex gap-2">
-          <button 
-            v-if="pagination.current_page > 1" 
-            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
-            @click="fetchCargos({ page: pagination.current_page - 1 })"
-          >
-            Anterior
-          </button>
-          <button 
-            v-if="pagination.current_page < pagination.last_page" 
-            class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50"
-            @click="fetchCargos({ page: pagination.current_page + 1 })"
-          >
-            Próxima
-          </button>
-        </div>
-      </div>
+      <PaginationBar
+        v-if="pagination"
+        :pagination="pagination"
+        @page-change="(page) => fetchCargos({ page })"
+        @per-page-change="onPerPageChange"
+      />
     </div>
   </div>
 </template>
@@ -99,26 +86,30 @@ import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useAlert } from '@/composables/useAlert'
+import PaginationBar from '@/components/Common/PaginationBar.vue'
 
 const { success, confirm, error: showError } = useAlert()
 const cargos = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
 const pagination = ref(null)
+const perPageRef = ref(15)
 let searchTimeout = null
 
 const fetchCargos = async (params = {}) => {
   loading.value = true
   try {
-    const p = { ...params }
+    const p = { per_page: perPageRef.value, ...params }
     if (searchQuery.value) p.search = searchQuery.value
     
     const { data } = await api.get('/cargos', { params: p })
     cargos.value = data.data ?? data
     if (data.meta) {
       pagination.value = data.meta
+      perPageRef.value = data.meta.per_page ?? perPageRef.value
     } else if (data.current_page) {
       pagination.value = data
+      perPageRef.value = data.per_page ?? perPageRef.value
     }
   } catch (e) {
     console.error(e)
@@ -126,6 +117,11 @@ const fetchCargos = async (params = {}) => {
   } finally {
     loading.value = false
   }
+}
+
+function onPerPageChange(perPage) {
+  perPageRef.value = perPage
+  fetchCargos({ page: 1, per_page: perPage })
 }
 
 const debouncedSearch = () => {
