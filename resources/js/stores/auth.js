@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { useAppStore } from '@/stores/app';
+import { disconnectEcho } from '@/echo';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -146,6 +147,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     logout() {
+      disconnectEcho();
       this.token = null;
       this.user = null;
       this.error = null;

@@ -24,9 +24,12 @@ class DailyRequestPendingNotification extends Notification
 
     public function toWebPush(object $notifiable, Notification $notification): WebPushMessage
     {
+        $requester = $this->dailyRequest->requester?->name ?? 'Um usuário';
+        $servant = $this->dailyRequest->servant?->name ?? 'servidor';
+
         return (new WebPushMessage)
             ->title('Nova Solicitação de Diária')
-            ->body('O servidor ' . $this->dailyRequest->servant->name . ' solicitou uma diária.')
+            ->body($requester . ' fez uma solicitação de diária para o servidor ' . $servant . '.')
             ->action('Ver Solicitação', 'view_request')
             ->data(['url' => '/daily-requests/' . $this->dailyRequest->id]);
     }

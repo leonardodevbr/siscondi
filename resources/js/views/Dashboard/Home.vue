@@ -1,11 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { formatCurrency } from '@/utils/format';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
+import { getEcho } from '@/echo';
+
+const CHANNEL_NAME = 'private-daily-requests-pending';
 
 const router = useRouter();
 const toast = useToast();
@@ -44,6 +47,22 @@ const goToLegislations = () => router.push('/legislations');
 
 onMounted(() => {
   fetchStats();
+
+  if (authStore.can('daily-requests.view')) {
+    const echo = getEcho();
+    if (echo) {
+      echo.private('daily-requests-pending').listen('.pending-signatures.updated', () => {
+        fetchStats();
+      });
+    }
+  }
+});
+
+onUnmounted(() => {
+  const echo = getEcho();
+  if (echo) {
+    echo.leave(CHANNEL_NAME);
+  }
 });
 </script>
 

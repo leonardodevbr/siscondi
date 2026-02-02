@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -109,6 +109,7 @@ import {
   PlusIcon,
 } from '@heroicons/vue/24/outline'
 import PaginationBar from '@/components/Common/PaginationBar.vue'
+import { getEcho } from '@/echo'
 
 const router = useRouter()
 const route = useRoute()
@@ -183,9 +184,27 @@ const applyQueryFilter = () => {
   }
 }
 
+const CHANNEL_NAME = 'private-daily-requests-pending'
+
 onMounted(() => {
   applyQueryFilter()
   fetchRequests()
+
+  if (authStore.can('daily-requests.view')) {
+    const echo = getEcho()
+    if (echo) {
+      echo.private('daily-requests-pending').listen('.pending-signatures.updated', () => {
+        fetchRequests()
+      })
+    }
+  }
+})
+
+onUnmounted(() => {
+  const echo = getEcho()
+  if (echo) {
+    echo.leave(CHANNEL_NAME)
+  }
 })
 
 watch(() => route.query.status, (newStatus) => {

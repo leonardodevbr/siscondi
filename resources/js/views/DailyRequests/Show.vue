@@ -397,7 +397,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAlert } from '@/composables/useAlert'
@@ -406,6 +406,7 @@ import Button from '@/components/Common/Button.vue'
 import Input from '@/components/Common/Input.vue'
 import Modal from '@/components/Common/Modal.vue'
 import { useAuthStore } from '@/stores/auth'
+import { getEcho } from '@/echo'
 import {
   ArrowLeftIcon,
   UserCircleIcon,
@@ -611,7 +612,25 @@ async function doCancel() {
   }
 }
 
+const CHANNEL_NAME = 'private-daily-requests-pending'
+
 onMounted(() => {
   loadRequest()
+
+  if (authStore.can('daily-requests.view')) {
+    const echo = getEcho()
+    if (echo) {
+      echo.private('daily-requests-pending').listen('.pending-signatures.updated', () => {
+        loadRequest()
+      })
+    }
+  }
+})
+
+onUnmounted(() => {
+  const echo = getEcho()
+  if (echo) {
+    echo.leave(CHANNEL_NAME)
+  }
 })
 </script>

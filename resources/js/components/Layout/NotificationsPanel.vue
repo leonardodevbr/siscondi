@@ -71,16 +71,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { BellIcon } from '@heroicons/vue/24/outline'
+import { getEcho } from '@/echo'
 
 const authStore = useAuthStore()
 const open = ref(false)
 const loading = ref(false)
 const pending = ref([])
+const CHANNEL_NAME = 'private-daily-requests-pending'
 
 const canShow = computed(() => {
   if (!authStore.isAuthenticated) return false
@@ -123,6 +125,22 @@ async function fetchPending() {
 
 onMounted(() => {
   fetchPending()
+
+  if (canShow.value) {
+    const echo = getEcho()
+    if (echo) {
+      echo.private('daily-requests-pending').listen('.pending-signatures.updated', () => {
+        fetchPending()
+      })
+    }
+  }
+})
+
+onUnmounted(() => {
+  const echo = getEcho()
+  if (echo) {
+    echo.leave(CHANNEL_NAME)
+  }
 })
 
 watch(open, (isOpen) => {

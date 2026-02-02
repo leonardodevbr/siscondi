@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\DailyRequestStatus;
+use App\Events\DailyRequestPendingUpdated;
 use App\Http\Requests\StoreDailyRequestRequest;
 use App\Http\Requests\UpdateDailyRequestRequest;
 use App\Http\Resources\DailyRequestResource;
@@ -279,6 +280,8 @@ class DailyRequestController extends Controller
 
         $this->notifyPendingSigners($dailyRequest, 'daily-requests.validate');
 
+        DailyRequestPendingUpdated::dispatch();
+
         return response()->json(new DailyRequestResource($dailyRequest), 201);
     }
 
@@ -549,6 +552,8 @@ class DailyRequestController extends Controller
 
         $this->notifyPendingSigners($dailyRequest, 'daily-requests.authorize');
 
+        DailyRequestPendingUpdated::dispatch();
+
         return response()->json(new DailyRequestResource($dailyRequest));
     }
 
@@ -590,6 +595,8 @@ class DailyRequestController extends Controller
             'authorizer'
         ]);
 
+        DailyRequestPendingUpdated::dispatch();
+
         return response()->json(new DailyRequestResource($dailyRequest));
     }
 
@@ -626,6 +633,8 @@ class DailyRequestController extends Controller
             'authorizer',
             'payer'
         ]);
+
+        DailyRequestPendingUpdated::dispatch();
 
         return response()->json(new DailyRequestResource($dailyRequest));
     }
@@ -665,6 +674,8 @@ class DailyRequestController extends Controller
             'authorizer',
             'payer'
         ]);
+
+        DailyRequestPendingUpdated::dispatch();
 
         return response()->json(new DailyRequestResource($dailyRequest));
     }
