@@ -9,6 +9,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::get('daily-requests/pending-signatures', [DailyRequestController::class, 'pendingSignatures']);
     Route::get('daily-requests/{daily_request}/pdf', [DailyRequestController::class, 'pdf'])->name('daily-requests.pdf');
     Route::get('daily-requests/{daily_request}/timeline', [DailyRequestController::class, 'timeline'])->name('daily-requests.timeline');
+    Route::post('daily-requests/{daily_request}/update', [DailyRequestController::class, 'update'])->name('daily-requests.update.post');
     Route::apiResource('daily-requests', DailyRequestController::class);
 
     // Ações específicas do fluxo de aprovação

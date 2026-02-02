@@ -623,7 +623,7 @@ async function handleSubmit() {
   try {
     const payload = { ...form.value }
     if (isEdit.value) {
-      await api.put(`/daily-requests/${route.params.id}`, payload)
+      await api.post(`/daily-requests/${route.params.id}/update`, payload)
       success('Sucesso', 'Solicitação atualizada.')
     } else {
       await api.post('/daily-requests', payload)

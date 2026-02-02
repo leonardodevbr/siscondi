@@ -395,7 +395,7 @@ export default {
         payload.fund_cnpj = String(payload.fund_cnpj).replace(/\D/g, '').slice(0, 14);
       }
       if (this.editingDepartment) {
-        await api.put(`/departments/${this.editingDepartment.id}`, payload);
+        await api.post(`/departments/${this.editingDepartment.id}/update`, payload);
         this.$toast?.success('Secretaria atualizada com sucesso.');
         this.closeModal();
       } else {

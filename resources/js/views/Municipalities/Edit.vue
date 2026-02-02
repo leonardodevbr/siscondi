@@ -123,7 +123,7 @@ const load = async () => {
 const save = async () => {
   saving.value = true;
   try {
-    await api.put(`/municipalities/${id.value}`, form);
+    await api.post(`/municipalities/${id.value}/update`, form);
     toast.success('Município atualizado.');
     router.push({ name: 'municipalities.index' });
   } catch (error) {

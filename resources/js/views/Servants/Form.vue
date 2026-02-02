@@ -372,7 +372,7 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       delete payload.password
       delete payload.password_confirmation
-      await api.put(`/servants/${route.params.id}`, payload)
+      await api.post(`/servants/${route.params.id}/update`, payload)
     } else {
       await api.post('/servants', payload)
     }

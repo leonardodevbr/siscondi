@@ -91,7 +91,7 @@ const load = async () => {
 const save = async () => {
   saving.value = true;
   try {
-    await api.put('/municipalities/current', form);
+    await api.post('/municipalities/current/update', form);
     toast.success('Dados salvos.');
     load();
   } catch (e) {

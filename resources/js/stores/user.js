@@ -60,7 +60,7 @@ export const useUserStore = defineStore('user', {
       this.error = null;
 
       try {
-        const response = await api.put(`/users/${id}`, payload);
+        const response = await api.post(`/users/${id}/update`, payload);
         const user = response.data.data ?? response.data;
         const idx = this.users.findIndex((u) => u.id === Number(id));
         if (idx !== -1) this.users[idx] = user;

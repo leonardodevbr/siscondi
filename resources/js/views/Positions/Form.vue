@@ -165,7 +165,7 @@ const handleSubmit = async () => {
       role: form.value.role || undefined
     }
     if (isEdit.value) {
-      await api.put(`/positions/${route.params.id}`, payload)
+      await api.post(`/positions/${route.params.id}/update`, payload)
     } else {
       await api.post('/positions', payload)
     }

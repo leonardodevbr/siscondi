@@ -69,7 +69,7 @@ export const useSettingsStore = defineStore('settings', {
     async updateSettings(settingsArray) {
       this.loading = true;
       try {
-        await api.put('/settings', { settings: settingsArray });
+        await api.post('/settings/update', { settings: settingsArray });
         await this.fetchSettings();
       } catch (error) {
         console.error('Erro ao atualizar configurações:', error);
