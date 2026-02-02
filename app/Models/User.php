@@ -30,6 +30,8 @@ class User extends Authenticatable
         'primary_department_id',
         'position_id',
         'signature_path',
+        'operation_pin',
+        'operation_password',
     ];
 
     /**
@@ -37,6 +39,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'operation_password',
         'remember_token',
     ];
 
@@ -48,6 +51,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'operation_password' => 'hashed',
         ];
     }
 

@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('signature_path', 500)->nullable()->comment('Caminho do arquivo de assinatura (apenas cargos que aprovam)');
+            $table->string('operation_pin', 10)->nullable()->comment('PIN de autorização para assinar');
+            $table->string('operation_password')->nullable()->comment('Senha de operação para assinar (hash)');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
