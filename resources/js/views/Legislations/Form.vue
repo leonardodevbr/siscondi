@@ -480,7 +480,7 @@ const handleSubmit = async () => {
   try {
     const payload = toPayload()
     if (isEdit.value) {
-      await api.put(`/legislations/${route.params.id}`, payload)
+      await api.post(`/legislations/${route.params.id}/update`, payload)
     } else {
       await api.post('/legislations', payload)
     }

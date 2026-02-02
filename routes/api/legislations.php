@@ -7,5 +7,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::get('/legislations/destination-types', [LegislationController::class, 'destinationTypes']);
+    Route::post('/legislations/{legislation}/update', [LegislationController::class, 'update'])->name('legislations.update.post');
     Route::apiResource('legislations', LegislationController::class);
 });
