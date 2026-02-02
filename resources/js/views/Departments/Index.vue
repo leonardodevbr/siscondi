@@ -77,7 +77,7 @@
               <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-l border-slate-200">
                 <div class="flex items-center justify-end gap-1">
                   <button
-                    v-if="!dept.is_main"
+                    v-if="dept.can_delete"
                     type="button"
                     class="p-1.5 text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition-colors"
                     title="Excluir"
@@ -319,7 +319,7 @@ export default {
       }
     },
     async deleteDepartment(dept) {
-      const { confirm } = useAlert();
+      const { confirm, success, error: showError } = useAlert();
       const confirmed = await confirm(
         'Excluir secretaria',
         `Tem certeza que deseja excluir a secretaria "${dept.name}"? Esta ação não pode ser desfeita.`
@@ -329,12 +329,12 @@ export default {
 
       try {
         await api.delete(`/departments/${dept.id}`);
-        this.$toast?.success('Secretaria excluída com sucesso.');
+        await success('Excluído', 'Secretaria excluída com sucesso.');
         this.loadDepartments();
-      } catch (error) {
-        console.error('Erro ao excluir secretaria:', error);
-        const message = error.response?.data?.message || 'Erro ao excluir secretaria';
-        this.$toast?.error(message);
+      } catch (err) {
+        console.error('Erro ao excluir secretaria:', err);
+        const message = err.response?.data?.message || 'Erro ao excluir secretaria.';
+        await showError('Não foi possível excluir', message);
       }
     },
     closeModal() {

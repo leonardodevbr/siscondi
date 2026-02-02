@@ -14,6 +14,8 @@ class DepartmentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $servantsCount = (int) ($this->resource->getAttribute('servants_count') ?? 0);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -22,6 +24,8 @@ class DepartmentResource extends JsonResource
             'fund_name' => $this->fund_name,
             'fund_code' => $this->fund_code,
             'logo_path' => $this->logo_path,
+            'servants_count' => $servantsCount,
+            'can_delete' => ! $this->is_main && $servantsCount === 0,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

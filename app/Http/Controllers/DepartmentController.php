@@ -18,7 +18,7 @@ class DepartmentController extends Controller
         $this->authorize('departments.view');
         
         $user = auth()->user();
-        $query = Department::query();
+        $query = Department::query()->withCount('servants');
 
         // Super-admin vê todas as secretarias
         if (!$user->hasRole('super-admin')) {

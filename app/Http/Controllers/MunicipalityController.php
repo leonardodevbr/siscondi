@@ -144,7 +144,11 @@ class MunicipalityController extends Controller
             }
         }
 
-        $departments = $municipality->departments()->orderBy('is_main', 'desc')->orderBy('name')->get();
+        $departments = $municipality->departments()
+            ->withCount('servants')
+            ->orderBy('is_main', 'desc')
+            ->orderBy('name')
+            ->get();
 
         return response()->json(DepartmentResource::collection($departments));
     }
