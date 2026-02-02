@@ -13,10 +13,12 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
           <input v-model="form.name" type="text" class="input-base w-full" required />
+          <p class="mt-0.5 text-xs text-slate-500">Nome oficial do município (ex: Cafarnaum)</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Nome para exibição em documentos</label>
-          <input v-model="form.display_name" placeholder="Ex: Prefeitura Municipal de Cafarnaum" type="text" class="input-base w-full" required />
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome de exibição</label>
+          <input v-model="form.display_name" type="text" class="input-base w-full" placeholder="Ex: Prefeitura Municipal de Cafarnaum" />
+          <p class="mt-0.5 text-xs text-slate-500">Nome completo para exibição em documentos e relatórios</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
@@ -29,21 +31,17 @@
             @input="form.cnpj = formatCnpj($event.target.value)"
           />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">UF</label>
-          <input v-model="form.state" type="text" class="input-base w-full max-w-[4rem]" maxlength="2" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Nome para exibição em documentos</label>
-          <input v-model="form.display_state" placeholder="Ex: Estado da Bahia" type="text" class="input-base w-full" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Endereço</label>
-          <input v-model="form.address" type="text" class="input-base w-full" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-          <input v-model="form.email" type="email" class="input-base w-full" />
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">UF</label>
+            <input v-model="form.state" type="text" class="input-base w-full" maxlength="2" placeholder="BA" />
+            <p class="mt-0.5 text-xs text-slate-500">Sigla (ex: BA)</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Estado de exibição</label>
+            <input v-model="form.display_state" type="text" class="input-base w-full" placeholder="Estado da Bahia" />
+            <p class="mt-0.5 text-xs text-slate-500">Nome completo (ex: Bahia)</p>
+          </div>
         </div>
         <div>
           <LogoUpload
@@ -95,8 +93,6 @@ const form = reactive({
   cnpj: '',
   state: '',
   display_state: '',
-  address: '',
-  email: '',
   logo_path: '',
 });
 
@@ -110,8 +106,6 @@ const load = async () => {
     form.cnpj = formatCnpj(m.cnpj ?? '');
     form.state = m.state ?? '';
     form.display_state = m.display_state ?? '';
-    form.address = m.address ?? '';
-    form.email = m.email ?? '';
     form.logo_path = m.logo_path ?? '';
   } catch (error) {
     toast.error('Erro ao carregar município.');
