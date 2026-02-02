@@ -25,7 +25,6 @@ class ServantSeeder extends Seeder
 
         // Buscar dados necessários
         $departments = Department::all();
-        $items = LegislationItem::orderBy('id')->get();
         $positions = Position::all();
 
         if ($departments->isEmpty()) {
@@ -33,8 +32,8 @@ class ServantSeeder extends Seeder
             return;
         }
 
-        if ($items->isEmpty()) {
-            $this->command->warn('ServantSeeder: nenhum item de legislação encontrado. Execute LegislationSeeder antes.');
+        if ($positions->isEmpty()) {
+            $this->command->warn('ServantSeeder: nenhum cargo encontrado. Execute os seeders de Position antes.');
             return;
         }
 
@@ -77,8 +76,8 @@ class ServantSeeder extends Seeder
                 'cargo_symbol' => 'CC-001',
                 'department_code' => 'GAB',
                 'user_id' => null,
-                'decree_number' => '',
-                'decree_date' => '',
+                'decree_number' => '002/2025',
+                'decree_date' => '2025-01-07',
             ],
 
             // ========================================
@@ -94,8 +93,8 @@ class ServantSeeder extends Seeder
                 'cargo_symbol' => 'CC-002',
                 'department_code' => 'GAB',
                 'user_id' => null,
-                'decree_number' => '',
-                'decree_date' => '',
+                'decree_number' => '002/2025',
+                'decree_date' => '2025-01-07',
             ],    
             
             // ========================================
@@ -603,7 +602,6 @@ class ServantSeeder extends Seeder
         foreach ($servidores as $s) {
             $position = $getPosition($s['cargo_symbol']);
             $dept = $getDepartment($s['department_code']);
-            $item = $items->first(); // Pode ajustar lógica aqui
 
             if (!$position) {
                 $this->command->warn("Cargo {$s['cargo_symbol']} não encontrado para {$s['name']}");
@@ -656,7 +654,6 @@ class ServantSeeder extends Seeder
                 ['cpf' => $s['cpf']],
                 [
                     'user_id' => $userId,
-                    'legislation_item_id' => $item?->id,
                     'department_id' => $dept->id,
                     'position_id' => $position->id,
                     'name' => $s['name'],

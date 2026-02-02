@@ -40,15 +40,6 @@ class LegislationItem extends Model
         return $this->belongsTo(Legislation::class);
     }
 
-    /**
-     * Servidores vinculados a este item (cargo/classe)
-     *
-     * @return HasMany<Servant>
-     */
-    public function servants(): HasMany
-    {
-        return $this->hasMany(Servant::class, 'legislation_item_id');
-    }
 
     /**
      * Cargos/posições vinculados a este item da legislação

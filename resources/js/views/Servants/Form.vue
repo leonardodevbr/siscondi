@@ -101,7 +101,13 @@
         </div>
 
         <div class="lg:col-span-2">
-          <p class="text-xs text-slate-500 -mt-2">Vincule o cargo ao servidor. Os cargos são definidos no cadastro de Cargos e vinculados aos itens da legislação.</p>
+          <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 -mt-2">
+            <p class="text-xs text-blue-800 leading-relaxed">
+              <strong>Importante:</strong> O cargo define os valores de diária do servidor. Para vincular itens de legislação aos cargos, acesse 
+              <router-link :to="{ name: 'legislations.index' }" class="font-semibold underline hover:text-blue-900">Legislações</router-link>
+              → Editar uma lei → na tabela de itens, coluna "Cargos vinculados" → Selecionar.
+            </p>
+          </div>
         </div>
 
         <!-- Dados Bancários -->
@@ -280,7 +286,6 @@ const form = ref({
   rg: '',
   organ_expeditor: '',
   matricula: '',
-  legislation_item_id: null,
   department_id: null,
   position_id: null,
   bank_name: '',

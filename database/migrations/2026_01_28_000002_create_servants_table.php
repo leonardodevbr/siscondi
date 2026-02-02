@@ -15,9 +15,8 @@ return new class extends Migration
             
             // Relacionamentos
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('legislation_item_id')->nullable()->constrained('legislation_items')->nullOnDelete()->comment('Item da legislação (opcional; vínculo principal é por cargos)');
             $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete()->comment('Secretaria/Lotação');
-            $table->foreignId('position_id')->nullable()->constrained('positions')->cascadeOnDelete()->comment('Cargo/Position');
+            $table->foreignId('position_id')->constrained('positions')->cascadeOnDelete()->comment('Cargo/Position - OBRIGATÓRIO para definir valores de diária');
             
             // Informações Pessoais
             $table->string('name');

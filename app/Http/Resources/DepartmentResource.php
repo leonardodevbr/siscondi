@@ -18,13 +18,18 @@ class DepartmentResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'parent_id' => $this->parent_id,
             'name' => $this->name,
+            'code' => $this->code,
+            'description' => $this->description,
             'is_main' => $this->is_main,
             'cnpj' => $this->fund_cnpj,
             'fund_name' => $this->fund_name,
             'fund_code' => $this->fund_code,
             'logo_path' => $this->logo_path,
             'servants_count' => $servantsCount,
+            'parent' => new DepartmentResource($this->whenLoaded('parent')),
+            'children' => DepartmentResource::collection($this->whenLoaded('children')),
             'can_delete' => ! $this->is_main && $servantsCount === 0,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

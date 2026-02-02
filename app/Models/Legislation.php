@@ -40,13 +40,4 @@ class Legislation extends Model
         return $this->hasMany(LegislationItem::class, 'legislation_id');
     }
 
-    /**
-     * Servidores vinculados via itens desta legislação
-     *
-     * @return HasMany<Servant>
-     */
-    public function servants(): HasMany
-    {
-        return $this->hasManyThrough(Servant::class, LegislationItem::class, 'legislation_id', 'legislation_item_id');
-    }
 }

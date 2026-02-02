@@ -54,8 +54,14 @@
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="dept in departments" :key="dept.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-slate-900">{{ dept.name }}</div>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <span v-if="dept.parent_id" class="text-slate-400">└─</span>
+                  <div>
+                    <div class="text-sm font-medium text-slate-900">{{ dept.name }}</div>
+                    <div v-if="dept.code" class="text-xs text-slate-500">{{ dept.code }}</div>
+                  </div>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
@@ -63,6 +69,12 @@
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                 >
                   Principal
+                </span>
+                <span
+                  v-else-if="dept.parent_id"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
+                >
+                  Subdepartamento
                 </span>
                 <span
                   v-else

@@ -17,7 +17,6 @@ class ServantResource extends JsonResource
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
-            'legislation_item_id' => $this->legislation_item_id,
             'department_id' => $this->department_id,
             'name' => $this->name,
             'cpf' => $this->cpf,
@@ -32,7 +31,6 @@ class ServantResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'is_active' => $this->is_active,
-            'legislation_item' => new LegislationItemResource($this->whenLoaded('legislationItem')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'user' => new UserResource($this->whenLoaded('user')),
             'position_id' => $this->position_id,

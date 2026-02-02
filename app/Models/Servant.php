@@ -19,7 +19,6 @@ class Servant extends Model
      */
     protected $fillable = [
         'user_id',
-        'legislation_item_id',
         'department_id',
         'position_id',
         'name',
@@ -55,15 +54,6 @@ class Servant extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Item da legislação (categoria/classe/valores de diária)
-     *
-     * @return BelongsTo<LegislationItem, Servant>
-     */
-    public function legislationItem(): BelongsTo
-    {
-        return $this->belongsTo(LegislationItem::class, 'legislation_item_id');
-    }
 
     /**
      * Secretaria/setor de lotação
@@ -98,13 +88,11 @@ class Servant extends Model
     /**
      * Item da legislação efetivo para cálculo de diária.
      * 
-     * Prioridade:
-     * 1. Item de legislação associado ao cargo (position) do servidor via pivot
-     * 2. Item de legislação vinculado diretamente ao servidor (legacy/fallback)
+     * Retorna o primeiro item de legislação associado ao cargo (position) do servidor
+     * que tenha valores definidos.
      */
     public function getEffectiveLegislationItem(): ?LegislationItem
     {
-        // Primeiro: buscar via cargo (position) - a forma correta
         $this->loadMissing('position.legislationItems');
         
         if ($this->position && $this->position->legislationItems->isNotEmpty()) {
@@ -112,14 +100,6 @@ class Servant extends Model
                 if (! empty($item->values)) {
                     return $item;
                 }
-            }
-        }
-
-        // Fallback: vínculo direto no servidor (legado)
-        if ($this->legislation_item_id) {
-            $item = $this->legislationItem;
-            if ($item && ! empty($item->values)) {
-                return $item;
             }
         }
 

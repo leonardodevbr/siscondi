@@ -19,12 +19,16 @@ class Department extends Model
      */
     protected $fillable = [
         'municipality_id',
+        'parent_id',
         'name',
         'is_main',
         'fund_cnpj',
         'fund_name',
         'fund_code',
         'logo_path',
+        'code',
+        'description',
+        'total_employees'
     ];
 
     /**
@@ -64,5 +68,25 @@ class Department extends Model
     public function servants(): HasMany
     {
         return $this->hasMany(Servant::class, 'department_id');
+    }
+
+    /**
+     * Departamento pai (hierarquia)
+     *
+     * @return BelongsTo<Department, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'parent_id');
+    }
+
+    /**
+     * Subdepartamentos (filhos na hierarquia)
+     *
+     * @return HasMany<Department>
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Department::class, 'parent_id');
     }
 }

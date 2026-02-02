@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,15 +25,6 @@ return new class extends Migration
             $table->string('logo_path')->nullable()->comment('Caminho do brasão/logo (storage)');
             $table->timestamps();
         });
-
-        $municipalityId = DB::table('municipalities')->value('id');
-        DB::table('departments')->insert([
-            'municipality_id' => $municipalityId,
-            'name' => 'Gabinete do Prefeito',
-            'is_main' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
     }
 
     public function down(): void
