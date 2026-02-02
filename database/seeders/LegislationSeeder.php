@@ -34,12 +34,7 @@ class LegislationSeeder extends Seeder
                 'values' => ['Até 200 km' => 20000, 'Acima 200 km' => 27000, 'Capital Estado' => 65000, 'Demais Capitais/DF' => 105000, 'Exterior' => 170000],
             ],
             [
-                'functional_category' => 'Secretários',
-                'daily_class' => 'Classe A (AP)',
-                'values' => ['Até 200 km' => 20000, 'Acima 200 km' => 27000, 'Capital Estado' => 65000, 'Demais Capitais/DF' => 105000, 'Exterior' => 170000],
-            ],
-            [
-                'functional_category' => 'Municipais, Tesoureiro, Controlador Interno, Procurador, Subprocurador, Diretor de Contabilidade',
+                'functional_category' => 'Secretários Municipais, Tesoureiro, Controlador Interno, Procurador, Subprocurador, Diretor de Contabilidade',
                 'daily_class' => 'Classe B (CC-01 a 04A)',
                 'values' => ['Até 200 km' => 15000, 'Acima 200 km' => 20000, 'Capital Estado' => 32500, 'Demais Capitais/DF' => 65000, 'Exterior' => 145000],
             ],

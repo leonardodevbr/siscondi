@@ -21,7 +21,7 @@ class ServantController extends Controller
     {
         $this->authorize('servants.view');
 
-        $with = ['legislationItem', 'department', 'user', 'position'];
+        $with = ['department', 'user', 'position'];
         if ($request->boolean('for_daily_form')) {
             $with[] = 'position.legislationItems';
         }
@@ -106,7 +106,7 @@ class ServantController extends Controller
             return $servant;
         });
 
-        $servant->load(['legislationItem', 'department', 'user', 'position']);
+        $servant->load(['department', 'user', 'position']);
 
         return response()->json(new ServantResource($servant), 201);
     }
@@ -114,7 +114,7 @@ class ServantController extends Controller
     public function show(string|int $servant): JsonResponse
     {
         $servant = Servant::query()
-            ->with(['legislationItem', 'department', 'user', 'user.roles', 'user.departments', 'position'])
+            ->with(['department', 'user', 'user.roles', 'user.departments', 'position'])
             ->findOrFail((int) $servant);
         $this->authorize('servants.view');
 
@@ -162,7 +162,7 @@ class ServantController extends Controller
         }
 
         $servant->update($data);
-        $servant->load(['legislationItem', 'department', 'user', 'position']);
+        $servant->load(['department', 'user', 'position']);
 
         return response()->json(new ServantResource($servant));
     }

@@ -36,7 +36,7 @@ class ServantResource extends JsonResource
             'position_id' => $this->position_id,
             'position' => new PositionResource($this->whenLoaded('position')),
             'destination_options' => $this->when(
-                $this->relationLoaded('position') || $this->relationLoaded('legislationItem'),
+                $this->relationLoaded('position'),
                 fn () => $this->resource->getEffectiveLegislationItem()?->values ?? []
             ),
             'created_at' => $this->created_at,
