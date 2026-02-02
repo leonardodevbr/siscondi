@@ -169,12 +169,39 @@
           </div>
         </div>
 
+        <!-- Barra de Progresso -->
+        <div v-if="importProgress" class="space-y-2">
+          <div class="flex items-center justify-between text-sm">
+            <span class="font-medium text-slate-700">{{ importProgress.message }}</span>
+            <span class="text-slate-600">{{ importProgress.progress }}%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div 
+              class="h-2.5 rounded-full transition-all duration-300"
+              :class="{
+                'bg-blue-600': importProgress.status === 'processing',
+                'bg-green-600': importProgress.status === 'completed',
+                'bg-red-600': importProgress.status === 'error'
+              }"
+              :style="{ width: importProgress.progress + '%' }"
+            ></div>
+          </div>
+          <div v-if="importProgress.processed" class="text-xs text-slate-500 text-center">
+            {{ importProgress.created }} criados • {{ importProgress.updated }} atualizados
+          </div>
+        </div>
+
         <div class="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" @click="closeImportModal">
-            Cancelar
+          <Button 
+            type="button" 
+            variant="outline" 
+            :disabled="importing"
+            @click="closeImportModal"
+          >
+            {{ importing ? 'Aguarde...' : 'Cancelar' }}
           </Button>
           <Button
-            v-if="!validationResult"
+            v-if="!validationResult && !importProgress"
             :disabled="!selectedFile"
             :loading="validating"
             @click="validateFile"
@@ -182,7 +209,7 @@
             Validar Planilha
           </Button>
           <Button
-            v-else
+            v-else-if="validationResult && !importProgress"
             :disabled="validationResult.errors.length > 0"
             :loading="importing"
             @click="confirmImport"
@@ -196,15 +223,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import { PencilSquareIcon, ArrowUpTrayIcon, ArrowDownTrayIcon, DocumentArrowUpIcon } from '@heroicons/vue/24/outline'
 import PaginationBar from '@/components/Common/PaginationBar.vue'
 import Modal from '@/components/Common/Modal.vue'
 import Button from '@/components/Common/Button.vue'
 import { useAlert } from '@/composables/useAlert'
+import { getEcho } from '@/echo'
+import { useAuthStore } from '@/stores/auth'
 
 const { success, error: showError } = useAlert()
+const authStore = useAuthStore()
 
 const servants = ref([])
 const searchQuery = ref('')
@@ -218,6 +248,8 @@ const selectedFile = ref(null)
 const validating = ref(false)
 const importing = ref(false)
 const validationResult = ref(null)
+const importProgress = ref(null)
+const importChannel = ref(null)
 
 const fetchServants = async (params = {}) => {
   try {
@@ -252,12 +284,54 @@ function openImportModal() {
   importModalOpen.value = true
   selectedFile.value = null
   validationResult.value = null
+  importProgress.value = null
+  subscribeToImportChannel()
 }
 
 function closeImportModal() {
   importModalOpen.value = false
   selectedFile.value = null
   validationResult.value = null
+  importProgress.value = null
+  unsubscribeFromImportChannel()
+}
+
+function subscribeToImportChannel() {
+  const echo = getEcho()
+  if (!echo) return
+
+  const userId = authStore.user?.id
+  if (!userId) return
+
+  const channelName = `servant-import.${userId}`
+  importChannel.value = echo.private(channelName)
+    .listen('.import.progress', (data) => {
+      importProgress.value = data
+      
+      // Se completou ou teve erro, recarrega lista
+      if (data.status === 'completed') {
+        setTimeout(() => {
+          fetchServants()
+          success('Sucesso', data.message || 'Importação concluída!')
+          setTimeout(() => {
+            closeImportModal()
+          }, 2000)
+        }, 1000)
+      } else if (data.status === 'error') {
+        showError('Erro', data.message || 'Erro na importação.')
+      }
+    })
+}
+
+function unsubscribeFromImportChannel() {
+  if (importChannel.value) {
+    const echo = getEcho()
+    const userId = authStore.user?.id
+    if (echo && userId) {
+      echo.leave(`servant-import.${userId}`)
+    }
+    importChannel.value = null
+  }
 }
 
 async function downloadTemplate() {
@@ -306,24 +380,28 @@ async function validateFile() {
 async function confirmImport() {
   if (!selectedFile.value || !validationResult.value || validationResult.value.errors.length > 0) return
   importing.value = true
+  importProgress.value = { status: 'processing', progress: 0, message: 'Iniciando importação...' }
+  
   try {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
     const { data } = await api.post('/servants/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    await success('Sucesso', data.message || `Importação concluída: ${data.summary.created} criados, ${data.summary.updated} atualizados.`)
-    closeImportModal()
-    fetchServants()
+    // Job despachado, aguarda eventos WebSocket
   } catch (err) {
     console.error('Erro ao importar:', err)
     showError('Erro', err.response?.data?.message || 'Erro ao importar servidores.')
-  } finally {
+    importProgress.value = null
     importing.value = false
   }
 }
 
 onMounted(() => {
   fetchServants()
+})
+
+onUnmounted(() => {
+  unsubscribeFromImportChannel()
 })
 </script>

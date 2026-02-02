@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Imports;
 
+use App\Events\ServantImportProgress;
 use App\Models\Department;
 use App\Models\Position;
 use App\Models\Servant;
@@ -21,16 +22,23 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
     public int $updated = 0;
     private array $processedLines = [];
     private bool $validateOnly = false;
+    private ?int $userId = null;
+    private int $totalRows = 0;
+    private int $processedRows = 0;
 
-    public function __construct(bool $validateOnly = false)
+    public function __construct(bool $validateOnly = false, ?int $userId = null)
     {
         $this->validateOnly = $validateOnly;
+        $this->userId = $userId;
     }
 
     public function collection(Collection $rows): void
     {
+        $this->totalRows = $rows->count();
+
         foreach ($rows as $index => $row) {
             $lineNumber = $index + 2; // +2 porque começa da linha 2 (depois do cabeçalho)
+            $this->processedRows++;
 
             // Ignora linhas já processadas (evita duplicação por múltiplas sheets)
             if (isset($this->processedLines[$lineNumber])) {
@@ -147,6 +155,20 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
                         'action' => 'created',
                         'id' => $servant->id,
                     ];
+                }
+
+                // Notifica progresso a cada 10 registros ou no último
+                if ($this->userId && ($this->processedRows % 10 === 0 || $this->processedRows === $this->totalRows)) {
+                    $progress = ($this->processedRows / $this->totalRows) * 100;
+                    ServantImportProgress::dispatch($this->userId, [
+                        'status' => 'processing',
+                        'progress' => (int) $progress,
+                        'message' => "Processando... {$this->processedRows}/{$this->totalRows}",
+                        'processed' => $this->processedRows,
+                        'total' => $this->totalRows,
+                        'created' => $this->created,
+                        'updated' => $this->updated,
+                    ]);
                 }
             }
         }

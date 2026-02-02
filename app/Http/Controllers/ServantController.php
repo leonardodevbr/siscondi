@@ -9,6 +9,7 @@ use App\Http\Requests\StoreServantRequest;
 use App\Http\Requests\UpdateServantRequest;
 use App\Http\Resources\ServantResource;
 use App\Imports\ServantsImport;
+use App\Jobs\ImportServantsJob;
 use App\Models\Department;
 use App\Models\Servant;
 use App\Models\User;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -232,7 +234,7 @@ class ServantController extends Controller
     }
 
     /**
-     * Importação efetiva: processa e salva os servidores.
+     * Importação efetiva: processa e salva os servidores em background.
      */
     public function import(Request $request): JsonResponse
     {
@@ -243,28 +245,21 @@ class ServantController extends Controller
         ]);
 
         try {
-            $import = new ServantsImport(validateOnly: false);
-            Excel::import($import, $request->file('file'));
+            // Salva arquivo temporário
+            $file = $request->file('file');
+            $filePath = $file->store('imports/servants', 'local');
 
-            if (!empty($import->errors)) {
-                return response()->json([
-                    'message' => 'A planilha contém erros. Corrija e tente novamente.',
-                    'errors' => $import->errors,
-                    'preview' => $import->preview,
-                ], 422);
-            }
+            // Despacha job em background
+            ImportServantsJob::dispatch($filePath, $request->user()->id)
+                ->afterResponse();
 
             return response()->json([
-                'message' => 'Importação concluída com sucesso.',
-                'summary' => [
-                    'created' => $import->created,
-                    'updated' => $import->updated,
-                    'total' => $import->created + $import->updated,
-                ],
+                'message' => 'Importação iniciada. Você receberá atualizações em tempo real.',
+                'status' => 'processing',
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Erro ao importar servidores.',
+                'message' => 'Erro ao iniciar importação.',
                 'error' => $e->getMessage(),
             ], 422);
         }

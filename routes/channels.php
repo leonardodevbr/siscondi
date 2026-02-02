@@ -16,3 +16,7 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('daily-requests-pending', function (User $user): bool {
     return $user->can('daily-requests.view');
 });
+
+Broadcast::channel('servant-import.{userId}', function (User $user, $userId): bool {
+    return (int) $user->id === (int) $userId;
+});

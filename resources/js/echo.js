@@ -20,12 +20,13 @@ export function getEcho() {
 
   if (!echoInstance) {
     const baseUrl = import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const authEndpoint = baseUrl.replace(/\/$/, '') + '/api/broadcasting/auth';
     echoInstance = new Echo({
       broadcaster: 'pusher',
       key,
       cluster,
       forceTLS: true,
-      authEndpoint: `${baseUrl}/broadcasting/auth`,
+      authEndpoint,
       auth: {
         headers: {
           Authorization: `Bearer ${token}`,

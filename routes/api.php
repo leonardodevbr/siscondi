@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 /**
  * SISCONDI - Sistema de Concessão de Diárias
  * API Routes
  */
+
+// Broadcasting auth (canais privados) – mesmo middleware e CORS da API (rota fica em /api/broadcasting/auth)
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Autenticação e Configuração
 require __DIR__.'/api/auth.php';
