@@ -271,6 +271,8 @@ class ServantController extends Controller
 
         try {
             $file = $request->file('file');
+            // Garante que o diretório existe antes de salvar (evita 403 por path inexistente no servidor)
+            Storage::disk('local')->makeDirectory('imports/servants');
             $filePath = $file->store('imports/servants', 'local');
 
             ImportServantsJob::dispatch($filePath, $request->user()->id);

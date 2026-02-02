@@ -102,6 +102,9 @@ jobs:
             php artisan view:cache
             php artisan optimize:clear
             
+            # Diretório para planilhas de importação de servidores (evita 403 por path inexistente)
+            mkdir -p storage/app/imports/servants
+            
             # Garante permissões de escrita (ajuste conforme seu usuário/grupo do servidor web, ex: www-data)
             chmod -R 775 storage bootstrap/cache
             
