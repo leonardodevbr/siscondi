@@ -24,6 +24,19 @@
           </div>
         </div>
 
+        <!-- Assinatura -->
+        <div class="border-t pt-6">
+          <h3 class="text-sm font-semibold text-slate-800 mb-4">Assinatura</h3>
+          <LogoUpload
+            v-model="form.signature_path"
+            type="user"
+            :entity-id="user?.id ?? ''"
+            label="Imagem da assinatura"
+            size-class="h-32 w-32"
+          />
+          <p class="mt-1 text-xs text-slate-500">Imagem (PNG/JPG), máx. 2 MB. Exibida em PDFs de diárias quando você for requerente, validador ou concedente.</p>
+        </div>
+
         <!-- Alterar Senha -->
         <div class="border-t pt-6">
           <h3 class="text-sm font-semibold text-slate-800 mb-4">Alterar Senha</h3>
@@ -98,6 +111,7 @@ import { useAppStore } from '@/stores/app';
 import { useUserStore } from '@/stores/user';
 import Input from '@/components/Common/Input.vue';
 import Button from '@/components/Common/Button.vue';
+import LogoUpload from '@/components/Common/LogoUpload.vue';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -120,6 +134,7 @@ const user = ref(null);
 const form = ref({
   name: '',
   email: '',
+  signature_path: '',
   password: '',
   password_confirmation: '',
 });
@@ -146,6 +161,7 @@ async function loadProfile() {
     user.value = await userStore.fetchUser(authStore.user.id);
     form.value.name = user.value.name;
     form.value.email = user.value.email;
+    form.value.signature_path = user.value.signature_path ?? '';
   } catch (error) {
     toast.error('Erro ao carregar perfil.');
   } finally {
@@ -169,6 +185,7 @@ async function submit() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
+      signature_path: form.value.signature_path || null,
     };
 
     if (form.value.password) {
@@ -176,11 +193,15 @@ async function submit() {
       payload.password_confirmation = form.value.password_confirmation;
     }
 
-    await userStore.updateUser(authStore.user.id, payload);
+    const updated = await userStore.updateUser(authStore.user.id, payload);
     
-    // Atualiza dados do authStore
-    authStore.user.name = form.value.name;
-    authStore.user.email = form.value.email;
+    // Atualiza dados do authStore (incluindo assinatura)
+    Object.assign(authStore.user, {
+      name: updated.name,
+      email: updated.email,
+      signature_path: updated.signature_path ?? null,
+      signature_url: updated.signature_url ?? null,
+    });
     
     toast.success('Perfil atualizado com sucesso.');
     

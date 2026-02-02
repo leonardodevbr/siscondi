@@ -168,7 +168,14 @@
                 class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 @change="togglePositionModalSelection(opt.value)"
               />
-              <span class="text-sm text-slate-800">{{ opt.label }}</span>
+              <span class="text-sm text-slate-800 flex-1">{{ opt.label }}</span>
+              <span
+                v-if="countItemsLinkedToPosition(opt.value) > 0"
+                class="shrink-0 inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700"
+                :title="countItemsLinkedToPosition(opt.value) + ' item(ns) vinculado(s)'"
+              >
+                {{ countItemsLinkedToPosition(opt.value) }}
+              </span>
             </label>
             <p v-if="filteredPositionOptions.length === 0" class="px-3 py-4 text-sm text-slate-500">
               Nenhum cargo encontrado.
@@ -371,6 +378,18 @@ function getPositionCountLabel(item) {
   if (n === 0) return 'Nenhum'
   if (n === 1) return '1 cargo'
   return `${n} cargos`
+}
+
+/** Quantidade de itens da legislação (linhas da tabela) vinculados a um cargo */
+function countItemsLinkedToPosition(positionId) {
+  const items = form.value.items || []
+  let count = 0
+  for (const item of items) {
+    const ids = Array.isArray(item.position_ids) ? item.position_ids : []
+    const normalized = ids.map((c) => (c != null && typeof c === 'object' && 'value' in c ? c.value : c))
+    if (normalized.includes(positionId)) count++
+  }
+  return count
 }
 
 const filteredPositionOptions = computed(() => {

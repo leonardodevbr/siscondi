@@ -53,8 +53,8 @@ class UploadController extends Controller
     public function signature(Request $request): JsonResponse
     {
         $authUser = $request->user();
-        if (! $authUser || ! $authUser->can('users.edit')) {
-            abort(403, 'Sem permissão para enviar assinatura.');
+        if (! $authUser) {
+            abort(403, 'Não autenticado.');
         }
 
         $request->validate([
@@ -64,6 +64,11 @@ class UploadController extends Controller
 
         $userId = (int) $request->input('id');
         $user = User::query()->findOrFail($userId);
+
+        // Pode editar a própria assinatura (perfil) ou ter permissão users.edit
+        if ($userId !== $authUser->id && ! $authUser->can('users.edit')) {
+            abort(403, 'Sem permissão para enviar assinatura.');
+        }
 
         $file = $request->file('file');
         $disk = Storage::disk('public');

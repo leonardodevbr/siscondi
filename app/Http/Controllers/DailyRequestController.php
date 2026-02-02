@@ -147,7 +147,6 @@ class DailyRequestController extends Controller
         $user = auth()->user();
 
         $query = DailyRequest::with([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
@@ -218,7 +217,7 @@ class DailyRequestController extends Controller
     {
         $this->authorize('daily-requests.create');
         
-        $servant = Servant::with('position.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
+        $servant = Servant::with('position.legislationItems')->findOrFail($request->servant_id);
         $user = auth()->user();
 
         // Super-admin pode criar para qualquer servidor
@@ -290,7 +289,6 @@ class DailyRequestController extends Controller
         $this->ensureCanAccess($dailyRequest);
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
@@ -316,7 +314,6 @@ class DailyRequestController extends Controller
         }
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester'
@@ -504,7 +501,7 @@ class DailyRequestController extends Controller
         $dailyRequest = DailyRequest::query()
             ->with([
                 'servant.department.municipality',
-                'servant.cargo',
+                'servant.position',
                 'legislationItemSnapshot',
                 'requester',
                 'validator',
@@ -544,7 +541,6 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
@@ -587,7 +583,6 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
@@ -624,7 +619,6 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
@@ -664,7 +658,6 @@ class DailyRequestController extends Controller
         );
 
         $dailyRequest->load([
-            'servant.legislationItem',
             'servant.department',
             'legislationItemSnapshot',
             'requester',
