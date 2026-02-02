@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Events\ServantImportProgress;
 use App\Exports\ServantsTemplateExport;
 use App\Http\Requests\StoreServantRequest;
 use App\Http\Requests\UpdateServantRequest;
 use App\Http\Resources\ServantResource;
 use App\Imports\ServantsImport;
-use App\Jobs\ImportServantsJob;
 use App\Models\Department;
 use App\Models\Servant;
 use App\Models\User;
@@ -259,7 +259,7 @@ class ServantController extends Controller
     }
 
     /**
-     * Importação efetiva: processa em background (afterResponse) e devolve resposta na hora.
+     * Importação efetiva: processa após resposta (síncrono), notifica WebSocket a cada item.
      */
     public function import(Request $request): JsonResponse
     {
@@ -274,8 +274,69 @@ class ServantController extends Controller
             // Garante que o diretório existe antes de salvar (evita 403 por path inexistente no servidor)
             Storage::disk('local')->makeDirectory('imports/servants');
             $filePath = $file->store('imports/servants', 'local');
+            $userId = $request->user()->id;
 
-            ImportServantsJob::dispatch($filePath, $request->user()->id);
+            // Processa após resposta (sem fila) – notifica via WebSocket a cada item
+            dispatch(function () use ($filePath, $userId) {
+                $cacheKey = 'servant_import_progress_' . $userId;
+                $cacheTtl = 3600;
+
+                try {
+                    $payload = [
+                        'status' => 'processing',
+                        'progress' => 0,
+                        'message' => 'Iniciando importação...',
+                    ];
+                    Cache::put($cacheKey, $payload, $cacheTtl);
+                    ServantImportProgress::dispatch($userId, $payload);
+
+                    $import = new ServantsImport(validateOnly: false, userId: $userId);
+                    Excel::import($import, Storage::path($filePath));
+
+                    if (!empty($import->errors)) {
+                        $payload = [
+                            'status' => 'error',
+                            'progress' => 100,
+                            'message' => 'Importação concluída com erros.',
+                            'errors' => $import->errors,
+                            'summary' => [
+                                'created' => $import->created,
+                                'updated' => $import->updated,
+                                'errors_count' => count($import->errors),
+                            ],
+                        ];
+                    } else {
+                        $payload = [
+                            'status' => 'completed',
+                            'progress' => 100,
+                            'message' => 'Importação concluída com sucesso!',
+                            'summary' => [
+                                'created' => $import->created,
+                                'updated' => $import->updated,
+                                'total' => $import->created + $import->updated,
+                            ],
+                        ];
+                    }
+
+                    ServantImportProgress::dispatch($userId, $payload);
+                    Storage::delete($filePath);
+                    
+                    // Limpa cache após 10s para não persistir após conclusão
+                    Cache::put($cacheKey, $payload, 10);
+                } catch (\Exception $e) {
+                    $payload = [
+                        'status' => 'error',
+                        'progress' => 0,
+                        'message' => 'Erro ao processar importação.',
+                        'error' => $e->getMessage(),
+                    ];
+                    ServantImportProgress::dispatch($userId, $payload);
+                    Storage::delete($filePath);
+                    
+                    // Limpa cache após 10s
+                    Cache::put($cacheKey, $payload, 10);
+                }
+            })->afterResponse();
 
             return response()->json([
                 'message' => 'Importação iniciada. Acompanhe o progresso em tempo real.',

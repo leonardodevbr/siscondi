@@ -176,7 +176,7 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
                             try {
                                 $token = Password::broker()->createToken($newUser);
                                 $resetUrl = rtrim(config('app.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($email);
-                                Mail::to($email)->queue(new FirstAccessMail($newUser, $resetUrl, true));
+                                Mail::to($email)->send(new FirstAccessMail($newUser, $resetUrl, true));
                             } catch (\Throwable $e) {
                                 report($e);
                             }

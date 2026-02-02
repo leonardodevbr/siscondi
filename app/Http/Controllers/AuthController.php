@@ -181,7 +181,7 @@ class AuthController extends Controller
         $token = Password::broker()->createToken($user);
         $resetUrl = rtrim(config('app.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 
-        Mail::to($user->email)->queue(new FirstAccessMail($user, $resetUrl, false));
+        Mail::to($user->email)->send(new FirstAccessMail($user, $resetUrl, false));
 
         return response()->json([
             'message' => 'Enviamos um link para redefinir sua senha no e-mail informado. Verifique sua caixa de entrada.',
