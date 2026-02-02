@@ -138,7 +138,10 @@ class DepartmentController extends Controller
                 ->update(['is_main' => false]);
         }
 
-        $department->update($data);
+        // Apenas campos fillable do model (evita enviar 'cnpj' quando a coluna é 'fund_cnpj')
+        $department->update($request->safe()->only([
+            'municipality_id', 'name', 'is_main', 'fund_cnpj', 'fund_name', 'fund_code', 'logo_path',
+        ]));
 
         return response()->json(new DepartmentResource($department->fresh()));
     }

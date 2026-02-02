@@ -18,7 +18,7 @@ class DepartmentResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'is_main' => $this->is_main,
-            'cnpj' => $this->cnpj,
+            'cnpj' => $this->fund_cnpj,
             'fund_name' => $this->fund_name,
             'fund_code' => $this->fund_code,
             'logo_path' => $this->logo_path,

@@ -21,7 +21,7 @@ class Department extends Model
         'municipality_id',
         'name',
         'is_main',
-        'cnpj',
+        'fund_cnpj',
         'fund_name',
         'fund_code',
         'logo_path',
