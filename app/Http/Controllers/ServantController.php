@@ -59,9 +59,26 @@ class ServantController extends Controller
 
     public function store(StoreServantRequest $request): JsonResponse
     {
+        $this->authorize('servants.create');
+        
+        $user = auth()->user();
         $data = $request->validated();
         $password = $data['password'] ?? null;
         unset($data['password']);
+        
+        // Verifica se pode criar servidor neste departamento
+        if (!$user->hasRole('super-admin')) {
+            if ($user->hasRole('admin')) {
+                $department = Department::find($data['department_id']);
+                if ($department && $department->municipality_id !== $user->municipality_id) {
+                    abort(403, 'Você só pode criar servidores em secretarias do seu município.');
+                }
+            } else {
+                if (!$user->hasAccessToDepartment($data['department_id'])) {
+                    abort(403, 'Você não tem permissão para criar servidores nesta secretaria.');
+                }
+            }
+        }
 
         $servant = DB::transaction(function () use ($data, $password): Servant {
             $userId = null;
@@ -106,10 +123,38 @@ class ServantController extends Controller
 
     public function update(UpdateServantRequest $request, string|int $servant): JsonResponse
     {
+        $this->authorize('servants.edit');
+        
+        $user = auth()->user();
         $servant = Servant::query()->findOrFail((int) $servant);
         $data = $request->validated();
         $cargoIds = $data['cargo_ids'] ?? null;
         unset($data['cargo_ids']);
+        
+        // Verifica se pode editar este servidor
+        if (!$user->hasRole('super-admin')) {
+            if ($user->hasRole('admin')) {
+                if ($servant->department && $servant->department->municipality_id !== $user->municipality_id) {
+                    abort(403, 'Você só pode editar servidores do seu município.');
+                }
+                // Se está mudando de departamento, verifica o novo também
+                if (isset($data['department_id']) && $data['department_id'] !== $servant->department_id) {
+                    $newDepartment = Department::find($data['department_id']);
+                    if ($newDepartment && $newDepartment->municipality_id !== $user->municipality_id) {
+                        abort(403, 'Você só pode transferir servidores para secretarias do seu município.');
+                    }
+                }
+            } else {
+                if (!$user->hasAccessToDepartment($servant->department_id)) {
+                    abort(403, 'Você não tem permissão para editar este servidor.');
+                }
+                if (isset($data['department_id']) && $data['department_id'] !== $servant->department_id) {
+                    if (!$user->hasAccessToDepartment($data['department_id'])) {
+                        abort(403, 'Você não tem permissão para transferir servidores para esta secretaria.');
+                    }
+                }
+            }
+        }
 
         if (array_key_exists('email', $data) && $servant->user_id) {
             $user = $servant->user;

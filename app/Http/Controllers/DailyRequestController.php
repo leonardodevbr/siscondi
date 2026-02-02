@@ -213,6 +213,8 @@ class DailyRequestController extends Controller
 
     public function store(StoreDailyRequestRequest $request): JsonResponse
     {
+        $this->authorize('daily-requests.create');
+        
         $servant = Servant::with('cargo.legislationItems', 'legislationItem')->findOrFail($request->servant_id);
         $user = auth()->user();
 
@@ -299,6 +301,8 @@ class DailyRequestController extends Controller
 
     public function update(UpdateDailyRequestRequest $request, string|int $daily_request): JsonResponse
     {
+        $this->authorize('daily-requests.edit');
+        
         $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
         $this->ensureCanAccess($dailyRequest);
         $dailyRequest->update($request->validated());

@@ -48,6 +48,8 @@ class DepartmentController extends Controller
 
     public function store(StoreDepartmentRequest $request): JsonResponse
     {
+        $this->authorize('departments.create');
+        
         $user = auth()->user();
         $data = $request->validated();
         
@@ -109,6 +111,8 @@ class DepartmentController extends Controller
 
     public function update(UpdateDepartmentRequest $request, string|int $department): JsonResponse
     {
+        $this->authorize('departments.edit');
+        
         $user = auth()->user();
         $department = Department::query()->findOrFail((int) $department);
         $this->ensureDepartmentScope($department);

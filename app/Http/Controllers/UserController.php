@@ -91,6 +91,8 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): JsonResponse
     {
+        $this->authorize('users.create');
+        
         $authUser = auth()->user();
         $departmentIds = [];
         $primaryDepartmentId = null;
@@ -205,6 +207,8 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
+        $this->authorize('users.edit');
+        
         $userId = (int) $id;
         $user = $this->departmentScope()
             ->with('roles', 'departments', 'servant')

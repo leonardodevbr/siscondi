@@ -52,6 +52,8 @@ class CargoController extends Controller
 
     public function store(StoreCargoRequest $request): JsonResponse
     {
+        $this->authorize('cargos.create');
+        
         $user = auth()->user();
         $data = $request->validated();
         
@@ -111,6 +113,8 @@ class CargoController extends Controller
 
     public function update(UpdateCargoRequest $request, string|int $cargo): JsonResponse
     {
+        $this->authorize('cargos.edit');
+        
         $user = auth()->user();
         $cargo = Cargo::query()->findOrFail((int) $cargo);
         $this->ensureCargoScope($cargo);

@@ -77,6 +77,8 @@ class LegislationController extends Controller
 
     public function store(StoreLegislationRequest $request): JsonResponse
     {
+        $this->authorize('legislations.create');
+        
         $data = $request->validated();
         $items = $data['items'] ?? [];
         unset($data['items']);
@@ -108,6 +110,8 @@ class LegislationController extends Controller
 
     public function update(UpdateLegislationRequest $request, string|int $legislation): JsonResponse
     {
+        $this->authorize('legislations.edit');
+        
         $legislation = Legislation::query()->findOrFail((int) $legislation);
         $data = $request->validated();
         $itemsPayload = $data['items'] ?? [];
