@@ -21,8 +21,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::before(function ($user, $ability) {
-            // Permite acesso irrestrito a qualquer usuário autenticado
-            return true;
+            // Super-admin sempre tem acesso a tudo, independente de cache ou permissões no banco
+            if ($user && method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
+                return true;
+            }
+
+            return null; // deixa o Gate seguir com as permissões do Spatie para os demais
         });
     }
 }
