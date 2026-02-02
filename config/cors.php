@@ -29,6 +29,7 @@ return [
         'http://localhost:3000',
         'https://adonai-app.dev.local',
         'https://sivis.pro',
+        'https://diaria.sivis.pro',
     ],
 
     'allowed_origins_patterns' => [],
