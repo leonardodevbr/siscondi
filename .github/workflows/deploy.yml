@@ -90,7 +90,7 @@ jobs:
             
             # 4. Artisan e permissões
             echo "Executando comandos do Artisan..."
-            php artisan migrate:fresh --seed --force
+            php artisan migrate --force
             php artisan config:clear
             php artisan config:cache
             php artisan route:cache
