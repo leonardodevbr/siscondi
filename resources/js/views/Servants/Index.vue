@@ -32,7 +32,7 @@
           <button
             v-if="importProgress.progress === 100"
             type="button"
-            class="text-xs px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+            class="px-3 py-1.5 text-xs font-medium text-white bg-slate-600 hover:bg-slate-700 rounded-lg transition-colors"
             @click="clearImportProgress"
           >
             Fechar
@@ -439,8 +439,13 @@ async function fetchImportStatus() {
   }
 }
 
-function clearImportProgress() {
+async function clearImportProgress() {
   importProgress.value = null
+  try {
+    await api.delete('/servants/import/status')
+  } catch (_) {
+    // ignora
+  }
 }
 
 onMounted(() => {
