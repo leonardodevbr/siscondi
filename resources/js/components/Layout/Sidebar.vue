@@ -96,7 +96,25 @@ const menuGroups = computed(() => {
 });
 
 function isActive(item) {
-  return route.name === item.to.name;
+  // Verifica se é a rota exata
+  if (route.name === item.to.name) {
+    return true;
+  }
+
+  // Verifica se a rota atual é uma rota filha do item do menu
+  // Ex: se o menu é 'servants.index', ativa também para 'servants.create' e 'servants.edit'
+  const menuRouteName = item.to.name;
+  const currentRouteName = route.name;
+
+  if (!menuRouteName || !currentRouteName) {
+    return false;
+  }
+
+  // Extrai o prefixo da rota (ex: 'servants.index' -> 'servants')
+  const menuPrefix = menuRouteName.split('.')[0];
+  const currentPrefix = currentRouteName.split('.')[0];
+
+  return menuPrefix === currentPrefix;
 }
 
 function handleClick() {
