@@ -25,11 +25,13 @@
         <button
           v-if="request?.can_generate_pdf"
           type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          :disabled="pdfLoading"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed"
           @click="openPdf"
         >
-          <DocumentArrowDownIcon class="h-4 w-4" />
-          Ver PDF
+          <span v-if="pdfLoading" class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <DocumentArrowDownIcon v-else class="h-4 w-4" />
+          {{ pdfLoading ? 'Gerando PDF...' : 'Ver PDF' }}
         </button>
       </div>
     </div>
@@ -428,6 +430,7 @@ const { success, error: showError, confirm } = useAlert()
 const loading = ref(true)
 const request = ref(null)
 const actionLoading = ref(null)
+const pdfLoading = ref(false)
 const timeline = ref([])
 const timelineLoading = ref(false)
 
@@ -580,7 +583,8 @@ async function fetchTimeline() {
 
 async function openPdf() {
   const id = route.params.id
-  if (!id) return
+  if (!id || pdfLoading.value) return
+  pdfLoading.value = true
   try {
     const { data } = await api.get(`/daily-requests/${id}/pdf`, { responseType: 'blob' })
     if (data instanceof Blob && data.size > 0) {
@@ -591,6 +595,8 @@ async function openPdf() {
     }
   } catch (e) {
     showError('Erro', e.response?.data?.message || 'Não foi possível abrir o PDF.')
+  } finally {
+    pdfLoading.value = false
   }
 }
 

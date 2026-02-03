@@ -135,16 +135,17 @@ class User extends Authenticatable
         return $this->departments()->pluck('departments.id')->toArray();
     }
 
-    public function hasAccessToDepartment(int $departmentId): bool
+    public function hasAccessToDepartment(int|string $departmentId): bool
     {
+        $id = (int) $departmentId;
         if ($this->hasRole('super-admin')) {
             return true;
         }
         if ($this->hasRole('admin') && $this->municipality_id !== null) {
-            return Department::query()->where('id', $departmentId)->where('municipality_id', $this->municipality_id)->exists();
+            return Department::query()->where('id', $id)->where('municipality_id', $this->municipality_id)->exists();
         }
 
-        return $this->departments()->where('departments.id', $departmentId)->exists();
+        return $this->departments()->where('departments.id', $id)->exists();
     }
 
     /**

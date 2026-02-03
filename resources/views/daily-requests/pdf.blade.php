@@ -196,6 +196,9 @@
     </style>
 </head>
 <body>
+@php
+    mb_internal_encoding('UTF-8');
+@endphp
 <div class="page">
     <!-- TABELA 1: CABEÇALHO -->
     <table class="header-table">
@@ -210,11 +213,11 @@
             </td>
             <td class="header-text">
                 <div class="title-line">{{ $municipality?->display_state ?? 'ESTADO' }}</div>
-                <div class="title-line">{{ strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }}</div>
-                <div class="title-line">{{ strtoupper($department?->fund_name ?? 'FUNDO RESPONSÁVEL') }}</div>
-                <div>CNPJ: {{ $department?->fund_cnpj ?? 'CNPJ DO FUNDO' }}</div>
-                <div>{{ strtoupper($department?->address ?? 'ENDEREÇO COMPLETO DO DEPARTAMENTO') }}</div>
-                <div>EMAIL: {{ $department?->email ?? 'endereco@email.com' }}</div>
+                <div class="title-line">{{ mb_strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }}</div>
+                <div class="title-line">{{ mb_strtoupper($department?->fund_name ?? 'FUNDO RESPONSÁVEL') }}</div>
+                <div>CNPJ: {{ $cnpj_formatado ?? ($department?->fund_cnpj ?? '–') }}</div>
+                <div>{{ mb_strtoupper($endereco_completo_departamento ?? 'ENDEREÇO COMPLETO DO DEPARTAMENTO') }}</div>
+                <div>EMAIL: {{ $email_secretaria ?? '–' }}</div>
             </td>
             <td class="header-year">
                 @if(!empty($department_logo_data))
@@ -247,7 +250,7 @@
                 <table class="sub-table">
                     <tr>
                         <td class="w-50" style="vertical-align: top;">
-                            <div><strong>Setor Solicitante:</strong> {{ strtoupper($department?->name ?? '–') }}</div>
+                            <div><strong>Setor Solicitante:</strong> {{ mb_strtoupper($department?->name ?? '–') }}</div>
                             <div style="margin-top: 6pt;"><strong>Data da solicitação:</strong> {{ $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}</div>
                         </td>
                     </tr>
@@ -263,10 +266,8 @@
                                 <div class="signature-line"></div>
                             @endif
                             <div class="signature-name">
-                                {{ strtoupper($dailyRequest->requester?->name ?? '–') }}
-                                <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->requester?->position?->name ?? $dailyRequest->requester?->role ?? 'REQUERENTE') }}
-                                </div>
+                                <strong>{{ mb_strtoupper($dailyRequest->requester?->name ?? '–') }}</strong>
+                                <div class="signature-cargo"><strong>{{ mb_strtoupper($dailyRequest->requester?->position?->name ?? 'RESPONSÁVEL') }}</strong></div>
                             </div>
                         </td>
                     </tr>
@@ -281,8 +282,8 @@
                     </tr>
                     <tr>
                         <td style="text-align: center;">
-                            <div style="margin-top: 6pt;">Autorizo a concessão da(s) diária(s) abaixo solicitada(s).</div>
-                            <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} - Ba, {{ $dailyRequest->authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
+                            <div style="margin-top: 6pt;">{{ mb_strtoupper('Autorizo a concessão da(s) diária(s) abaixo solicitada(s).') }}</div>
+                            <div style="margin-top: 4pt;">{{ $municipality?->name ?? 'Cafarnaum' }} - Ba, {{ $dailyRequest->authorized_at?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
                             <div>
                                 <div>
                                     @if(!empty($validator_signature_url))
@@ -292,10 +293,8 @@
                                         <div class="signature-line"></div>
                                     @endif
                                     <div class="signature-name">
-                                        {{ strtoupper($dailyRequest->validator?->name ?? '–') }}
-                                        <div class="signature-cargo">
-                                            {{ strtoupper($dailyRequest->validator?->cargo?->name ?? $dailyRequest->validator?->role ?? 'SECRETÁRIO(A)') }}
-                                        </div>
+                                        <strong>{{ mb_strtoupper($dailyRequest->validator?->name ?? '–') }}</strong>
+                                        <div class="signature-cargo"><strong>{{ mb_strtoupper($dailyRequest->validator?->position?->name ?? 'SECRETÁRIO(A)') }}</strong></div>
                                     </div>
                                 </div>
                             </div>
@@ -312,10 +311,10 @@
         <tr>
             <td colspan="4" class="section-title">SERVIDOR</td>
         </tr>
-        <!-- Linha 2: Beneficiário, Cargo, Matrícula -->
+        <!-- Linha 2: Beneficiário, Cargo (do banco vinculado ao servidor), Matrícula -->
         <tr>
-            <td colspan="2"><strong>Beneficiário:</strong><br>{{ strtoupper($dailyRequest->servant?->name ?? '–') }}</td>
-            <td><strong>Cargo/função:</strong><br>{{ strtoupper($dailyRequest->servant?->position?->name ?? '–') }}</td>
+            <td colspan="2"><strong>Beneficiário:</strong><br><strong>{{ mb_strtoupper($dailyRequest->servant?->name ?? '–') }}</strong></td>
+            <td><strong>Cargo/função:</strong><br><strong>{{ mb_strtoupper($dailyRequest->servant?->position?->name ?? '–') }}</strong></td>
             <td class="w-15"><strong>Matrícula:</strong><br>{{ $dailyRequest->servant?->matricula ?? '–' }}</td>
         </tr>
         <!-- Linha 3: CPF, Identidade, Dados bancários (com rowspan) -->
@@ -361,7 +360,7 @@
         <!-- Linha 3: Motivo -->
         <tr>
             <td colspan="3">
-                <strong>Motivo da viagem:</strong> {{ strtoupper($dailyRequest->reason ?? '–') }}
+                <strong>Motivo da viagem:</strong> {{ $Str::upper($dailyRequest->reason ?? '–') }}
             </td>
         </tr>
     </table>
@@ -377,7 +376,7 @@
         <tr>
             <td style="vertical-align: top; text-align: center;">
                 <div style="margin-top: 10pt;">Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
-                <div style="margin-top: 4pt;">{{ $municipality?->display_name ?? 'MUNICÍPIO' }} – {{ $municipality?->state ?? 'ESTADO' }}, {{ $dailyRequest->payment_authorization_date?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
+                <div style="margin-top: 4pt;">{{ mb_strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }} – {{ mb_strtoupper($municipality?->state ?? 'ESTADO') }}, {{ $dailyRequest->authorized_at?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
                 <div style="margin-top: 6pt;">
                     @if(!empty($authorizer_signature_url))
                         <img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img">
@@ -386,22 +385,22 @@
                         <div class="signature-line"></div>
                     @endif
                     <div class="signature-name">
-                        {{ strtoupper($dailyRequest->authorizer?->name ?? '–') }}
-                        <div class="signature-cargo">
-                            {{ strtoupper($dailyRequest->authorizer?->position?->name ?? $dailyRequest->authorizer?->role ?? 'PREFEITO(A)') }}
-                        </div>
+                        <strong>{{ mb_strtoupper($dailyRequest->authorizer?->name ?? '–') }}</strong>
+                        <div class="signature-cargo"><strong>
+                            {{ mb_strtoupper($dailyRequest->authorizer?->position?->name ?? 'PREFEITO(A)') }}
+                        </strong></div>
                     </div>
                 </div>
             </td>
             <td style="vertical-align: top; text-align: center;">
-                <div style="margin-top: 6pt;">Declaro para os devidos fins, que estarei afastado(a) do Município de {{ $municipality?->name ?? 'Cafarnaum' }}, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
+                <div style="margin-top: 6pt;">{{ mb_strtoupper('Declaro para os devidos fins, que estarei afastado(a) do Município, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.') }}</div>
                 <div class="signature-line"></div>
-                            <div class="signature-name">
-                                {{ strtoupper($dailyRequest->servant?->name ?? '–') }}
-                                <div class="signature-cargo">
-                                    {{ strtoupper($dailyRequest->servant?->position?->name ?? 'SERVIDOR(A)') }}
-                                </div>
-                            </div>
+                <div class="signature-name">
+                    <strong>{{ mb_strtoupper($dailyRequest->servant?->name ?? '–') }}</strong>
+                    <div class="signature-cargo"><strong>
+                        {{ mb_strtoupper($dailyRequest->servant?->position?->name ?? 'SERVIDOR(A)') }}
+                    </strong></div>
+                </div>
             </td>
         </tr>
     </table>

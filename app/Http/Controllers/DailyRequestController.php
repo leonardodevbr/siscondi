@@ -345,6 +345,19 @@ class DailyRequestController extends Controller
     /**
      * Dados para a view do PDF (compartilhado entre pdf e pdfPreview).
      */
+    private function formatCnpjForPdf(?string $cnpj): string
+    {
+        if (! $cnpj) {
+            return '–';
+        }
+        $digits = preg_replace('/\D/', '', $cnpj);
+        $digits = substr($digits, 0, 14);
+        if (strlen($digits) < 14) {
+            return $cnpj;
+        }
+        return substr($digits, 0, 2) . '.' . substr($digits, 2, 3) . '.' . substr($digits, 5, 3) . '/' . substr($digits, 8, 4) . '-' . substr($digits, 12, 2);
+    }
+
     private function getPdfViewData(DailyRequest $dailyRequest): array
     {
         $department = $dailyRequest->servant?->department;
@@ -353,8 +366,31 @@ class DailyRequestController extends Controller
         $estadoTexto = $municipality?->display_state ?: 'Estado';
         $fundoNome = $department?->fund_name ?: $department?->name ?? '–';
         $cnpjFundo = $department?->fund_cnpj ?: $municipality?->cnpj ?? '–';
-        $enderecoSecretaria = $municipality?->address ?? '–';
-        $emailSecretaria = $municipality?->email ?? '–';
+        $cnpjFormatado = $this->formatCnpjForPdf($cnpjFundo);
+
+        // Endereço completo do departamento (não do município)
+        $parts = [];
+        if (! empty($department?->address)) {
+            $parts[] = trim($department->address);
+        }
+        if (! empty($department?->neighborhood)) {
+            $parts[] = trim($department->neighborhood);
+        }
+        if (! empty($department?->zip_code)) {
+            $cep = preg_replace('/\D/', '', $department->zip_code);
+            $parts[] = 'CEP ' . (strlen($cep) >= 8 ? substr($cep, 0, 5) . '-' . substr($cep, 5, 3) : $department->zip_code);
+        }
+        if (! empty($municipality?->name)) {
+            $parts[] = trim($municipality->name);
+        }
+        if (! empty($municipality?->state)) {
+            $parts[] = strtoupper($municipality->state);
+        }
+        $enderecoCompletoDepartamento = $parts ? implode(' - ', $parts) : '–';
+        $emailSecretaria = $department?->email ?? '–';
+
+        // Ano de exercício = ano da data de requerimento
+        $anoExercicio = $dailyRequest->created_at ? (string) $dailyRequest->created_at->year : (string) now()->year;
 
         $cargoFuncao = $dailyRequest->servant?->position
             ? trim(($dailyRequest->servant->position->symbol ?? '') . ' ' . ($dailyRequest->servant->position->name ?? ''))
@@ -450,10 +486,11 @@ class DailyRequestController extends Controller
             'estado_texto' => $estadoTexto,
             'fundo_nome' => $fundoNome,
             'cnpj_fundo' => $cnpjFundo,
-            'endereco_secretaria' => $enderecoSecretaria,
+            'cnpj_formatado' => $cnpjFormatado,
+            'endereco_completo_departamento' => $enderecoCompletoDepartamento,
             'email_secretaria' => $emailSecretaria,
             'cargo_funcao' => trim((string) $cargoFuncao) ?: '–',
-            'ano_exercicio' => (string) now()->year,
+            'ano_exercicio' => $anoExercicio,
             'municipality_logo_url' => $municipalityLogoUrl,
             'municipality_logo_data' => $municipalityLogoData,
             'department_logo_url' => $departmentLogoUrl,
@@ -482,9 +519,9 @@ class DailyRequestController extends Controller
             'servant.department.municipality',
             'servant.position',
             'legislationItemSnapshot',
-            'requester',
-            'validator',
-            'authorizer',
+            'requester.position',
+            'validator.position',
+            'authorizer.position',
             'payer',
         ]);
 
@@ -506,9 +543,9 @@ class DailyRequestController extends Controller
                 'servant.department.municipality',
                 'servant.position',
                 'legislationItemSnapshot',
-                'requester',
-                'validator',
-                'authorizer',
+                'requester.position',
+                'validator.position',
+                'authorizer.position',
                 'payer',
             ])
             ->findOrFail((int) $id);
