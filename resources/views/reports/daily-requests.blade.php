@@ -13,35 +13,35 @@
         }
         .report-header {
             text-align: center;
-            margin-bottom: 16pt;
+            margin-bottom: 14pt;
         }
         .report-header .brasao {
             display: block;
-            margin: 0 auto 10pt;
-            max-height: 90px;
-            max-width: 180px;
+            margin: 0 auto 8pt;
+            max-height: 76px;
+            max-width: 153px;
         }
         .report-header .estado {
-            font-size: 11pt;
+            font-size: 9pt;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 4pt;
+            margin-bottom: 3pt;
         }
         .report-header .prefeitura {
-            font-size: 11pt;
+            font-size: 9pt;
             font-weight: bold;
             text-transform: uppercase;
         }
         .report-title {
-            font-size: 12pt;
+            font-size: 10pt;
             text-align: center;
             font-weight: bold;
-            margin-bottom: 4pt;
+            margin-bottom: 3pt;
         }
         .report-info {
-            font-size: 8pt;
+            font-size: 7pt;
             text-align: center;
-            margin-bottom: 12pt;
+            margin-bottom: 10pt;
             color: #555;
         }
         table {
