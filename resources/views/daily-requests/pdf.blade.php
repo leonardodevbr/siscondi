@@ -376,7 +376,7 @@
         </tr>
         <!-- Linha 2: Conteúdo - 3ª assinatura Prefeito | 4ª assinatura Beneficiário (física no impresso) -->
         <tr>
-            <td style="vertical-align: top; text-align: center;">
+            <td style="vertical-align: bottom; text-align: center;">
                 <div style="margin-top: 10pt;">Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
                 <div style="margin-top: 4pt;">{{ mb_strtoupper($municipality?->display ?? 'MUNICÍPIO') }} – {{ mb_strtoupper($municipality?->state ?? 'ESTADO') }}, {{ $dailyRequest->authorized_at?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
                 <div style="margin-top: 6pt;">
@@ -394,8 +394,12 @@
                     </div>
                 </div>
             </td>
-            <td style="vertical-align: top; text-align: center;">
-                <div style="margin-top: 6pt;">Declaro para os devidos fins, que estarei afastado(a) do Município, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
+            <td style="vertical-align: bottom; text-align: center;">
+                <div style="margin-top: 6pt;">
+                    <p>
+                        Declaro para os devidos fins, que estarei afastado(a) do Município, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.
+                    </p>
+                </div>
                 <div class="signature-line"></div>
                 <div class="signature-name">
                     <strong>{{ mb_strtoupper($dailyRequest->servant?->name ?? '–') }}</strong>
