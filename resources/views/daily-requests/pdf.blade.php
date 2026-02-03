@@ -152,7 +152,7 @@
         /* Linha de assinatura - compacta para caber em 1 página */
         .signature-line {
             border-top: 1px solid #000;
-            margin-top: 30pt;
+            margin-top: 36pt;
             padding-top: 2pt;
             text-align: center;
             font-size: 9pt;
@@ -166,7 +166,7 @@
         
         /* Imagem de assinatura */
         img.signature-img { 
-            max-height:45px; 
+            height:45px; 
             display: block;
             margin: 0 auto;
         }
@@ -183,9 +183,11 @@
         .text-right {
             text-align: right;
         }
-
-        .sub-table td{
+        .sub-table{
             border: none!important;
+        }
+        .sub-table td{
+            margin-bottom: 0 !important;
         }
         .sub-table td.sub-table-title{
             background-color: #bfbfbf;
@@ -212,12 +214,12 @@
                 @endif
             </td>
             <td class="header-text">
-                <div class="title-line">{{ $municipality?->display_state ?? 'ESTADO' }}</div>
+                <div class="title-line">{{ mb_strtoupper($municipality?->display_state ?? 'ESTADO') }}</div>
                 <div class="title-line">{{ mb_strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }}</div>
                 <div class="title-line">{{ mb_strtoupper($department?->fund_name ?? 'FUNDO RESPONSÁVEL') }}</div>
-                <div>CNPJ: {{ $cnpj_formatado ?? ($department?->fund_cnpj ?? '–') }}</div>
-                <div>{{ mb_strtoupper($endereco_completo_departamento ?? 'ENDEREÇO COMPLETO DO DEPARTAMENTO') }}</div>
-                <div>EMAIL: {{ $email_secretaria ?? '–' }}</div>
+                <div class="title-line">CNPJ: {{ $cnpj_formatado ?? ($department?->fund_cnpj ?? '–') }}</div>
+                <div class="title-line">{{ mb_strtoupper($endereco_completo_departamento ?? 'ENDEREÇO COMPLETO DO DEPARTAMENTO') }}</div>
+                <div class="title-line">E-MAIL: {{ $email_secretaria ?? '–' }}</div>
             </td>
             <td class="header-year">
                 @if(!empty($department_logo_data))
@@ -393,7 +395,7 @@
                 </div>
             </td>
             <td style="vertical-align: top; text-align: center;">
-                <div style="margin-top: 6pt;">{{ mb_strtoupper('Declaro para os devidos fins, que estarei afastado(a) do Município, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.') }}</div>
+                <div style="margin-top: 6pt;">Declaro para os devidos fins, que estarei afastado(a) do Município, em viagem a serviço/atividade de interesse da administração pública municipal, conforme consta no relatório de viagem.</div>
                 <div class="signature-line"></div>
                 <div class="signature-name">
                     <strong>{{ mb_strtoupper($dailyRequest->servant?->name ?? '–') }}</strong>
