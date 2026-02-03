@@ -14,6 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -264,6 +265,7 @@ class ReportController extends Controller
 
         $totalValue = $results->sum('total_value');
         $municipality = $user->municipality;
+        $logoVars = $this->getMunicipalityLogoForPdf($municipality);
 
         $pdf = Pdf::loadView('reports.daily-requests', [
             'requests' => $results,
@@ -271,7 +273,7 @@ class ReportController extends Controller
             'total_value' => $totalValue,
             'municipality' => $municipality,
             'generated_at' => now(),
-        ]);
+        ] + $logoVars);
 
         $pdf->setPaper('a4', 'landscape');
         return $pdf->stream('relatorio-diarias-' . now()->format('Y-m-d-His') . '.pdf');
@@ -332,15 +334,39 @@ class ReportController extends Controller
         $results = $query->get();
 
         $municipality = $user->municipality;
+        $logoVars = $this->getMunicipalityLogoForPdf($municipality);
 
         $pdf = Pdf::loadView('reports.servants', [
             'servants' => $results,
             'filters' => $request->all(),
             'municipality' => $municipality,
             'generated_at' => now(),
-        ]);
+        ] + $logoVars);
 
         $pdf->setPaper('a4', 'landscape');
         return $pdf->stream('relatorio-servidores-' . now()->format('Y-m-d-His') . '.pdf');
+    }
+
+    /**
+     * Retorna municipality_logo_data e municipality_logo_url para o header do PDF de relatório.
+     */
+    private function getMunicipalityLogoForPdf(?\App\Models\Municipality $municipality): array
+    {
+        $logoData = null;
+        $logoUrl = null;
+        if (! $municipality?->logo_path || ! Storage::disk('public')->exists($municipality->logo_path)) {
+            return ['municipality_logo_data' => null, 'municipality_logo_url' => null];
+        }
+        $baseUrl = rtrim(config('app.url'), '/');
+        $cleanPath = ltrim($municipality->logo_path, '/');
+        $contents = Storage::disk('public')->get($cleanPath);
+        if ($contents) {
+            $mime = Storage::disk('public')->mimeType($cleanPath) ?: 'image/png';
+            $logoData = 'data:' . $mime . ';base64,' . base64_encode($contents);
+        }
+        if (! $logoData) {
+            $logoUrl = $baseUrl . '/storage/' . $cleanPath;
+        }
+        return ['municipality_logo_data' => $logoData, 'municipality_logo_url' => $logoUrl];
     }
 }

@@ -11,16 +11,37 @@
             color: #000;
             padding: 10mm;
         }
-        h1 {
-            font-size: 14pt;
+        .report-header {
             text-align: center;
-            margin-bottom: 10pt;
-            font-weight: bold;
+            margin-bottom: 16pt;
         }
-        .info {
+        .report-header .brasao {
+            display: block;
+            margin: 0 auto 10pt;
+            max-height: 90px;
+            max-width: 180px;
+        }
+        .report-header .estado {
+            font-size: 11pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 4pt;
+        }
+        .report-header .prefeitura {
+            font-size: 11pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .report-title {
+            font-size: 12pt;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 4pt;
+        }
+        .report-info {
             font-size: 8pt;
             text-align: center;
-            margin-bottom: 15pt;
+            margin-bottom: 12pt;
             color: #555;
         }
         table {
@@ -57,11 +78,18 @@
     mb_internal_encoding('UTF-8');
 @endphp
 
-<h1>{{ mb_strtoupper('Relatório de Solicitações de Diárias') }}</h1>
-<div class="info">
-    <div>{{ mb_strtoupper($municipality?->display_name ?? 'Município') }}</div>
-    <div>Gerado em: {{ $generated_at->format('d/m/Y H:i') }}</div>
+<div class="report-header">
+    @if(!empty($municipality_logo_data))
+        <img src="{{ $municipality_logo_data }}" alt="Brasão" class="brasao">
+    @elseif(!empty($municipality_logo_url))
+        <img src="{{ $municipality_logo_url }}" alt="Brasão" class="brasao">
+    @endif
+    <div class="estado">{{ mb_strtoupper($municipality?->display_state ?? 'ESTADO') }}</div>
+    <div class="prefeitura">{{ mb_strtoupper($municipality?->display_name ?? 'PREFEITURA MUNICIPAL') }}</div>
 </div>
+
+<div class="report-title">{{ mb_strtoupper('Relatório de Solicitações de Diárias') }}</div>
+<div class="report-info">Gerado em: {{ $generated_at->format('d/m/Y H:i') }}</div>
 
 <table>
     <thead>
