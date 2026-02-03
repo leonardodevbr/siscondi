@@ -376,7 +376,7 @@
         <tr>
             <td style="vertical-align: top; text-align: center;">
                 <div style="margin-top: 10pt;">Autorizo o pagamento da(s) diária(s) acima mencionada(s).</div>
-                <div style="margin-top: 4pt;">{{ mb_strtoupper($municipality?->display_name ?? 'MUNICÍPIO') }} – {{ mb_strtoupper($municipality?->state ?? 'ESTADO') }}, {{ $dailyRequest->authorized_at?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
+                <div style="margin-top: 4pt;">{{ mb_strtoupper($municipality?->display ?? 'MUNICÍPIO') }} – {{ mb_strtoupper($municipality?->state ?? 'ESTADO') }}, {{ $dailyRequest->authorized_at?->format('d/m/Y') ?? $dailyRequest->created_at?->format('d/m/Y') ?? '–' }}.</div>
                 <div style="margin-top: 6pt;">
                     @if(!empty($authorizer_signature_url))
                         <img src="{{ $authorizer_signature_url }}" alt="Assinatura" class="signature-img">
