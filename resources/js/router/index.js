@@ -27,6 +27,7 @@ import ProfileIndex from '@/views/Profile/Index.vue';
 import MunicipalityProfile from '@/views/Municipality/Profile.vue';
 import MunicipalitiesIndex from '@/views/Municipalities/Index.vue';
 import MunicipalitiesEdit from '@/views/Municipalities/Edit.vue';
+import ReportsIndex from '@/views/Reports/Index.vue';
 
 const routes = [
   {
@@ -230,6 +231,12 @@ const routes = [
         name: 'settings',
         component: SettingsIndex,
         meta: { title: 'Configurações', roles: ['super-admin'] },
+      },
+      {
+        path: 'reports',
+        name: 'reports.index',
+        component: ReportsIndex,
+        meta: { title: 'Relatórios', permission: 'reports.view' },
       },
     ],
   },

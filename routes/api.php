@@ -39,3 +39,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
 // Dashboard
 require __DIR__.'/api/dashboard.php';
+
+// Relatórios
+require __DIR__.'/api/reports.php';

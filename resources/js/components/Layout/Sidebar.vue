@@ -13,6 +13,7 @@ import {
   MapPinIcon,
   UsersIcon,
   Cog6ToothIcon,
+  ChartBarIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -77,6 +78,7 @@ const menuGroups = computed(() => {
     {
       title: 'Sistema',
       items: [
+        { name: 'Relatórios', to: { name: 'reports.index' }, icon: ChartBarIcon, permission: 'reports.view' },
         { name: 'Dados do município', to: { name: 'municipality.profile' }, icon: BuildingOfficeIcon, role: 'admin' },
         { name: 'Usuários', to: { name: 'users.index' }, icon: UsersIcon, permission: 'users.view' },
         { name: 'Municípios', to: { name: 'municipalities.index' }, icon: MapPinIcon, permission: null, role: 'super-admin' },
