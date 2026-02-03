@@ -149,6 +149,7 @@ class DepartmentController extends Controller
         $updateData = $request->safe()->only([
             'municipality_id', 'parent_id', 'name', 'code', 'description', 'is_main',
             'fund_cnpj', 'fund_name', 'fund_code', 'logo_path',
+            'address', 'neighborhood', 'zip_code', 'phone', 'email',
         ]);
 
         // Evitar que a secretaria seja pai de si mesma

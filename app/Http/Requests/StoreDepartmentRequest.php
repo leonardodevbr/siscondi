@@ -30,6 +30,11 @@ class StoreDepartmentRequest extends FormRequest
             'fund_name' => ['nullable', 'string', 'max:255'],
             'fund_code' => ['nullable', 'string', 'max:50'],
             'logo_path' => ['nullable', 'string', 'max:500'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:100'],
+            'zip_code' => ['nullable', 'string', 'max:10'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:255'],
         ];
     }
 }
