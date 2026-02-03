@@ -376,10 +376,6 @@ class DailyRequestController extends Controller
         if (! empty($department?->neighborhood)) {
             $parts[] = trim($department->neighborhood);
         }
-        if (! empty($department?->zip_code)) {
-            $cep = preg_replace('/\D/', '', $department->zip_code);
-            $parts[] = 'CEP ' . (strlen($cep) >= 8 ? substr($cep, 0, 5) . '-' . substr($cep, 5, 3) : $department->zip_code);
-        }
         if (! empty($municipality?->name)) {
             $parts[] = trim($municipality->name);
         }
