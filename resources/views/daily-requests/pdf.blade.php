@@ -184,10 +184,10 @@
             text-align: right;
         }
         .sub-table{
-            border: none!important;
+            margin-bottom: 0 !important;
         }
         .sub-table td{
-            margin-bottom: 0 !important;
+            border: none!important;
         }
         .sub-table td.sub-table-title{
             background-color: #bfbfbf;
