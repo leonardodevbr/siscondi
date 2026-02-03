@@ -353,14 +353,14 @@
         </tr>
         <!-- Linha 2: Localidade, Data partida, Data retorno (tudo inline) -->
         <tr>
-            <td class="w-40"><strong>Localidade(s) destino:</strong> {{ strtoupper($dailyRequest->destination_city ?? '–') }} - {{ strtoupper($dailyRequest->destination_state ?? '–') }}</td>
+            <td class="w-40"><strong>Localidade(s) destino:</strong> {{ mb_strtoupper($dailyRequest->destination_city ?? '–') }} - {{ mb_strtoupper($dailyRequest->destination_state ?? '–') }}</td>
             <td class="w-30"><strong>Data de partida:</strong> {{ $dailyRequest->departure_date?->format('d/m/Y') ?? '–' }}</td>
             <td class="w-30"><strong>Data de retorno:</strong> {{ $dailyRequest->return_date?->format('d/m/Y') ?? '–' }}</td>
         </tr>
         <!-- Linha 3: Motivo -->
         <tr>
             <td colspan="3">
-                <strong>Motivo da viagem:</strong> {{ $Str::upper($dailyRequest->reason ?? '–') }}
+                <strong>Motivo da viagem:</strong> {{ mb_strtoupper($dailyRequest->reason ?? '–') }}
             </td>
         </tr>
     </table>
