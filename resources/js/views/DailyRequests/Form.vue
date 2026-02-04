@@ -583,8 +583,30 @@ function incrementDays() {
   const newQuantity = Number((currentQuantity + 0.5).toFixed(1))
   form.value.quantity_days = newQuantity
   
-  // Se a NOVA quantidade é número inteiro, incrementa a data de retorno
-  if (newQuantity % 1 === 0 && form.value.return_date) {
+  // Se chegou em 1 diária ou menos, garante que retorno = partida
+  if (newQuantity <= 1 && form.value.departure_date) {
+    form.value.return_date = form.value.departure_date
+    console.log('≤ 1 diária: data de retorno = data de partida')
+    return
+  }
+  
+  // Se passou de 1 diária (ex: 1 → 1.5), incrementa a data de retorno
+  if (newQuantity > 1 && currentQuantity <= 1 && form.value.departure_date) {
+    // De 1 para 1.5: retorno deve ser +1 dia da partida
+    const departureDate = new Date(form.value.departure_date + 'T00:00:00')
+    departureDate.setDate(departureDate.getDate() + 1)
+    
+    const year = departureDate.getFullYear()
+    const month = String(departureDate.getMonth() + 1).padStart(2, '0')
+    const day = String(departureDate.getDate()).padStart(2, '0')
+    form.value.return_date = `${year}-${month}-${day}`
+    
+    console.log('> 1 diária: data de retorno = partida + 1 dia')
+    return
+  }
+  
+  // Se a NOVA quantidade é número inteiro E maior que 1, incrementa a data de retorno
+  if (newQuantity % 1 === 0 && newQuantity > 1 && form.value.return_date) {
     console.log('AEEE - Incremento virou inteiro!')
     console.log('Data de retorno ANTES:', form.value.return_date)
     
@@ -617,12 +639,19 @@ function decrementDays() {
   const newQuantity = Number((currentQuantity - 0.5).toFixed(1))
   form.value.quantity_days = newQuantity
   
-  // Se a NOVA quantidade é número inteiro, decrementa a data de retorno
-  if (newQuantity % 1 === 0 && form.value.return_date && form.value.departure_date) {
+  // Se chegou em 1 diária ou menos, garante que retorno = partida
+  if (newQuantity <= 1 && form.value.departure_date) {
+    form.value.return_date = form.value.departure_date
+    console.log('≤ 1 diária: data de retorno = data de partida')
+    return
+  }
+  
+  // Se a NOVA quantidade é número inteiro E maior que 1, decrementa a data de retorno
+  if (newQuantity % 1 === 0 && newQuantity > 1 && form.value.return_date && form.value.departure_date) {
     console.log('AEEE - Decremento virou inteiro!')
     
-    const returnDate = new Date(form.value.return_date)
-    const departureDate = new Date(form.value.departure_date)
+    const returnDate = new Date(form.value.return_date + 'T00:00:00')
+    const departureDate = new Date(form.value.departure_date + 'T00:00:00')
     
     // Calcula a nova data (1 dia antes)
     const newReturnDate = new Date(returnDate)
