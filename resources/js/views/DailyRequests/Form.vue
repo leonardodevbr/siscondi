@@ -586,16 +586,25 @@ function incrementDays() {
   // Se a NOVA quantidade é número inteiro, incrementa a data de retorno
   if (newQuantity % 1 === 0 && form.value.return_date) {
     console.log('AEEE - Incremento virou inteiro!')
+    console.log('Data de retorno ANTES:', form.value.return_date)
     
-    const returnDate = new Date(form.value.return_date)
+    // Cria nova data baseada na data de retorno atual
+    const returnDate = new Date(form.value.return_date + 'T00:00:00')
+    console.log('Data parseada:', returnDate)
+    
+    // Adiciona 1 dia
     returnDate.setDate(returnDate.getDate() + 1)
+    console.log('Data após +1 dia:', returnDate)
     
     const year = returnDate.getFullYear()
     const month = String(returnDate.getMonth() + 1).padStart(2, '0')
     const day = String(returnDate.getDate()).padStart(2, '0')
-    form.value.return_date = `${year}-${month}-${day}`
+    const newReturnDate = `${year}-${month}-${day}`
     
-    console.log('Data de retorno INCREMENTADA para:', form.value.return_date)
+    console.log('Nova data formatada:', newReturnDate)
+    form.value.return_date = newReturnDate
+    
+    console.log('Data de retorno DEPOIS:', form.value.return_date)
   }
 }
 
