@@ -70,12 +70,12 @@ export const useAuthStore = defineStore('auth', {
     },
   },
   actions: {
-    async login(email, password) {
+    async login(login, password) {
       this.loading = true;
       this.error = null;
 
       try {
-        const response = await api.post('/login', { email, password });
+        const response = await api.post('/login', { login, password });
         const { token, user, needs_primary_department } = response.data;
 
         this.token = token;
@@ -127,7 +127,7 @@ export const useAuthStore = defineStore('auth', {
         return { needsPrimaryDepartment: false };
       } catch (error) {
         const errors = error.response?.data?.errors;
-        this.error = errors?.email?.[0] || error.response?.data?.message || 'Não foi possível fazer login.';
+        this.error = errors?.login?.[0] || errors?.email?.[0] || error.response?.data?.message || 'Não foi possível fazer login.';
         throw error;
       } finally {
         this.loading = false;

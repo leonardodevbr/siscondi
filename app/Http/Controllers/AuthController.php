@@ -21,9 +21,11 @@ class AuthController extends Controller
 {
     public function login(LoginRequest $request): JsonResponse
     {
-        if (! Auth::attempt($request->validated())) {
+        $credentials = $this->getCredentials($request);
+
+        if (! Auth::attempt($credentials)) {
             throw ValidationException::withMessages([
-                'email' => [trans('auth.failed')],
+                'login' => ['E-mail, usuário ou matrícula e/ou senha incorretos.'],
             ]);
         }
 
@@ -31,7 +33,7 @@ class AuthController extends Controller
 
         if (! $user) {
             throw ValidationException::withMessages([
-                'email' => [trans('auth.failed')],
+                'login' => ['E-mail, usuário ou matrícula e/ou senha incorretos.'],
             ]);
         }
 
@@ -50,6 +52,36 @@ class AuthController extends Controller
             'user' => new UserResource($user->fresh(['departments', 'roles', 'municipality'])),
             'needs_primary_department' => $user->needsPrimaryDepartmentChoice(),
         ]);
+    }
+
+    /**
+     * Monta as credenciais para tentativa de login.
+     * Aceita: email, username ou matricula.
+     */
+    private function getCredentials(LoginRequest $request): array
+    {
+        $login = $request->input('login');
+        $password = $request->input('password');
+
+        // Tenta identificar o tipo de login fornecido
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : null;
+
+        // Se não for email, verifica se é username ou matricula
+        if (! $field) {
+            // Verifica se existe um usuário com esse username
+            $userByUsername = User::where('username', $login)->first();
+            if ($userByUsername) {
+                $field = 'username';
+            } else {
+                // Assume que é matrícula
+                $field = 'matricula';
+            }
+        }
+
+        return [
+            $field => $login,
+            'password' => $password,
+        ];
     }
 
     public function logout(Request $request): JsonResponse

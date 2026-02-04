@@ -7,7 +7,7 @@
       {{ label }}
       <span v-if="required" class="text-red-500">*</span>
     </label>
-    <Popover v-slot="{ open }" class="relative block">
+    <Popover v-slot="{ open }" class="relative block z-50">
       <PopoverButton
         type="button"
         class="input-base w-full flex items-center justify-between text-left"
@@ -29,7 +29,7 @@
       >
         <PopoverPanel
           v-slot="{ close }"
-          class="absolute left-0 lg:left-auto lg:right-0 z-50 mt-1 w-screen max-w-sm sm:max-w-md md:max-w-lg lg:min-w-max rounded-xl border border-slate-200 bg-white p-4 shadow-xl focus:outline-none"
+          class="absolute right-0 z-[9999] mt-1 w-screen max-w-sm sm:max-w-md md:max-w-lg lg:min-w-max rounded-xl border border-slate-200 bg-white p-4 shadow-xl focus:outline-none"
           @mouseleave="hoveredDay = null"
         >
           <div class="flex items-center justify-between mb-4">

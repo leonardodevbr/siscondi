@@ -25,8 +25,19 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
+        ];
+    }
+
+    /**
+     * Mensagens de erro customizadas
+     */
+    public function messages(): array
+    {
+        return [
+            'login.required' => 'Informe seu e-mail, usuário ou matrícula.',
+            'password.required' => 'Informe sua senha.',
         ];
     }
 }

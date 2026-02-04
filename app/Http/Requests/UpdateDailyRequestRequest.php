@@ -27,7 +27,7 @@ class UpdateDailyRequestRequest extends FormRequest
             'destination_city' => ['sometimes', 'string', 'max:255'],
             'destination_state' => ['sometimes', 'string', 'size:2'],
             'departure_date' => ['sometimes', 'date'],
-            'return_date' => ['sometimes', 'date', 'after:departure_date'],
+            'return_date' => ['sometimes', 'date', 'after_or_equal:departure_date'],
             'purpose' => ['sometimes', 'nullable', 'string', 'max:500'],
             'reason' => ['sometimes', 'string', 'max:1000'],
             'quantity_days' => ['sometimes', 'numeric', 'min:0.5', 'max:999.9'],

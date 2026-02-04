@@ -63,7 +63,7 @@ const menuGroups = computed(() => {
     {
       title: 'Diárias',
       items: [
-        { name: 'Minhas Solicitações', to: { name: 'daily-requests.index' }, icon: DocumentTextIcon, permission: 'daily-requests.view' },
+        { name: 'Solicitações', to: { name: 'daily-requests.index' }, icon: DocumentTextIcon, permission: 'daily-requests.view' },
       ],
     },
     {

@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('primary_department_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->foreignId('position_id')->nullable()->constrained('positions')->nullOnDelete();
             $table->string('name');
+            $table->string('username')->unique()->nullable()->comment('Nome de usuário para login');
+            $table->string('matricula')->unique()->nullable()->comment('Matrícula do servidor para login');
             $table->string('email')->unique();
             $table->string('signature_path', 500)->nullable()->comment('Caminho do arquivo de assinatura (apenas cargos que aprovam)');
             $table->string('operation_pin', 10)->nullable()->comment('PIN de autorização para assinar');

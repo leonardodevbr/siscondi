@@ -44,8 +44,11 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ request.destination_city }}/{{ request.destination_state }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ formatDate(request.departure_date) }} - {{ formatDate(request.return_date) }}
+            <td class="px-6 py-4 text-sm text-gray-500">
+              <div>{{ formatDate(request.departure_date) }} - {{ formatDate(request.return_date) }}</div>
+              <div class="text-xs text-gray-400 mt-0.5">
+                {{ formatQuantityDays(request.quantity_days) }} diária(s)
+              </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatCurrency(request.total_value) }}</td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -170,6 +173,15 @@ const getStatusClass = (status) => {
 const formatDate = (date) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('pt-BR')
+}
+
+const formatQuantityDays = (quantity) => {
+  if (!quantity) return '0'
+  const num = parseFloat(quantity)
+  // Se for inteiro, mostra sem casas decimais
+  if (num % 1 === 0) return String(Math.floor(num))
+  // Se tiver decimal, mostra com vírgula
+  return num.toFixed(1).replace('.', ',')
 }
 
 function onPerPageChange(perPage) {

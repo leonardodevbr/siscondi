@@ -10,15 +10,15 @@ const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
 
-const email = ref('');
+const login = ref('');
 const password = ref('');
 const formErrors = ref({});
 
 async function handleSubmit() {
   formErrors.value = {};
 
-  if (!email.value) {
-    formErrors.value.email = 'Informe o e-mail.';
+  if (!login.value) {
+    formErrors.value.login = 'Informe seu e-mail, usuário ou matrícula.';
   }
   if (!password.value) {
     formErrors.value.password = 'Informe a senha.';
@@ -29,7 +29,7 @@ async function handleSubmit() {
   }
 
   try {
-    const result = await auth.login(email.value, password.value);
+    const result = await auth.login(login.value, password.value);
     toast.success('Login realizado com sucesso.');
     if (result?.needsPrimaryDepartment) {
       router.push({ name: 'choose-department' });
@@ -38,7 +38,7 @@ async function handleSubmit() {
     }
   } catch (error) {
     const errors = error.response?.data?.errors;
-    const message = errors?.email?.[0] || error.response?.data?.message || 'Falha ao autenticar.';
+    const message = errors?.login?.[0] || errors?.email?.[0] || error.response?.data?.message || 'Falha ao autenticar.';
     toast.error(message);
   }
 }
@@ -52,17 +52,18 @@ async function handleSubmit() {
     <div class="space-y-1">
       <h2 class="text-lg font-semibold text-slate-800">Entrar</h2>
       <p class="text-xs text-slate-500">
-        Use seu e-mail e senha cadastrados para acessar o sistema.
+        Use seu e-mail, usuário ou matrícula e senha cadastrados para acessar o sistema.
       </p>
     </div>
 
     <Input
-      id="email"
-      v-model="email"
-      label="E-mail"
-      type="email"
-      autocomplete="email"
-      :error="formErrors.email"
+      id="login"
+      v-model="login"
+      label="E-mail, Usuário ou Matrícula"
+      type="text"
+      autocomplete="username"
+      placeholder="exemplo@email.com, usuario ou 12345"
+      :error="formErrors.login"
     />
 
     <Input
