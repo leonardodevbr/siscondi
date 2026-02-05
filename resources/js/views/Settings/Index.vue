@@ -30,8 +30,29 @@
             <label class="text-sm font-medium text-slate-700 sm:w-48 shrink-0">
               {{ keyLabel(item.key) }}
             </label>
+            <div
+              v-if="item.key === 'allowed_login_methods' && item.type === 'json'"
+              class="flex flex-wrap gap-4"
+            >
+              <label
+                v-for="opt in loginMethodOptions"
+                :key="opt.value"
+                class="flex items-center gap-2 cursor-pointer"
+              >
+                <input
+                  v-model="form[item.key]"
+                  type="checkbox"
+                  :value="opt.value"
+                  class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                >
+                <span class="text-sm text-slate-700">{{ opt.label }}</span>
+              </label>
+              <p class="w-full text-xs text-slate-500 mt-1">
+                Marque os métodos que os usuários podem usar para entrar no sistema. Pelo menos um deve estar ativo.
+              </p>
+            </div>
             <input
-              v-if="item.type !== 'boolean'"
+              v-else-if="item.type !== 'boolean'"
               v-model="form[item.key]"
               type="text"
               class="input-base flex-1 max-w-md"
@@ -77,6 +98,7 @@ import { useSettingsStore } from '@/stores/settings';
 
 const KEY_LABELS = {
   app_name: 'Nome do aplicativo',
+  allowed_login_methods: 'Métodos de login permitidos',
   municipality_name: 'Nome do município',
   municipality_state: 'Estado',
   municipality_address: 'Endereço',
@@ -86,8 +108,15 @@ const KEY_LABELS = {
 
 const GROUP_LABELS = {
   general: 'Geral',
+  auth: 'Login / Autenticação',
   municipality: 'Município',
 };
+
+const LOGIN_METHOD_OPTIONS = [
+  { value: 'email', label: 'E-mail' },
+  { value: 'username', label: 'Usuário' },
+  { value: 'matricula', label: 'Matrícula' },
+];
 
 export default {
   name: 'SettingsIndex',
@@ -125,7 +154,11 @@ export default {
       const f = {};
       Object.keys(data || {}).forEach((group) => {
         (Array.isArray(data[group]) ? data[group] : []).forEach((s) => {
-          f[s.key] = s.type === 'boolean' ? !!s.value : (s.value ?? '');
+          if (s.key === 'allowed_login_methods' && s.type === 'json') {
+            f[s.key] = Array.isArray(s.value) ? [...s.value] : ['email', 'username', 'matricula'];
+          } else {
+            f[s.key] = s.type === 'boolean' ? !!s.value : (s.value ?? '');
+          }
         });
       });
       form.value = f;
@@ -151,10 +184,15 @@ export default {
           for (const item of list || []) {
             const key = item.key;
             const type = item.type || 'string';
-            const value = form.value[key];
+            let value = form.value[key];
+            if (key === 'allowed_login_methods' && type === 'json') {
+              value = Array.isArray(value) ? value : ['email', 'username', 'matricula'];
+            } else if (type === 'boolean') {
+              value = !!value;
+            }
             settingsArray.push({
               key,
-              value: type === 'boolean' ? !!value : value,
+              value,
               type,
               group: groupName,
             });
@@ -180,6 +218,7 @@ export default {
       isEmpty,
       keyLabel,
       groupLabel,
+      loginMethodOptions: LOGIN_METHOD_OPTIONS,
       handleSave,
     };
   },

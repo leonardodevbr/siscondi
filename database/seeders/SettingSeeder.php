@@ -16,7 +16,8 @@ class SettingSeeder extends Seeder
     public function run(): void
     {
         Settings::set('app_name', config('app.name'), 'string', 'general');
+        Settings::set('allowed_login_methods', ['email', 'username', 'matricula'], 'json', 'auth');
 
-        $this->command->info('Configurações iniciais criadas (app_name).');
+        $this->command->info('Configurações iniciais criadas (app_name, allowed_login_methods).');
     }
 }

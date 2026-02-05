@@ -44,6 +44,24 @@
           <Input v-model="form.email" label="E-mail" type="email" required placeholder="joao@exemplo.com" />
         </div>
 
+        <div>
+          <Input
+            v-model="form.username"
+            label="Nome de usuário (login)"
+            placeholder="Ex: joao.silva"
+          />
+          <p class="mt-1 text-xs text-slate-500">Opcional. Usado para login quando habilitado nas configurações.</p>
+        </div>
+
+        <div>
+          <Input
+            v-model="form.matricula"
+            label="Matrícula (login)"
+            placeholder="Ex: 12345"
+          />
+          <p class="mt-1 text-xs text-slate-500">Opcional. Usada para login quando habilitada nas configurações.</p>
+        </div>
+
         <div class="lg:col-span-2">
           <SelectInput
             v-model="form.servant_id"
@@ -325,6 +343,8 @@ const selectedDepartments = computed(() => {
 const form = ref({
   name: '',
   email: '',
+  username: '',
+  matricula: '',
   password: '',
   password_confirmation: '',
   operation_password: '',
@@ -404,6 +424,8 @@ async function loadUser() {
     form.value = {
       name: user.name ?? '',
       email: user.email ?? '',
+      username: user.username ?? '',
+      matricula: user.matricula ?? '',
       password: '',
       password_confirmation: '',
       operation_password: '',
@@ -476,6 +498,8 @@ async function submit() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
+      username: form.value.username?.trim() || null,
+      matricula: form.value.matricula?.trim() || null,
       roles: form.value.roles,
       servant_id: form.value.servant_id ?? null,
       signature_path: form.value.signature_path || null,

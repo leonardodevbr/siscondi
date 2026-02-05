@@ -30,6 +30,8 @@ class UpdateUserRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
+            'username' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('users', 'username')->ignore($userId)],
+            'matricula' => ['sometimes', 'nullable', 'string', 'max:50', Rule::unique('users', 'matricula')->ignore($userId)],
             'password' => ['sometimes', 'nullable', 'string', 'confirmed', Password::defaults()],
             'roles' => ['sometimes', 'array', 'min:1'],
             'roles.*' => ['string', 'in:admin,requester,validator,authorizer,payer,beneficiary,super-admin'],
@@ -61,6 +63,8 @@ class UpdateUserRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'username' => 'nome de usuário',
+            'matricula' => 'matrícula',
             'operation_pin' => 'PIN de autorização',
             'operation_password' => 'senha de operação',
         ];

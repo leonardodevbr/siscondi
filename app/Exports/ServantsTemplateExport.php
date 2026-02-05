@@ -28,6 +28,7 @@ class ServantsTemplateExport implements FromArray, WithHeadings, WithStyles
                 '12345-6',
                 'Corrente',
                 'joao@exemplo.com',
+                '', // Username (vazio = gera automaticamente: primeiro.ultimo, ex: joao.santos)
                 '(77) 98888-9999',
             ],
         ];
@@ -48,6 +49,7 @@ class ServantsTemplateExport implements FromArray, WithHeadings, WithStyles
             'Conta',
             'Tipo de Conta',
             'E-mail',
+            'Username',
             'Telefone',
         ];
     }

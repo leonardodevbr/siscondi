@@ -28,6 +28,8 @@ class StoreUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'username' => ['nullable', 'string', 'max:255', 'unique:users,username'],
+            'matricula' => ['nullable', 'string', 'max:50', 'unique:users,matricula'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', 'in:admin,requester,validator,authorizer,payer,beneficiary,super-admin'],
@@ -57,6 +59,8 @@ class StoreUserRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'username' => 'nome de usuário',
+            'matricula' => 'matrícula',
             'operation_pin' => 'PIN de autorização',
             'operation_password' => 'senha de operação',
         ];

@@ -8,6 +8,7 @@ use App\Http\Requests\LoginRequest;
 use App\Mail\FirstAccessMail;
 use App\Http\Resources\UserResource;
 use App\Models\Department;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,26 +57,41 @@ class AuthController extends Controller
 
     /**
      * Monta as credenciais para tentativa de login.
-     * Aceita: email, username ou matricula.
+     * Aceita: email, username ou matricula, conforme configuração allowed_login_methods.
      */
     private function getCredentials(LoginRequest $request): array
     {
         $login = $request->input('login');
         $password = $request->input('password');
 
+        $allowedMethods = Setting::get('allowed_login_methods', ['email', 'username', 'matricula']);
+        if (! is_array($allowedMethods)) {
+            $allowedMethods = ['email', 'username', 'matricula'];
+        }
+        $allowedMethods = array_map('strtolower', $allowedMethods);
+
         // Tenta identificar o tipo de login fornecido
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : null;
 
-        // Se não for email, verifica se é username ou matricula
         if (! $field) {
-            // Verifica se existe um usuário com esse username
             $userByUsername = User::where('username', $login)->first();
             if ($userByUsername) {
                 $field = 'username';
             } else {
-                // Assume que é matrícula
                 $field = 'matricula';
             }
+        }
+
+        if (! in_array($field, $allowedMethods, true)) {
+            $labels = [
+                'email' => 'e-mail',
+                'username' => 'usuário',
+                'matricula' => 'matrícula',
+            ];
+            $permitidos = array_map(fn ($m) => $labels[$m] ?? $m, $allowedMethods);
+            throw ValidationException::withMessages([
+                'login' => ['Este tipo de login não está habilitado. Use: '.implode(', ', $permitidos).'.'],
+            ]);
         }
 
         return [

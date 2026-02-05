@@ -81,7 +81,11 @@ class SettingController extends Controller
                 $setting->type = 'string';
             }
 
-            $setting->setTypedValue($item['value'] ?? null);
+            $value = $item['value'] ?? null;
+            if ($key === 'allowed_login_methods' && is_array($value) && count($value) === 0) {
+                $value = ['email'];
+            }
+            $setting->setTypedValue($value);
             $setting->save();
         }
 

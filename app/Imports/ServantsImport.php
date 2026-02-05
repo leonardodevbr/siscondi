@@ -66,7 +66,8 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
             $accountNumber = trim((string) ($row[9] ?? ''));     // Coluna J: Conta
             $accountType = trim((string) ($row[10] ?? ''));      // Coluna K: Tipo de Conta
             $email = trim((string) ($row[11] ?? ''));            // Coluna L: E-mail
-            $phone = trim((string) ($row[12] ?? ''));            // Coluna M: Telefone
+            $username = trim((string) ($row[12] ?? ''));          // Coluna M: Username (vazio = gera primeiro.ultimo)
+            $phone = trim((string) ($row[13] ?? ''));             // Coluna N: Telefone
 
             // Ignora linhas completamente vazias
             if (empty($name) && empty($cpf) && empty($rg) && empty($matricula)) {
@@ -144,20 +145,26 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
                 }
             } else {
                 // Importação real: salva no banco e cria/atualiza User com e-mail (primeiro acesso)
-                $servant = DB::transaction(function () use ($data, $servant, $name, $email, $departmentId) {
+                $servant = DB::transaction(function () use ($data, $servant, $name, $email, $username, $departmentId) {
                     $userId = null;
                     if (!empty($email)) {
                         $existingUser = User::where('email', $email)->first();
                         $department = Department::find($departmentId);
                         $municipalityId = $department?->municipality_id;
 
+                        $usernameToSet = $username !== ''
+                            ? $username
+                            : $this->usernameFromName($name);
+                        $usernameToSet = $this->ensureUniqueUsername($usernameToSet, $existingUser?->id);
+
                         if ($existingUser) {
                             $userId = $existingUser->id;
+                            $existingUser->update([
+                                'name' => $name,
+                                'username' => $usernameToSet,
+                                'municipality_id' => $municipalityId,
+                            ]);
                             if ($servant && (int) $servant->user_id !== (int) $userId) {
-                                $existingUser->update([
-                                    'name' => $name,
-                                    'municipality_id' => $municipalityId,
-                                ]);
                                 $existingUser->departments()->sync([$departmentId => ['is_primary' => true]]);
                                 $existingUser->update(['primary_department_id' => $departmentId]);
                             }
@@ -165,6 +172,7 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
                             $newUser = User::create([
                                 'name' => $name,
                                 'email' => $email,
+                                'username' => $usernameToSet,
                                 'password' => Str::random(32),
                                 'municipality_id' => $municipalityId,
                             ]);
@@ -228,6 +236,56 @@ class ServantsImport implements ToCollection, WithStartRow, SkipsEmptyRows, With
     private function cleanCpf(string $cpf): string
     {
         return preg_replace('/[^0-9]/', '', $cpf);
+    }
+
+    /**
+     * Gera username no formato FIRSTNAME.LASTNAME: minúsculo, sem acentos.
+     * Ex: "João Silva Canção" => "joao.cancao"
+     */
+    private function usernameFromName(string $name): string
+    {
+        $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+        if (count($words) === 0) {
+            return 'user';
+        }
+        if (count($words) === 1) {
+            return $this->slugPart($words[0]);
+        }
+        $first = $this->slugPart($words[0]);
+        $last = $this->slugPart($words[count($words) - 1]);
+
+        return $first . '.' . $last;
+    }
+
+    /**
+     * Minúsculo, sem acentos, apenas letras/números.
+     */
+    private function slugPart(string $s): string
+    {
+        $s = mb_strtolower($s, 'UTF-8');
+        $s = Str::ascii($s);
+        $s = preg_replace('/[^a-z0-9]/', '', $s);
+
+        return $s !== '' ? $s : 'user';
+    }
+
+    /**
+     * Garante username único na tabela users (evita conflito na coluna unique).
+     */
+    private function ensureUniqueUsername(string $username, ?int $excludeUserId): string
+    {
+        $base = $username;
+        $n = 1;
+        while (true) {
+            $exists = User::where('username', $username)
+                ->when($excludeUserId !== null, fn ($q) => $q->where('id', '!=', $excludeUserId))
+                ->exists();
+            if (! $exists) {
+                return $username;
+            }
+            $n++;
+            $username = $base . (string) $n;
+        }
     }
 
     /**

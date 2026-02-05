@@ -144,7 +144,7 @@ class UserController extends Controller
             }
         }
 
-        $data = $request->safe()->only(['name', 'email', 'operation_pin']);
+        $data = $request->safe()->only(['name', 'email', 'username', 'matricula', 'operation_pin']);
         $data['password'] = $request->validated('password');
         $data['municipality_id'] = $municipalityId;
         if ($request->filled('operation_password')) {
@@ -155,6 +155,8 @@ class UserController extends Controller
             $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
+                'username' => isset($data['username']) && $data['username'] !== '' ? $data['username'] : null,
+                'matricula' => isset($data['matricula']) && $data['matricula'] !== '' ? $data['matricula'] : null,
                 'password' => $data['password'],
                 'municipality_id' => $data['municipality_id'] ?? null,
                 'operation_password' => $data['operation_password'] ?? null,
@@ -217,7 +219,7 @@ class UserController extends Controller
             ->with('roles', 'departments', 'servant')
             ->findOrFail($userId);
 
-        $data = $request->safe()->only(['name', 'email', 'position_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
+        $data = $request->safe()->only(['name', 'email', 'username', 'matricula', 'position_id', 'department_id', 'operation_pin', 'roles', 'servant_id', 'signature_path']);
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
         }
@@ -232,6 +234,8 @@ class UserController extends Controller
             $payload = [
                 'name' => $data['name'] ?? $user->name,
                 'email' => $data['email'] ?? $user->email,
+                'username' => array_key_exists('username', $data) ? ($data['username'] !== null && $data['username'] !== '' ? $data['username'] : null) : $user->username,
+                'matricula' => array_key_exists('matricula', $data) ? ($data['matricula'] !== null && $data['matricula'] !== '' ? $data['matricula'] : null) : $user->matricula,
             ];
             if (isset($data['password']) && $data['password'] !== null) {
                 $payload['password'] = $data['password'];
