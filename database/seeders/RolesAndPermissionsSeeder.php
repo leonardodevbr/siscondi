@@ -13,7 +13,7 @@ class RolesAndPermissionsSeeder extends Seeder
     public function run(): void
     {
         /**
-         * SISCONDI - Sistema de Concessão de Diárias
+         * DiariaSys - Sistema de Concessão de Diárias
          * Permissões e Perfis de Acesso
          */
         

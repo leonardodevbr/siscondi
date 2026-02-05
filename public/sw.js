@@ -5,7 +5,7 @@ self.addEventListener('push', function (event) {
 
     const payload = event.data ? event.data.json() : {};
     event.waitUntil(
-        self.registration.showNotification(payload.title || 'Nova Notificação - SISCONDI', {
+        self.registration.showNotification(payload.title || 'Nova Notificação - DiariaSys', {
             body: payload.body || 'Você tem uma nova mensagem.',
             icon: '/logo.png',
             data: payload.url || '/',
