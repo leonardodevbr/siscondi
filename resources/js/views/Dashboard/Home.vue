@@ -42,8 +42,6 @@ const fetchStats = async () => {
 const goToNewRequest = () => router.push('/daily-requests/create');
 const goToRequests = () => router.push('/daily-requests');
 const goToRequestsByStatus = (status) => router.push({ path: '/daily-requests', query: { status } });
-const goToServants = () => router.push('/servants');
-const goToLegislations = () => router.push('/legislations');
 
 onMounted(() => {
   fetchStats();
@@ -93,33 +91,6 @@ onUnmounted(() => {
 
     <!-- Dashboard Content -->
     <div v-else class="space-y-6">
-      <!-- Cards de Estatísticas -->
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div 
-          @click="goToServants"
-          class="card p-5 border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow"
-        >
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Servidores Ativos</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_servants }}</p>
-        </div>
-
-        <div 
-          @click="goToLegislations"
-          class="card p-5 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition-shadow"
-        >
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Legislações Ativas</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_legislations }}</p>
-        </div>
-
-        <div 
-          @click="goToRequests"
-          class="card p-5 border-l-4 border-purple-500 cursor-pointer hover:shadow-md transition-shadow"
-        >
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Total de Solicitações</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900">{{ stats.total_requests }}</p>
-        </div>
-      </div>
-
       <!-- Solicitações por Status -->
       <div class="card p-5">
         <h3 class="text-base font-semibold text-slate-800 mb-4">Solicitações por Status</h3>

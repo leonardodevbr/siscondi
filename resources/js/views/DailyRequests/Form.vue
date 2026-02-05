@@ -25,166 +25,170 @@
       <p class="text-slate-500 mt-3">Carregando...</p>
     </div>
 
-    <div v-else class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      <!-- Formulário à esquerda -->
+    <div v-else>
+      <!-- Formulário -->
       <form class="card p-6 overflow-visible" @submit.prevent="handleSubmit">
-        <div class="space-y-6 overflow-visible">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-visible">
           <!-- Servidor e Destino -->
-          <div>
-            <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <div class="lg:col-span-2">
+            <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <UserCircleIcon class="h-5 w-5 text-slate-500" />
               Servidor e destino
             </h3>
-            <div class="space-y-4">
-              <SelectInput
-                v-model="form.servant_id"
-                label="Servidor *"
-                :options="servantOptions"
-                placeholder="Selecione o servidor..."
-                :searchable="true"
-                @update:model-value="onServantChange"
-              />
+          </div>
 
-              <div>
-                <SelectInput
-                  v-model="form.destination_type"
-                  label="Tipo de destino *"
-                  :options="destinationOptions"
-                  placeholder="Selecione o tipo de destino..."
-                  :searchable="allDestinationTypes.length > 10"
-                />
-                <p v-if="selectedServant && form.destination_type && unitValueForDestination" class="mt-1 text-xs text-slate-500">
-                  Valor da diária para este destino: <span class="font-semibold text-slate-800">{{ formatCurrency(unitValueForDestination) }}</span>
-                </p>
-                <p v-else-if="selectedServant && form.destination_type && !unitValueForDestination" class="mt-1 text-xs text-amber-600">
-                  Servidor sem valor de diária definido para este destino na legislação.
-                </p>
-              </div>
-            </div>
+          <div>
+            <SelectInput
+              v-model="form.servant_id"
+              label="Servidor *"
+              :options="servantOptions"
+              placeholder="Selecione o servidor..."
+              :searchable="true"
+              @update:model-value="onServantChange"
+            />
+          </div>
+
+          <div>
+            <SelectInput
+              v-model="form.destination_type"
+              label="Tipo de destino *"
+              :options="destinationOptions"
+              placeholder="Selecione o tipo de destino..."
+              :searchable="allDestinationTypes.length > 10"
+            />
+            <p v-if="selectedServant && form.destination_type && unitValueForDestination" class="mt-1 text-xs text-slate-500">
+              Valor da diária para este destino: <span class="font-semibold text-slate-800">{{ formatCurrency(unitValueForDestination) }}</span>
+            </p>
+            <p v-else-if="selectedServant && form.destination_type && !unitValueForDestination" class="mt-1 text-xs text-amber-600">
+              Servidor sem valor de diária definido para este destino na legislação.
+            </p>
           </div>
 
           <!-- Local e período -->
-          <div class="border-t border-slate-200 pt-6 overflow-visible">
-            <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <div class="lg:col-span-2 border-t border-slate-200 pt-4 mt-2">
+            <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <MapPinIcon class="h-5 w-5 text-slate-500" />
               Local e período
             </h3>
-            <div class="space-y-4 overflow-visible">
-              <SelectInput
-                v-model="form.destination_state"
-                label="Estado (UF) *"
-                :options="stateOptions"
-                placeholder="Selecione o estado..."
-                :searchable="true"
-                @update:model-value="onStateChange"
-              />
+          </div>
 
-              <SelectInput
-                v-model="form.destination_city"
-                label="Cidade de destino *"
-                :options="cityOptions"
-                placeholder="Selecione a cidade..."
-                :searchable="true"
-                :disabled="!form.destination_state || loadingCities"
-              />
+          <div>
+            <SelectInput
+              v-model="form.destination_state"
+              label="Estado (UF) *"
+              :options="stateOptions"
+              placeholder="Selecione o estado..."
+              :searchable="true"
+              @update:model-value="onStateChange"
+            />
+          </div>
 
-              <DateRangePicker
-                label="Período (saída e retorno) *"
-                :departure-date="form.departure_date"
-                :return-date="form.return_date"
-                required
-                placeholder="Selecione as datas"
-                @update:departure-date="form.departure_date = $event; calculateDays()"
-                @update:return-date="form.return_date = $event; calculateDays()"
-              />
-            </div>
+          <div>
+            <SelectInput
+              v-model="form.destination_city"
+              label="Cidade de destino *"
+              :options="cityOptions"
+              placeholder="Selecione a cidade..."
+              :searchable="true"
+              :disabled="!form.destination_state || loadingCities"
+            />
+          </div>
+
+          <div class="lg:col-span-2">
+            <DateRangePicker
+              label="Período (saída e retorno) *"
+              :departure-date="form.departure_date"
+              :return-date="form.return_date"
+              required
+              placeholder="Selecione as datas"
+              @update:departure-date="form.departure_date = $event; calculateDays()"
+              @update:return-date="form.return_date = $event; calculateDays()"
+            />
           </div>
 
           <!-- Quantidade e valor -->
-          <div class="border-t border-slate-200 pt-6">
-            <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <div class="lg:col-span-2 border-t border-slate-200 pt-4 mt-2">
+            <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <CurrencyDollarIcon class="h-5 w-5 text-slate-500" />
               Quantidade e valor
             </h3>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Quantidade de diárias *</label>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    class="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    :disabled="form.quantity_days <= 0.5"
-                    title="Diminuir 0,5 diária"
-                    @click="decrementDays"
-                  >
-                    <MinusIcon class="h-5 w-5 text-slate-700" />
-                  </button>
-                  <input
-                    v-model.number="form.quantity_days"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    required
-                    class="input-base flex-1 text-center font-semibold"
-                    @change="updateDatesFromQuantity"
-                  />
-                  <button
-                    type="button"
-                    class="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                    title="Aumentar 0,5 diária"
-                    @click="incrementDays"
-                  >
-                    <PlusIcon class="h-5 w-5 text-slate-700" />
-                  </button>
-                </div>
-                <p class="mt-1 text-xs text-slate-500">Use os botões ou digite o valor (aceita 0,5 diária)</p>
-              </div>
+          </div>
 
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Valor total previsto</label>
-                <div class="input-base w-full bg-slate-50 text-slate-900 font-semibold flex items-center min-h-[42px]">
-                  {{ formatCurrency(calculatedTotal) }}
-                </div>
-                <p v-if="form.servant_id && form.destination_type" class="mt-1 text-xs text-slate-500">
-                  <template v-if="unitValueForDestination">
-                    {{ formatCurrency(unitValueForDestination) }} × {{ formatQuantityDays(form.quantity_days) }} diária(s) = {{ formatCurrency(calculatedTotal) }}
-                  </template>
-                  <template v-else>
-                    Selecione um servidor com valor de diária definido para este destino para ver o total.
-                  </template>
-                </p>
-              </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Quantidade de diárias *</label>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="form.quantity_days <= 0.5"
+                title="Diminuir 0,5 diária"
+                @click="decrementDays"
+              >
+                <MinusIcon class="h-5 w-5 text-slate-700" />
+              </button>
+              <input
+                v-model.number="form.quantity_days"
+                type="number"
+                step="0.5"
+                min="0.5"
+                required
+                class="input-base flex-1 text-center font-semibold"
+                @input="onQuantityInputChange"
+              />
+              <button
+                type="button"
+                class="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                title="Aumentar 0,5 diária"
+                @click="incrementDays"
+              >
+                <PlusIcon class="h-5 w-5 text-slate-700" />
+              </button>
             </div>
+            <p class="mt-1 text-xs text-slate-500">Use os botões ou digite o valor (aceita 0,5 diária)</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Valor total previsto</label>
+            <div class="input-base w-full bg-slate-50 text-slate-900 font-semibold flex items-center min-h-[42px]">
+              {{ formatCurrency(calculatedTotal) }}
+            </div>
+            <p v-if="form.servant_id && form.destination_type" class="mt-1 text-xs text-slate-500">
+              <template v-if="unitValueForDestination">
+                {{ formatCurrency(unitValueForDestination) }} × {{ formatQuantityDays(form.quantity_days) }} diária(s) = {{ formatCurrency(calculatedTotal) }}
+              </template>
+              <template v-else>
+                Selecione um servidor com valor de diária definido para este destino para ver o total.
+              </template>
+            </p>
           </div>
 
           <!-- Finalidade e Motivo -->
-          <div class="border-t border-slate-200 pt-6">
-            <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <div class="lg:col-span-2 border-t border-slate-200 pt-4 mt-2">
+            <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <DocumentTextIcon class="h-5 w-5 text-slate-500" />
               Finalidade e Motivo
             </h3>
-            <div class="space-y-4">
-              <div>
-                <Input
-                  v-model="form.purpose"
-                  label="Finalidade"
-                  placeholder="Ex: Custeio de despesas com locomoção, hospedagem e alimentação."
-                />
-                <p class="mt-1 text-xs text-slate-500">Objetivo formal da diária (aparece no PDF).</p>
-              </div>
+          </div>
 
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Motivo da viagem *</label>
-                <textarea
-                  v-model="form.reason"
-                  rows="4"
-                  required
-                  placeholder="Descreva o motivo da viagem..."
-                  class="input-base w-full resize-y"
-                />
-                <p class="mt-1 text-xs text-slate-500">Descrição detalhada do motivo da viagem.</p>
-              </div>
-            </div>
+          <div class="lg:col-span-2">
+            <Input
+              v-model="form.purpose"
+              label="Finalidade"
+              placeholder="Ex: Custeio de despesas com locomoção, hospedagem e alimentação."
+            />
+            <p class="mt-0.5 text-xs text-slate-500">Objetivo formal da diária (aparece no PDF).</p>
+          </div>
+
+          <div class="lg:col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Motivo da viagem *</label>
+            <textarea
+              v-model="form.reason"
+              rows="3"
+              required
+              placeholder="Descreva o motivo da viagem..."
+              class="input-base w-full resize-y"
+            />
+            <p class="mt-0.5 text-xs text-slate-500">Descrição detalhada do motivo da viagem.</p>
           </div>
         </div>
 
@@ -305,17 +309,6 @@
           <p v-else class="text-sm text-slate-500">Nenhum registro na linha do tempo.</p>
         </div>
       </form>
-
-      <!-- Espaço reservado para preview (à direita) -->
-      <div class="hidden xl:block">
-        <div class="card p-6 h-full flex items-center justify-center bg-slate-50">
-          <div class="text-center text-slate-400">
-            <DocumentTextIcon class="h-16 w-16 mx-auto mb-3 opacity-50" />
-            <p class="text-sm font-medium">Preview em desenvolvimento</p>
-            <p class="text-xs mt-1">Em breve você poderá visualizar<br />o PDF aqui ao lado</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Modal de confirmação para assinar (senha/PIN + preview da assinatura) -->
@@ -671,23 +664,30 @@ function decrementDays() {
   }
 }
 
+function onQuantityInputChange() {
+  // Quando o usuário digita ou usa as setas do input, atualiza as datas
+  updateDatesFromQuantity()
+}
+
 function updateDatesFromQuantity() {
   // Só atualiza as datas se a data de partida estiver preenchida
   if (!form.value.departure_date) return
   
-  const quantity = form.value.quantity_days
-  const startDate = new Date(form.value.departure_date)
+  const quantity = form.value.quantity_days || 0.5
+  const startDate = new Date(form.value.departure_date + 'T00:00:00')
   
-  // Verifica se é meia diária (tem decimal .5)
+  // Regra: 0.5 ou 1.0 = mesmo dia
+  if (quantity <= 1) {
+    form.value.return_date = form.value.departure_date
+    console.log('≤ 1 diária: retorno = partida')
+    return
+  }
+  
+  // Para > 1 diária:
+  // 1.5 = +1 dia, 2.0 = +1 dia, 2.5 = +2 dias, 3.0 = +2 dias, etc.
   const isHalfDay = quantity % 1 !== 0
-  
-  // Calcula quantos dias inteiros
   const fullDays = Math.floor(quantity)
-  
-  // Para 0.5 ou 1 diária = mesmo dia
-  // Para 1.5 ou 2 diárias = 1 dia depois
-  // Para 2.5 ou 3 diárias = 2 dias depois
-  const daysToAdd = isHalfDay ? fullDays : Math.max(0, fullDays - 1)
+  const daysToAdd = isHalfDay ? fullDays : (fullDays - 1)
   
   const returnDate = new Date(startDate)
   returnDate.setDate(startDate.getDate() + daysToAdd)
@@ -697,6 +697,8 @@ function updateDatesFromQuantity() {
   const month = String(returnDate.getMonth() + 1).padStart(2, '0')
   const day = String(returnDate.getDate()).padStart(2, '0')
   form.value.return_date = `${year}-${month}-${day}`
+  
+  console.log(`${quantity} diárias: retorno = partida + ${daysToAdd} dia(s)`)
 }
 
 async function fetchCities(uf) {
