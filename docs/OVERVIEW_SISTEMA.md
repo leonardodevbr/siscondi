@@ -1,12 +1,12 @@
-# SISCONDI – Visão geral para apresentação
+# DiáriaSys – Visão geral para apresentação
 
-Visão geral do **Sistema de Concessão de Diárias** (SISCONDI) para uso em apresentações e divulgação do sistema.
+Visão geral do **Sistema de Concessão de Diárias** para uso em apresentações e divulgação do sistema.
 
 ---
 
-## O que é o SISCONDI
+## O que é o DiáriaSys
 
-O SISCONDI é um sistema para **gestão de diárias e passagens** de servidores públicos municipais. Controla todo o ciclo: da solicitação à validação, autorização e pagamento, com regras por secretaria e por perfil de acesso.
+O DiáriaSys é um sistema para **gestão de diárias e passagens** de servidores públicos municipais. Controla todo o ciclo: da solicitação à validação, autorização e pagamento, com regras por secretaria e por perfil de acesso.
 
 **Público:** prefeituras e órgãos que precisam padronizar e auditar a concessão de diárias conforme legislação e controle interno.
 
@@ -82,8 +82,8 @@ O objetivo é atender à transparência e à Lei de Acesso à Informação, perm
 
 ## Resumo
 
-O SISCONDI centraliza a **solicitação, validação, concessão e pagamento** de diárias, com **controle por perfil e secretaria**, **auditoria** e **portal público** para transparência. É voltado a prefeituras e órgãos que precisam de um fluxo claro, rastreável e alinhado à legislação.
+O DiáriaSys centraliza a **solicitação, validação, concessão e pagamento** de diárias, com **controle por perfil e secretaria**, **auditoria** e **portal público** para transparência. É voltado a prefeituras e órgãos que precisam de um fluxo claro, rastreável e alinhado à legislação.
 
 ---
 
-*Documento para apoio a apresentações e divulgação do SISCONDI.*
+*Documento para apoio a apresentações e divulgação do DiáriaSys.*
