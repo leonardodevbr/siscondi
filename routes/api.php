@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 // Broadcasting auth (canais privados) – mesmo middleware e CORS da API (rota fica em /api/broadcasting/auth)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
+// Portal da Transparência (público, sem auth)
+require __DIR__.'/api/transparency-public.php';
+
 // Autenticação e Configuração
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/users.php';

@@ -12,7 +12,10 @@ return new class extends Migration
     {
         Schema::create('daily_requests', function (Blueprint $table): void {
             $table->id();
-            
+
+            // Multi-tenancy: município da solicitação (via servidor → departamento)
+            $table->foreignId('municipality_id')->nullable()->constrained('municipalities')->nullOnDelete();
+
             // Relacionamentos principais
             $table->foreignId('servant_id')->constrained('servants')->cascadeOnDelete();
             $table->string('destination_type', 255)->comment('Label do destino conforme a legislação (ex: Até 200 km, Capital Estado)');

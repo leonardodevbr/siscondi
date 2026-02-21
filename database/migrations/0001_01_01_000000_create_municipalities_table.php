@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('municipalities', function (Blueprint $table): void {
             $table->id();
             $table->string('name')->comment('Nome do município');
+            $table->string('slug', 120)->nullable()->unique()->comment('Slug para URL do portal da transparência (ex: cafarnaum)');
             $table->string('display_name')->comment('Nome completo para exibir em documentos');
             $table->string('cnpj', 18)->nullable()->comment('CNPJ da prefeitura');
             $table->string('state', 2)->nullable()->comment('UF');
@@ -24,6 +25,7 @@ return new class extends Migration
 
         DB::table('municipalities')->insert([
             'name' => 'Cafarnaum',
+            'slug' => 'cafarnaum',
             'display_name' => 'Prefeitura Municipal de Cafarnaum',
             'cnpj' => '17.622.151/0001-84',
             'state' => 'BA',

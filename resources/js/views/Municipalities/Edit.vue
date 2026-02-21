@@ -16,6 +16,11 @@
           <p class="mt-0.5 text-xs text-slate-500">Nome oficial do município (ex: Cafarnaum)</p>
         </div>
         <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Slug (portal da transparência)</label>
+          <input v-model="form.slug" type="text" class="input-base w-full" placeholder="Ex: cafarnaum" />
+          <p class="mt-0.5 text-xs text-slate-500">URL do portal: /transparencia/<strong>{{ form.slug || 'slug' }}</strong>. Apenas letras minúsculas, números e hífens.</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nome de exibição</label>
           <input v-model="form.display_name" type="text" class="input-base w-full" placeholder="Ex: Prefeitura Municipal de Cafarnaum" />
           <p class="mt-0.5 text-xs text-slate-500">Nome completo para exibição em documentos e relatórios</p>
@@ -89,6 +94,7 @@ const saving = ref(false);
 const id = computed(() => route.params.id);
 const form = reactive({
   name: '',
+  slug: '',
   display_name: '',
   cnpj: '',
   state: '',
@@ -102,6 +108,7 @@ const load = async () => {
     const { data } = await api.get(`/municipalities/${id.value}`);
     const m = data?.data ?? data ?? {};
     form.name = m.name ?? '';
+    form.slug = m.slug ?? '';
     form.display_name = m.display_name ?? '';
     form.cnpj = formatCnpj(m.cnpj ?? '');
     form.state = m.state ?? '';

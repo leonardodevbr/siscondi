@@ -18,6 +18,7 @@ class DailyRequest extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'municipality_id',
         'servant_id',
         'destination_type',
         'legislation_item_snapshot_id',
@@ -56,6 +57,16 @@ class DailyRequest extends Model
         'authorized_at' => 'datetime',
         'paid_at' => 'datetime',
     ];
+
+    /**
+     * Município da solicitação (multi-tenancy).
+     *
+     * @return BelongsTo<Municipality, DailyRequest>
+     */
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
 
     /**
      * Servidor que solicitou a diária

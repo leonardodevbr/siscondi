@@ -9,7 +9,7 @@ O SISCONDI é um sistema completo para gerenciar todo o fluxo de concessão de d
 ### Funcionalidades Principais
 
 - **Gestão de Legislações**: Cadastro de cargos e valores de diárias definidos em lei
-- **Cadastro de Servidores**: Registro completo dos funcionários públicos com dados pessoais e bancários
+- **Cadastro de Servidores**: Registro completo dos funcionários públicos com dados pessoais e bancários; importação em planilha (com geração opcional de username no formato primeiro.ultimo)
 - **Solicitações de Diárias**: Criação e acompanhamento de pedidos de diárias
 - **Fluxo de Aprovação**: Sistema de workflow com 4 etapas:
   1. **Solicitação**
@@ -17,6 +17,7 @@ O SISCONDI é um sistema completo para gerenciar todo o fluxo de concessão de d
   3. **Autorização**
   4. **Pagamento**
 - **Relatórios**: Geração de relatórios e documentos para auditoria
+- **Portal da Transparência**: Página pública (`/transparencia`) com consulta a diárias e passagens (dados pagos), filtros por exercício/mês/gestão/destino/servidor, uso do brasão do município e exportação CSV/impressão
 
 ## 👥 Perfis de Acesso
 
@@ -80,8 +81,8 @@ Solicitações de diárias
 - Status do fluxo
 - Auditoria (quem validou, autorizou, pagou)
 
-#### branches
-Secretarias municipais (departamentos)
+#### departments
+Secretarias municipais (lotação dos servidores e usuários)
 
 ## 🚀 Instalação
 
@@ -119,29 +120,23 @@ php artisan serve
 ### Frontend
 
 ```bash
-cd frontend
-
-# Instalar dependências
+# Na raiz do projeto (frontend integrado com Vite)
 npm install
-
-# Desenvolvimento
-npm run dev
-
-# Build para produção
-npm run build
+npm run dev    # Desenvolvimento
+npm run build # Build para produção
 ```
 
-## 🔐 Usuário Padrão
+## 🔐 Autenticação e Usuário Padrão
 
-Após executar os seeders, será criado um usuário admin:
-
-- **Email**: admin@siscondi.gov.br
-- **Senha**: password
+- **Login**: o sistema aceita **e-mail**, **nome de usuário (username)** ou **matrícula** + senha. Em **Configurações** (Super Admin) é possível definir quais métodos de login estão habilitados (E-mail, Usuário, Matrícula).
+- Após os seeders, um usuário admin é criado:
+  - **E-mail**: admin@siscondi.gov.br
+  - **Senha**: password
 
 ## 📝 API Endpoints
 
 ### Autenticação
-- `POST /api/login` - Login
+- `POST /api/login` - Login (envie `login` e `password`; `login` pode ser e-mail, username ou matrícula, conforme configuração)
 - `POST /api/logout` - Logout
 - `GET /api/user` - Usuário autenticado
 
@@ -158,6 +153,9 @@ Após executar os seeders, será criado um usuário admin:
 - `GET /api/servants/{id}` - Detalhes
 - `PUT /api/servants/{id}` - Atualizar
 - `DELETE /api/servants/{id}` - Deletar
+- `GET /api/servants/import/template` - Download do modelo de planilha para importação
+- `POST /api/servants/import/validate` - Validar planilha (preview)
+- `POST /api/servants/import` - Executar importação
 
 ### Solicitações de Diárias
 - `GET /api/daily-requests` - Listar
@@ -170,11 +168,15 @@ Após executar os seeders, será criado um usuário admin:
 - `POST /api/daily-requests/{id}/pay` - Pagar
 - `POST /api/daily-requests/{id}/cancel` - Cancelar
 
-### Secretarias
-- `GET /api/branches` - Listar secretarias
+### Secretarias (departments)
+- `GET /api/departments` - Listar secretarias
+
+### Configurações (Super Admin)
+- `GET /api/settings` - Listar configurações (ex.: app_name, allowed_login_methods)
+- `PUT /api/settings` - Atualizar configurações
 
 ### Dashboard
-- `GET /api/dashboard` - Estatísticas gerais
+- `GET /api/dashboard` - Resumo por status, financeiro e solicitações recentes
 
 ## 🧪 Testes
 
@@ -189,6 +191,12 @@ php artisan test --filter=DailyRequestTest
 ## 📄 Licença
 
 Este sistema é proprietário e de uso exclusivo para órgãos públicos municipais.
+
+## 📚 Documentação adicional
+
+- **Visão geral do sistema**: `docs/OVERVIEW_SISTEMA.md` — módulos, fluxos, entidades, ajustes recentes e sugestão de módulo adicional.
+- **Escopo e decisões**: `docs/ANALISE_ESCOPO_E_BRANCH.md`
+- **Seeders**: `README_SEEDERS.md`
 
 ## 👨‍💻 Desenvolvimento
 

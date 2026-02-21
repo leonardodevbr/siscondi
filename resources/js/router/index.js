@@ -3,6 +3,7 @@ import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
+import TransparencyLayout from '@/layouts/TransparencyLayout.vue';
 
 // Views
 import HomeView from '@/views/Dashboard/Home.vue';
@@ -28,8 +29,27 @@ import MunicipalityProfile from '@/views/Municipality/Profile.vue';
 import MunicipalitiesIndex from '@/views/Municipalities/Index.vue';
 import MunicipalitiesEdit from '@/views/Municipalities/Edit.vue';
 import ReportsIndex from '@/views/Reports/Index.vue';
+import TransparencyIndex from '@/views/Transparency/Index.vue';
 
 const routes = [
+  {
+    path: '/transparencia',
+    redirect: () => ({ path: '/transparencia/cafarnaum' }),
+  },
+  {
+    path: '/transparencia/:slug',
+    component: TransparencyLayout,
+    meta: { public: true, title: 'Portal da Transparência - Diárias e Passagens' },
+    props: true,
+    children: [
+      {
+        path: '',
+        name: 'transparency',
+        component: TransparencyIndex,
+        meta: { title: 'Portal da Transparência - Diárias e Passagens' },
+      },
+    ],
+  },
   {
     path: '/login',
     component: AuthLayout,
@@ -250,6 +270,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = window.localStorage.getItem('token');
   const toast = useToast();
+
+  if (to.meta.public) {
+    next();
+    return;
+  }
 
   if (to.meta.requiresAuth && !token) {
     next({ name: 'login' });

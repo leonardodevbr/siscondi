@@ -255,6 +255,7 @@ class DailyRequestController extends Controller
         }
 
         $dailyRequest = new DailyRequest($request->validated());
+        $dailyRequest->municipality_id = $servant->department?->municipality_id;
         $dailyRequest->legislation_item_snapshot_id = $effectiveItem->id;
         $dailyRequest->unit_value = $effectiveItem->getValueForDestination($request->destination_type);
         $dailyRequest->status = DailyRequestStatus::REQUESTED;
@@ -310,7 +311,12 @@ class DailyRequestController extends Controller
         $dailyRequest = DailyRequest::query()->findOrFail((int) $daily_request);
         $this->ensureCanAccess($dailyRequest);
         $dailyRequest->update($request->validated());
-        
+
+        if ($request->has('servant_id')) {
+            $dailyRequest->load('servant.department');
+            $dailyRequest->municipality_id = $dailyRequest->servant?->department?->municipality_id;
+            $dailyRequest->save();
+        }
         if ($request->has('quantity_days')) {
             $dailyRequest->calculateTotal();
             $dailyRequest->save();

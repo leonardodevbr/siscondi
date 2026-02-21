@@ -40,7 +40,8 @@ api.interceptors.response.use(
       window.localStorage.removeItem('token');
       window.localStorage.removeItem('user');
 
-      if (window.location.pathname !== '/login') {
+      const path = window.location.pathname || '';
+      if (path !== '/login' && !path.includes('/transparencia')) {
         window.location.href = '/login';
       }
     }

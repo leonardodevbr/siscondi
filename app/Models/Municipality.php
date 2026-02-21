@@ -17,6 +17,7 @@ class Municipality extends Model
      */
     protected $fillable = [
         'name',
+        'slug',
         'display_name',
         'cnpj',
         'state',
