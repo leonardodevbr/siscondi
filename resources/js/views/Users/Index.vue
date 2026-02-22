@@ -9,20 +9,54 @@
     </div>
 
     <div class="card p-4 sm:p-6">
+      <!-- Busca e filtros (uma linha em desktop, empilha em mobile) -->
       <div class="mb-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar por nome ou e-mail..."
-          class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          @input="debouncedSearch"
-        />
+        <p class="text-sm font-medium text-slate-700 mb-3">Busca e filtros</p>
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 flex-nowrap">
+          <div class="min-w-0 flex-1 sm:max-w-xs">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nome ou e-mail</label>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Digite para buscar..."
+              class="w-full px-3 py-2.5 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              @input="debouncedSearch"
+            />
+          </div>
+          <div class="min-w-0 w-full sm:w-40 shrink-0">
+            <SelectInput
+              v-model="filters.role"
+              label="Tipo (cargo)"
+              :options="roleOptionsForSelect"
+              placeholder="Todos"
+              :searchable="true"
+              @update:model-value="applyFilters"
+            />
+          </div>
+          <div class="min-w-0 w-full sm:w-72 sm:min-w-[18rem] shrink-0">
+            <SelectInput
+              v-model="filters.department_id"
+              label="Secretaria"
+              :options="departmentOptionsForSelect"
+              placeholder="Todas"
+              :searchable="true"
+              @update:model-value="applyFilters"
+            />
+          </div>
+          <button
+            type="button"
+            class="shrink-0 min-h-[2.5rem] flex items-center justify-center px-4 py-2.5 border border-slate-300 rounded text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            @click="clearFilters"
+          >
+            Limpar filtros
+          </button>
+        </div>
       </div>
 
       <div v-if="userStore.loading" class="text-center py-8">
         <p class="text-slate-500">Carregando usuários...</p>
       </div>
-      <div v-else-if="!filteredUsers.length" class="text-center py-8">
+      <div v-else-if="!userStore.users.length" class="text-center py-8">
         <p class="text-slate-500">Nenhum usuário encontrado</p>
       </div>
       <div v-else class="overflow-x-auto -mx-4 sm:-mx-6">
@@ -76,9 +110,10 @@
           </tbody>
         </table>
       </div>
+      <!-- Paginação -->
       <PaginationBar
-        v-if="userStore.pagination"
-        :pagination="userStore.pagination"
+        v-if="!userStore.loading && (userStore.pagination || userStore.users.length > 0)"
+        :pagination="userStore.pagination || defaultPagination"
         @page-change="(page) => loadUsers({ page })"
         @per-page-change="onPerPageChange"
       />
@@ -89,10 +124,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import api from '@/services/api';
 import { useUserStore } from '@/stores/user';
 import { useAuthStore } from '@/stores/auth';
 import { useAlert } from '@/composables/useAlert';
 import Button from '@/components/Common/Button.vue';
+import SelectInput from '@/components/Common/SelectInput.vue';
 import PaginationBar from '@/components/Common/PaginationBar.vue';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
@@ -102,6 +139,7 @@ const ROLE_LABELS = {
   validator: 'Validador',
   authorizer: 'Concedente',
   payer: 'Pagador',
+  beneficiary: 'Beneficiário',
   'super-admin': 'Super Admin',
 };
 
@@ -111,7 +149,31 @@ const authStore = useAuthStore();
 const userStore = useUserStore();
 const searchQuery = ref('');
 const perPageRef = ref(15);
+const departmentOptions = ref([]);
+const filters = ref({
+  role: '',
+  department_id: '',
+});
 let searchTimeout = null;
+
+const roleOptionsForSelect = computed(() => [
+  { value: '', label: 'Todos' },
+  ...Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label })),
+]);
+
+const departmentOptionsForSelect = computed(() => [
+  { value: '', label: 'Todas' },
+  ...departmentOptions.value.map((d) => ({ value: d.id, label: d.name })),
+]);
+
+const defaultPagination = {
+  current_page: 1,
+  last_page: 1,
+  per_page: 15,
+  total: 0,
+  from: null,
+  to: null,
+};
 
 const showDepartmentColumn = computed(() => {
   if (!authStore.user) return false;
@@ -120,11 +182,6 @@ const showDepartmentColumn = computed(() => {
     const name = typeof r === 'string' ? r : r?.name;
     return ['super-admin', 'admin'].includes(name);
   });
-});
-
-// Filtra para remover o próprio usuário logado
-const filteredUsers = computed(() => {
-  return userStore.users.filter(u => u.id !== authStore.user?.id);
 });
 
 function roleLabel(role) {
@@ -140,10 +197,31 @@ async function loadUsers(params = {}) {
   try {
     const p = { per_page: perPageRef.value, ...params };
     if (searchQuery.value) p.search = searchQuery.value;
+    if (filters.value.role) p.role = filters.value.role;
+    if (filters.value.department_id) p.department_id = filters.value.department_id;
     await userStore.fetchUsers(p);
     if (userStore.pagination?.per_page) perPageRef.value = userStore.pagination.per_page;
   } catch {
     toast.error('Erro ao carregar usuários');
+  }
+}
+
+function applyFilters() {
+  loadUsers({ page: 1 });
+}
+
+function clearFilters() {
+  filters.value = { role: '', department_id: '' };
+  searchQuery.value = '';
+  loadUsers({ page: 1 });
+}
+
+async function loadDepartments() {
+  try {
+    const { data } = await api.get('/departments', { params: { all: 1 } });
+    departmentOptions.value = data.data ?? data ?? [];
+  } catch {
+    departmentOptions.value = [];
   }
 }
 
@@ -164,5 +242,8 @@ async function confirmDelete(user) {
   }
 }
 
-onMounted(() => loadUsers());
+onMounted(async () => {
+  await loadDepartments();
+  loadUsers();
+});
 </script>

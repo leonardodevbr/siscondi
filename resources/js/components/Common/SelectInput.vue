@@ -161,10 +161,13 @@ export default defineComponent({
 :deep(.multiselect-dropdown) {
   @apply border border-slate-300 rounded-lg bg-white mt-1 z-50;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  min-width: 22rem;
+  white-space: nowrap;
 }
 
 :deep(.multiselect-option) {
   @apply px-3 py-2 text-sm cursor-pointer text-slate-800 font-medium;
+  white-space: nowrap;
 }
 
 :deep(.multiselect-option:hover) {

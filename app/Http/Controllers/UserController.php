@@ -12,6 +12,7 @@ use App\Models\Servant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -69,7 +70,7 @@ class UserController extends Controller
         return $query->whereRaw('1 = 0'); // Retorna vazio se não autenticado
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $user = auth()->user();
         $query = $this->departmentScope();
@@ -84,12 +85,27 @@ class UserController extends Controller
             });
         }
 
+        if ($request->filled('role')) {
+            $role = $request->string('role')->toString();
+            $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+        }
+
+        if ($request->filled('department_id')) {
+            $departmentId = (int) $request->input('department_id');
+            if ($departmentId > 0) {
+                $query->where(function ($q) use ($departmentId): void {
+                    $q->where('primary_department_id', $departmentId)
+                        ->orWhereHas('departments', fn ($q2) => $q2->where('departments.id', $departmentId));
+                });
+            }
+        }
+
         $perPage = (int) $request->input('per_page', 15);
         $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 15;
 
         $users = $query->where('id', '!=', $user->id)->orderBy('name')->paginate($perPage);
 
-        return response()->json(UserResource::collection($users));
+        return UserResource::collection($users);
     }
 
     public function store(StoreUserRequest $request): JsonResponse
