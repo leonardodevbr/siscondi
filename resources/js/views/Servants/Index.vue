@@ -56,14 +56,58 @@
     </div>
 
     <div class="card p-4 sm:p-6">
+      <!-- Busca e filtros (uma linha em desktop, empilha em mobile) -->
       <div class="mb-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar por nome, CPF ou matrícula..."
-          class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          @input="debouncedSearch"
-        />
+        <p class="text-sm font-medium text-slate-700 mb-3">Busca e filtros</p>
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 flex-nowrap">
+          <div class="min-w-0 flex-1 sm:max-w-xs">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Buscar por nome, CPF ou matrícula</label>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Digite para buscar..."
+              class="w-full px-3 py-2.5 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              @input="debouncedSearch"
+            />
+          </div>
+          <div class="min-w-0 w-full sm:w-40 shrink-0">
+            <SelectInput
+              v-model="filters.department_id"
+              label="Lotação (secretaria)"
+              :options="departmentOptionsForSelect"
+              placeholder="Todas"
+              :searchable="true"
+              @update:model-value="applyFilters"
+            />
+          </div>
+          <div class="min-w-0 w-full sm:w-48 shrink-0">
+            <SelectInput
+              v-model="filters.position_id"
+              label="Cargo"
+              :options="positionOptionsForSelect"
+              placeholder="Todos"
+              :searchable="true"
+              @update:model-value="applyFilters"
+            />
+          </div>
+          <div class="min-w-0 w-full sm:w-36 shrink-0">
+            <SelectInput
+              v-model="filters.is_active"
+              label="Status"
+              :options="statusOptionsForSelect"
+              placeholder="Todos"
+              :searchable="false"
+              @update:model-value="applyFilters"
+            />
+          </div>
+          <button
+            type="button"
+            class="shrink-0 min-h-[2.5rem] flex items-center justify-center px-4 py-2.5 border border-slate-300 rounded text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            @click="clearFilters"
+          >
+            Limpar filtros
+          </button>
+        </div>
       </div>
 
       <div class="bg-white rounded-lg shadow overflow-x-auto">
@@ -258,9 +302,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import { PencilSquareIcon, ArrowUpTrayIcon, ArrowDownTrayIcon, DocumentArrowUpIcon } from '@heroicons/vue/24/outline'
+import SelectInput from '@/components/Common/SelectInput.vue'
 import PaginationBar from '@/components/Common/PaginationBar.vue'
 import Modal from '@/components/Common/Modal.vue'
 import Button from '@/components/Common/Button.vue'
@@ -275,7 +320,33 @@ const servants = ref([])
 const searchQuery = ref('')
 const pagination = ref(null)
 const perPageRef = ref(15)
+const departmentOptions = ref([])
+const positionOptions = ref([])
+const filters = ref({
+  department_id: '',
+  position_id: '',
+  is_active: '',
+})
 let searchTimeout = null
+
+const departmentOptionsForSelect = computed(() => [
+  { value: '', label: 'Todas' },
+  ...departmentOptions.value.map((d) => ({ value: d.id, label: d.name })),
+])
+
+const positionOptionsForSelect = computed(() => [
+  { value: '', label: 'Todos' },
+  ...positionOptions.value.map((p) => ({
+    value: p.id,
+    label: p.symbol ? `${p.symbol} - ${p.name}` : p.name,
+  })),
+])
+
+const statusOptionsForSelect = [
+  { value: '', label: 'Todos' },
+  { value: 'true', label: 'Ativo' },
+  { value: 'false', label: 'Inativo' },
+]
 
 const importModalOpen = ref(false)
 const fileInput = ref(null)
@@ -290,7 +361,10 @@ const fetchServants = async (params = {}) => {
   try {
     const p = { per_page: perPageRef.value, ...params }
     if (searchQuery.value) p.search = searchQuery.value
-    
+    if (filters.value.department_id) p.department_id = filters.value.department_id
+    if (filters.value.position_id) p.position_id = filters.value.position_id
+    if (filters.value.is_active !== '') p.is_active = filters.value.is_active === 'true'
+
     const { data } = await api.get('/servants', { params: p })
     servants.value = data.data || data
     if (data.meta) {
@@ -313,6 +387,30 @@ function onPerPageChange(perPage) {
 const debouncedSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => fetchServants(), 500)
+}
+
+function applyFilters() {
+  fetchServants({ page: 1 })
+}
+
+function clearFilters() {
+  filters.value = { department_id: '', position_id: '', is_active: '' }
+  searchQuery.value = ''
+  fetchServants({ page: 1 })
+}
+
+async function loadFilterOptions() {
+  try {
+    const [deptRes, posRes] = await Promise.all([
+      api.get('/departments', { params: { all: 1 } }),
+      api.get('/positions', { params: { all: 1 } }),
+    ])
+    departmentOptions.value = deptRes.data?.data ?? deptRes.data ?? []
+    positionOptions.value = posRes.data?.data ?? posRes.data ?? []
+  } catch {
+    departmentOptions.value = []
+    positionOptions.value = []
+  }
 }
 
 function openImportModal() {
@@ -448,7 +546,8 @@ async function clearImportProgress() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadFilterOptions()
   fetchServants()
   fetchImportStatus()
   subscribeToImportChannel()

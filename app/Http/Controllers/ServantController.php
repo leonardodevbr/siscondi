@@ -47,6 +47,9 @@ class ServantController extends Controller
             $query->where('department_id', $request->integer('department_id'));
         }
 
+        if ($request->has('position_id')) {
+            $query->where('position_id', $request->integer('position_id'));
+        }
 
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
