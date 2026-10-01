@@ -10,10 +10,7 @@ class Community extends Model
 {
     protected $fillable = ['municipality_id', 'name', 'zone', 'latitude', 'longitude'];
 
-    protected $casts = [
-        'latitude' => 'float',
-        'longitude' => 'float',
-    ];
+    protected $casts = ['latitude' => 'float', 'longitude' => 'float'];
 
     public function municipality(): BelongsTo { return $this->belongsTo(Municipality::class); }
     public function culturalAgents(): HasMany { return $this->hasMany(CulturalAgent::class); }

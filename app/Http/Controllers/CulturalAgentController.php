@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Community;
 use App\Models\CulturalAgent;
-use App\Models\Municipality;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class CulturalAgentController extends Controller
 {
@@ -19,7 +17,7 @@ class CulturalAgentController extends Controller
             ->latest();
 
         if ($request->filled('q')) {
-            $q = $request->string('q');
+            $q = (string) $request->string('q');
             $query->where(fn ($sub) => $sub->where('name', 'like', "%{$q}%")
                 ->orWhere('artistic_name', 'like', "%{$q}%"));
         }
@@ -48,7 +46,7 @@ class CulturalAgentController extends Controller
             $community = Community::firstOrCreate([
                 'municipality_id' => $municipalityId,
                 'name' => trim($data['community_name']),
-            ], ['zone' => null]);
+            ]);
             $data['community_id'] = $community->id;
         }
 

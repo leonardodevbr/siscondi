@@ -36,11 +36,13 @@ class SyncController extends Controller
             if ($operation['resource'] === 'cultural-agent' && $operation['action'] === 'create') {
                 $possibleDuplicate = CulturalAgent::query()
                     ->where('municipality_id', $municipalityId)
-                    ->when($payload['phone'] ?? null, fn ($q, $phone) => $q->where('phone', $phone))
                     ->where(function ($q) use ($payload) {
                         $q->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($payload['name'] ?? ''))]);
                         if (! empty($payload['artistic_name'])) {
                             $q->orWhereRaw('LOWER(artistic_name) = ?', [mb_strtolower(trim($payload['artistic_name']))]);
+                        }
+                        if (! empty($payload['phone'])) {
+                            $q->orWhere('phone', $payload['phone']);
                         }
                     })
                     ->first();

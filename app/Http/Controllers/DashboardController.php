@@ -7,7 +7,6 @@ use App\Models\CulturalAgent;
 use App\Models\Manifestation;
 use App\Models\SyncOperation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
