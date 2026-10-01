@@ -1,98 +1,38 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import Input from '@/components/Common/Input.vue';
-import Button from '@/components/Common/Button.vue';
-import { useToast } from 'vue-toastification';
+import { useAuthStore } from '../../stores/auth';
 
-const router = useRouter();
+const login = ref('admin@cultura.local');
+const password = ref('password');
+const error = ref('');
 const auth = useAuthStore();
-const toast = useToast();
+const router = useRouter();
 
-const login = ref('');
-const password = ref('');
-const formErrors = ref({});
-
-async function handleSubmit() {
-  formErrors.value = {};
-
-  if (!login.value) {
-    formErrors.value.login = 'Informe seu e-mail, usuário ou matrícula.';
-  }
-  if (!password.value) {
-    formErrors.value.password = 'Informe a senha.';
-  }
-
-  if (Object.keys(formErrors.value).length > 0) {
-    return;
-  }
-
+async function submit() {
+  error.value = '';
   try {
-    const result = await auth.login(login.value, password.value);
-    toast.success('Login realizado com sucesso.');
-    if (result?.needsPrimaryDepartment) {
-      router.push({ name: 'choose-department' });
-    } else {
-      router.push({ name: 'dashboard' });
-    }
-  } catch (error) {
-    const errors = error.response?.data?.errors;
-    const message = errors?.login?.[0] || errors?.email?.[0] || error.response?.data?.message || 'Falha ao autenticar.';
-    toast.error(message);
+    await auth.login(login.value, password.value);
+    router.push('/');
+  } catch (e) {
+    error.value = e.response?.data?.message || 'Não foi possível entrar.';
   }
 }
 </script>
 
 <template>
-  <form
-    class="space-y-5"
-    @submit.prevent="handleSubmit"
-  >
-    <div class="space-y-1">
-      <h2 class="text-lg font-semibold text-slate-800">Entrar</h2>
-      <p class="text-xs text-slate-500">
-        Use seu e-mail, usuário ou matrícula e senha cadastrados para acessar o sistema.
-      </p>
-    </div>
-
-    <Input
-      id="login"
-      v-model="login"
-      label="E-mail, Usuário ou Matrícula"
-      type="text"
-      autocomplete="username"
-      placeholder="exemplo@email.com, usuario ou 12345"
-      :error="formErrors.login"
-    />
-
-    <Input
-      id="password"
-      v-model="password"
-      label="Senha"
-      type="password"
-      autocomplete="current-password"
-      :error="formErrors.password"
-    />
-
-    <div class="pt-2">
-      <Button
-        type="submit"
-        :loading="auth.loading"
-        class="w-full justify-center"
-      >
-        Entrar
-      </Button>
-    </div>
-
-    <p class="text-center text-sm text-slate-500">
-      <router-link
-        :to="{ name: 'forgot-password' }"
-        class="text-blue-600 hover:text-blue-800 hover:underline"
-      >
-        Esqueci minha senha / Primeiro acesso
-      </router-link>
-    </p>
+  <form @submit.prevent="submit" class="space-y-4">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">E-mail ou usuário</span>
+      <input v-model="login" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600" />
+    </label>
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Senha</span>
+      <input v-model="password" type="password" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600" />
+    </label>
+    <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+    <button class="w-full rounded-xl bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800" :disabled="auth.loading">
+      {{ auth.loading ? 'Entrando...' : 'Entrar' }}
+    </button>
   </form>
 </template>
-

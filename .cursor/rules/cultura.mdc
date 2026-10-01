@@ -1,0 +1,20 @@
+---
+description: Regras de desenvolvimento do Cultura em Cafarnaum
+alwaysApply: true
+---
+
+# Cultura em Cafarnaum
+
+- Stack: Laravel 12, Vue 3 SPA, Pinia, Vue Router, Tailwind, Sanctum, Spatie Permission.
+- Não migrar para outro framework sem ordem explícita.
+- UI em pt-BR.
+- Projeto mobile-first.
+- Busca ativa deve funcionar offline.
+- Alterações offline usam UUID do cliente e sincronização idempotente.
+- Conflitos e possíveis duplicidades devem ir para revisão humana, nunca merge silencioso.
+- Toda entidade municipal deve respeitar municipality_id.
+- CPF, endereço e contato privado não podem aparecer em superfícies públicas.
+- Carteiras devem ter registro, QR Code e validação, mas não prometer validade profissional externa.
+- PNAB deve ser configurável por edital.
+- Evite criar arquitetura excessiva. Priorize código legível e módulos pequenos.
+- Antes de concluir uma tarefa, rode testes aplicáveis e npm run build.

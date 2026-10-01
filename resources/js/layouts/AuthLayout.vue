@@ -1,18 +1,12 @@
-<script setup>
-import AppLogo from '@/components/Common/AppLogo.vue';
-</script>
-
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-    <div class="w-full max-w-md">
-      <div class="mb-6 flex flex-col items-center">
-        <AppLogo icon-class="h-16 w-16" text-class="text-2xl" />
-        <p class="mt-2 text-sm text-slate-500">Sistema de Concessão de Diárias</p>
+  <main class="min-h-screen grid place-items-center bg-slate-950 px-4">
+    <div class="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+      <div class="mb-8">
+        <p class="text-sm font-semibold uppercase tracking-[.2em] text-teal-700">Cafarnaum • Bahia</p>
+        <h1 class="mt-2 text-3xl font-bold text-slate-900">Cultura em Cafarnaum</h1>
+        <p class="mt-2 text-slate-500">Gestão, mapeamento e memória cultural.</p>
       </div>
-      <div class="card p-6">
-        <router-view />
-      </div>
+      <router-view />
     </div>
-  </div>
+  </main>
 </template>
-

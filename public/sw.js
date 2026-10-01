@@ -1,22 +1,10 @@
-self.addEventListener('push', function (event) {
-    if (!(self.Notification && self.Notification.permission === 'granted')) {
-        return;
-    }
-
-    const payload = event.data ? event.data.json() : {};
-    event.waitUntil(
-        self.registration.showNotification(payload.title || 'Nova Notificação - DiariaSys', {
-            body: payload.body || 'Você tem uma nova mensagem.',
-            icon: '/logo.png',
-            data: payload.url || '/',
-            actions: payload.actions || []
-        })
-    );
+const CACHE = 'cultura-shell-v1';
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['/','/manifest.webmanifest'])).catch(() => {}));
+  self.skipWaiting();
 });
-
-self.addEventListener('notificationclick', function (event) {
-    event.notification.close();
-    event.waitUntil(
-        clients.openWindow(event.notification.data)
-    );
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then(r => r || caches.match('/'))));
 });

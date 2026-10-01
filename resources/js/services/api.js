@@ -1,53 +1,23 @@
 import axios from 'axios';
-import { useAppStore } from '@/stores/app';
 
-const baseURL = '/api';
-
-const api = axios.create({
-  baseURL,
-});
+const api = axios.create({ baseURL: '/api' });
 
 api.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem('token');
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  try {
-    const appStore = useAppStore();
-    if (appStore.currentDepartment?.id) {
-      config.headers['X-Department-ID'] = appStore.currentDepartment.id;
-    }
-  } catch (e) {
-    // Pinia pode ainda não estar inicializado
-  }
-
-  if (!config.headers['X-Department-ID']) {
-    const storedId = window.localStorage.getItem('selected_department_id');
-    if (storedId) {
-      config.headers['X-Department-ID'] = storedId;
-    }
-  }
-
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      window.localStorage.removeItem('token');
-      window.localStorage.removeItem('user');
-
-      const path = window.location.pathname || '';
-      if (path !== '/login' && !path.includes('/transparencia')) {
-        window.location.href = '/login';
-      }
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (location.pathname !== '/login') location.href = '/login';
     }
-
     return Promise.reject(error);
-  },
+  }
 );
 
 export default api;
